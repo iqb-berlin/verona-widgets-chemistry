@@ -1,0 +1,60 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="Alexander Dahmen">
+  <title>Widget Dummy-Host</title>
+  <style>
+    #host {
+      margin: 4px;
+    }
+  </style>
+</head>
+<body>
+<h2>Widget Dummy-Host</h2>
+<div id="status">Please select a file</div>
+<div>
+  <label>
+    Widget HTML File:
+    <input id="widgetFile" type="file" accept="text/html" />
+  </label>
+</div>
+<div id="host"></div>
+<script type="application/javascript">
+  const hostElement = document.getElementById('host');
+  const statusElement = document.getElementById('status');
+  const widgetFileInput = document.getElementById('widgetFile');
+  const widgetFrameElement = document.createElement('iframe');
+  widgetFrameElement.style.display = 'block';
+  widgetFrameElement.style.border = '1px solid red';
+
+  document.addEventListener('load', () => {
+    hostElement.appendChild(widgetFrameElement);
+  });
+
+  // File input, iframe srcdoc loading
+  widgetFileInput.addEventListener('change', () => {
+    const [file] = widgetFileInput.files;
+    if (!file) {
+      statusElement.innerText = 'No file selected, please select a file';
+      return;
+    }
+
+    const fileReader = new FileReader();
+    fileReader.addEventListener('progress', e => {
+      const fraction = e.loaded / e.total;
+      const percentage = Math.round(fraction * 1_00_00) / 1_00;
+      statusElement.innerText = `File selected, please wait ... ${ percentage }%`;
+    });
+    fileReader.addEventListener('load', () => {
+      statusElement.innerText = 'File loaded, initializing iframe';
+      widgetFrameElement.srcdoc = String(fileReader.result);
+    });
+    fileReader.readAsText(file, 'utf8');
+    statusElement.innerText = 'File selected, please wait ...';
+  });
+
+
+</script>
+</body>
+</html>

@@ -23,6 +23,6 @@ declare const brand: unique symbol;
  * constraint in the form of a symbol-property called "brand" (symbol is only declared, but does not actually exist)
  * which makes it impossible to assign a normal string to a branded nominal string.
  */
-export type Nominal<T, B extends string> = T & { [brand]: B }
+export type Nominal<T, B extends string> = T & { [brand]: B };
 
 export type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;

@@ -1,8 +1,8 @@
-import {Component, computed, inject, signal} from '@angular/core';
-import {FormsModule} from '@angular/forms';
-import {MatInput} from '@angular/material/input';
-import {MatSlideToggle} from '@angular/material/slide-toggle';
-import {MatFormField, MatLabel} from '@angular/material/form-field';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
 import {
   PeriodicSystemModule,
   PsAppearance,
@@ -23,24 +23,24 @@ import {
     {
       provide: PsService,
       useFactory(): PsService {
-        const app = inject(App)
-        return new AppPsService(app)
+        const app = inject(App);
+        return new AppPsService(app);
       },
-    }
+    },
   ],
 })
 export class App {
-  readonly multiSelect = signal<boolean>(false)
-  readonly maxSelectCount = signal<number>(0)
+  readonly multiSelect = signal<boolean>(false);
+  readonly maxSelectCount = signal<number>(0);
 
-  readonly selectedElements = signal<ReadonlyArray<PsElementNumber>>([])
+  readonly selectedElements = signal<ReadonlyArray<PsElementNumber>>([]);
 }
 
 class AppPsService implements PsService {
   readonly interaction: PsInteraction;
 
   constructor(app: App) {
-    this.interaction = new AppPsInteraction(app)
+    this.interaction = new AppPsInteraction(app);
   }
 
   //TODO: Integrate appearance with widget system
@@ -50,15 +50,15 @@ class AppPsService implements PsService {
     showName: true,
     showMass: true,
     enableBlockColors: true,
-    defaultTextColor: "#ffffff",
-    defaultBaseColor: "#4000ff",
+    defaultTextColor: '#ffffff',
+    defaultBaseColor: '#4000ff',
     blockColors: {
-      [PsElementBlock.S]: "#cd2f2f",
-      [PsElementBlock.P]: "#559955",
-      [PsElementBlock.D]: "#6699dd",
-      [PsElementBlock.F]: "#ff8822",
-      [PsElementBlock.G]: "#000000",
-    }
+      [PsElementBlock.S]: '#cd2f2f',
+      [PsElementBlock.P]: '#559955',
+      [PsElementBlock.D]: '#6699dd',
+      [PsElementBlock.F]: '#ff8822',
+      [PsElementBlock.G]: '#000000',
+    },
   });
 }
 
@@ -75,23 +75,26 @@ class AppPsInteraction implements PsInteraction {
     return multiSelect && maxSelectCount > 0 && selectedElements.length >= maxSelectCount;
   });
 
-  constructor(private readonly app: App) {
-  }
+  constructor(private readonly app: App) {}
 
   clickElement(element: PsElement): void | Promise<void> {
     const multiSelect = this.app.multiSelect();
     const maxSelectCount = this.app.maxSelectCount();
-    this.app.selectedElements.update(state => {
+    this.app.selectedElements.update((state) => {
       const alreadyIncluded = state.includes(element.number);
-      if (!multiSelect) { // single-select toggle
+      if (!multiSelect) {
+        // single-select toggle
         return alreadyIncluded ? [] : [element.number];
-      } else if (alreadyIncluded) { // multi-select remove click
-        return state.filter(x => x !== element.number);
-      } else if (maxSelectCount < 1 || state.length < maxSelectCount) { // multi-select add click
+      } else if (alreadyIncluded) {
+        // multi-select remove click
+        return state.filter((x) => x !== element.number);
+      } else if (maxSelectCount < 1 || state.length < maxSelectCount) {
+        // multi-select add click
         return state.concat(element.number);
-      } else { // no change
+      } else {
+        // no change
         return state;
       }
-    })
+    });
   }
 }

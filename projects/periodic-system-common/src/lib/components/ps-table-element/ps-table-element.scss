@@ -27,7 +27,8 @@
   visibility: var(--ps-element-mass-visible);
 }
 
-.name, .mass {
+.name,
+.mass {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

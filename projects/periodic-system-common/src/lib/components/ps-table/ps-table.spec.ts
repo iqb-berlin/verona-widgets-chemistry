@@ -1,9 +1,9 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import {PsTable} from './ps-table';
-import {Provider, provideZonelessChangeDetection, signal} from '@angular/core';
-import {PsAppearance, PsService} from '../../services/ps-service';
-import {PsElement, PsElementBlock, PsElementNumber, PsLocale} from "../../data/PsData";
+import { PsTable } from './ps-table';
+import { Provider, provideZonelessChangeDetection, signal } from '@angular/core';
+import { PsAppearance, PsService } from '../../services/ps-service';
+import { PsElement, PsElementBlock, PsElementNumber, PsLocale } from '../../data/PsData';
 
 describe('PsTable', () => {
   let component: PsTable;
@@ -13,8 +13,7 @@ describe('PsTable', () => {
     await TestBed.configureTestingModule({
       imports: [PsTable],
       providers: [provideZonelessChangeDetection(), provideTestPsService()],
-    })
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(PsTable);
     component = fixture.componentInstance;
@@ -30,17 +29,17 @@ export function provideTestPsService() {
   return {
     provide: PsService,
     useClass: TestPsService,
-  } satisfies Provider
+  } satisfies Provider;
 }
 
 export class TestPsService implements PsService {
   readonly appearance = signal<PsAppearance>({
     blockColors: {
-      [PsElementBlock.S]: "",
-      [PsElementBlock.P]: "",
-      [PsElementBlock.D]: "",
-      [PsElementBlock.F]: "",
-      [PsElementBlock.G]: ""
+      [PsElementBlock.S]: '',
+      [PsElementBlock.P]: '',
+      [PsElementBlock.D]: '',
+      [PsElementBlock.F]: '',
+      [PsElementBlock.G]: '',
     },
     defaultBaseColor: '',
     defaultTextColor: '',
@@ -48,12 +47,11 @@ export class TestPsService implements PsService {
     locale: PsLocale.English,
     showMass: false,
     showName: false,
-    showSymbol: false
+    showSymbol: false,
   });
   readonly interaction = {
     selectedElements: signal(new Set<PsElementNumber>()),
     elementClickBlocked: signal(false),
-    clickElement: function (element: PsElement): void {
-    }
+    clickElement: function (element: PsElement): void {},
   };
 }

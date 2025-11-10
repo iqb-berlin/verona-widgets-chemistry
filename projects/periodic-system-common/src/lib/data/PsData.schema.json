@@ -2,9 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "./PsData.schema.json",
   "type": "object",
-  "required": [
-    "elements"
-  ],
+  "required": ["elements"],
   "properties": {
     "elements": {
       "type": "array",
@@ -16,15 +14,7 @@
   "$defs": {
     "Element": {
       "type": "object",
-      "required": [
-        "number",
-        "period",
-        "group",
-        "column",
-        "block",
-        "names",
-        "symbol"
-      ],
+      "required": ["number", "period", "group", "column", "block", "names", "symbol"],
       "properties": {
         "number": {
           "type": "integer",
@@ -47,13 +37,7 @@
         },
         "block": {
           "type": "string",
-          "enum": [
-            "s",
-            "p",
-            "d",
-            "f",
-            "g"
-          ]
+          "enum": ["s", "p", "d", "f", "g"]
         },
         "names": {
           "type": "object",
@@ -111,10 +95,7 @@
     },
     "ElementStdAtomicWeight": {
       "type": "object",
-      "required": [
-        "value",
-        "deviation"
-      ],
+      "required": ["value", "deviation"],
       "properties": {
         "value": {
           "type": "number",
@@ -127,10 +108,7 @@
     },
     "ValueWithUnit": {
       "type": "object",
-      "required": [
-        "value",
-        "unit"
-      ],
+      "required": ["value", "unit"],
       "properties": {
         "value": {
           "type": "number"

@@ -59,7 +59,7 @@
       "period": 1,
       "standard_atomic_weight": {
         "value": 4.002602,
-        "deviation": 2e-06
+        "deviation": 2e-6
       }
     },
     {
@@ -129,7 +129,7 @@
       "period": 2,
       "standard_atomic_weight": {
         "value": 9.0121831,
-        "deviation": 5e-07
+        "deviation": 5e-7
       }
     },
     {
@@ -304,7 +304,7 @@
       "period": 2,
       "standard_atomic_weight": {
         "value": 18.99840316,
-        "deviation": 5e-09
+        "deviation": 5e-9
       }
     },
     {
@@ -368,7 +368,7 @@
       "period": 3,
       "standard_atomic_weight": {
         "value": 22.98976928,
-        "deviation": 2e-08
+        "deviation": 2e-8
       }
     },
     {
@@ -438,7 +438,7 @@
       "period": 3,
       "standard_atomic_weight": {
         "value": 26.9815384,
-        "deviation": 3e-07
+        "deviation": 3e-7
       }
     },
     {
@@ -508,7 +508,7 @@
       "period": 3,
       "standard_atomic_weight": {
         "value": 30.973762,
-        "deviation": 5e-09
+        "deviation": 5e-9
       }
     },
     {
@@ -709,7 +709,7 @@
       "period": 4,
       "standard_atomic_weight": {
         "value": 44.955907,
-        "deviation": 4e-06
+        "deviation": 4e-6
       }
     },
     {
@@ -837,7 +837,7 @@
       "period": 4,
       "standard_atomic_weight": {
         "value": 54.938043,
-        "deviation": 2e-06
+        "deviation": 2e-6
       }
     },
     {
@@ -901,7 +901,7 @@
       "period": 4,
       "standard_atomic_weight": {
         "value": 58.933194,
-        "deviation": 3e-06
+        "deviation": 3e-6
       }
     },
     {
@@ -1104,7 +1104,7 @@
       "period": 4,
       "standard_atomic_weight": {
         "value": 74.921595,
-        "deviation": 6e-06
+        "deviation": 6e-6
       }
     },
     {
@@ -1304,7 +1304,7 @@
       "period": 5,
       "standard_atomic_weight": {
         "value": 88.905838,
-        "deviation": 2e-06
+        "deviation": 2e-6
       }
     },
     {
@@ -1368,7 +1368,7 @@
       "period": 5,
       "standard_atomic_weight": {
         "value": 92.90637,
-        "deviation": 1e-05
+        "deviation": 1e-5
       }
     },
     {
@@ -1485,7 +1485,7 @@
       "period": 5,
       "standard_atomic_weight": {
         "value": 102.90549,
-        "deviation": 2e-05
+        "deviation": 2e-5
       }
     },
     {
@@ -1752,7 +1752,7 @@
       "period": 5,
       "standard_atomic_weight": {
         "value": 126.90447,
-        "deviation": 3e-05
+        "deviation": 3e-5
       }
     },
     {
@@ -1811,7 +1811,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 132.905452,
-        "deviation": 6e-08
+        "deviation": 6e-8
       }
     },
     {
@@ -1867,7 +1867,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 138.90547,
-        "deviation": 7e-05
+        "deviation": 7e-5
       }
     },
     {
@@ -1913,7 +1913,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 140.90766,
-        "deviation": 1e-05
+        "deviation": 1e-5
       }
     },
     {
@@ -2044,7 +2044,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 158.925354,
-        "deviation": 7e-06
+        "deviation": 7e-6
       }
     },
     {
@@ -2090,7 +2090,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 164.930329,
-        "deviation": 5e-06
+        "deviation": 5e-6
       }
     },
     {
@@ -2136,7 +2136,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 168.934219,
-        "deviation": 5e-06
+        "deviation": 5e-6
       }
     },
     {
@@ -2235,7 +2235,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 180.94788,
-        "deviation": 2e-05
+        "deviation": 2e-5
       }
     },
     {
@@ -2399,7 +2399,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 196.96657,
-        "deviation": 4e-06
+        "deviation": 4e-6
       }
     },
     {
@@ -2515,7 +2515,7 @@
       "period": 6,
       "standard_atomic_weight": {
         "value": 208.9804,
-        "deviation": 1e-05
+        "deviation": 1e-5
       }
     },
     {
@@ -2678,7 +2678,7 @@
       "period": 7,
       "standard_atomic_weight": {
         "value": 231.03588,
-        "deviation": 1e-05
+        "deviation": 1e-5
       }
     },
     {
@@ -2701,7 +2701,7 @@
       "period": 7,
       "standard_atomic_weight": {
         "value": 238.02891,
-        "deviation": 3e-05
+        "deviation": 3e-5
       }
     },
     {
