@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./PsData.schema.json",
+  "type": "object",
+  "required": [
+    "elements"
+  ],
+  "properties": {
+    "elements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Element"
+      }
+    }
+  },
+  "$defs": {
+    "Element": {
+      "type": "object",
+      "required": [
+        "number",
+        "period",
+        "group",
+        "column",
+        "block",
+        "names",
+        "symbol"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "period": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "block": {
+          "type": "string",
+          "enum": [
+            "s",
+            "p",
+            "d",
+            "f",
+            "g"
+          ]
+        },
+        "names": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z]{2}$": {
+              "type": "string"
+            }
+          }
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2
+        },
+        "atomic_mass": {
+          "type": "number",
+          "minimum": 1
+        },
+        "negativity": {
+          "$ref": "#/$defs/ElementNegativity"
+        },
+        "standard_atomic_weight": {
+          "$ref": "#/$defs/ElementStdAtomicWeight"
+        }
+      }
+    },
+    "ElementNegativity": {
+      "type": "object",
+      "properties": {
+        "pauling": {
+          "type": "number"
+        },
+        "sanderson": {
+          "type": "number"
+        },
+        "allred": {
+          "type": "number"
+        },
+        "mulliken": {
+          "type": "number"
+        },
+        "allen": {
+          "type": "number"
+        },
+        "nagle": {
+          "type": "number"
+        },
+        "ghosh_gupta": {
+          "$ref": "#/$defs/ValueWithUnit"
+        },
+        "pearson": {
+          "$ref": "#/$defs/ValueWithUnit"
+        }
+      }
+    },
+    "ElementStdAtomicWeight": {
+      "type": "object",
+      "required": [
+        "value",
+        "deviation"
+      ],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 1
+        },
+        "deviation": {
+          "type": "number"
+        }
+      }
+    },
+    "ValueWithUnit": {
+      "type": "object",
+      "required": [
+        "value",
+        "unit"
+      ],
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

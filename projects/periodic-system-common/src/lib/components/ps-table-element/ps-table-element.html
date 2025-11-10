@@ -1,0 +1,18 @@
+@let appearance = service.appearance();
+<button
+  matFab
+  [matTooltip]="elementName()"
+  matTooltipPosition="above"
+  [matTooltipDisabled]="!appearance.showName"
+  [disabled]="isSelected()"
+  disabledInteractive
+  [disableRipple]="service.interaction.elementClickBlocked()"
+  (click)="service.interaction.clickElement(element())"
+>
+  <div class="label-container">
+    <div [hidden]="!appearance.showSymbol" class="symbol">{{ elementSymbol() }}</div>
+    <div class="number">{{ elementNumber() }}</div>
+    <div [hidden]="!appearance.showName" class="name">{{ elementName() }}</div>
+    <div [hidden]="!appearance.showMass" class="mass">{{ atomicMass() }}</div>
+  </div>
+</button>

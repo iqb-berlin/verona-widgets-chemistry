@@ -9,11 +9,19 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "isolatedModules": true,
+    "isolatedModules": false,
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "paths": {
+      "periodic-system-common": [
+        "./dist/periodic-system-common"
+      ],
+      "verona-widget": [
+        "./dist/verona-widget"
+      ]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -22,5 +30,25 @@
     "typeCheckHostBindings": true,
     "strictTemplates": true
   },
-  "files": []
+  "files": [],
+  "references": [
+    {
+      "path": "./projects/verona-widget/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/verona-widget/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/periodic-system-common/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/periodic-system-common/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/periodic-system-select-widget/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/periodic-system-select-widget/tsconfig.spec.json"
+    }
+  ]
 }

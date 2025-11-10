@@ -1,0 +1,72 @@
+.ps-table {
+  --row-height: var(--ps-table-row-height, 60px);
+  --separator-height: var(--ps-table-separator-height, 40px);
+
+  width: 1080px;
+
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-rows:
+    repeat(7, var(--row-height))
+    var(--separator-height)
+    repeat(2, var(--row-height));
+
+  --mat-fab-container-shape: 4px;
+  --mat-fab-container-color: var(--ps-element-color);
+  --mat-fab-foreground-color: var(--ps-text-color);
+}
+
+.ps-element {
+  margin: 2px;
+
+  // Period classes p1 through p7 for row positioning
+  @for $p from 1 through 7 {
+    &.p#{$p} {
+      grid-row: #{$p};
+    }
+  }
+
+  // Group classes g1 through g18 for column positioning
+  @for $g from 1 through 18 {
+    &.g#{$g} {
+      grid-column: #{$g};
+    }
+  }
+
+  // Special positioning for Lanthanide/Actinide elements, displayed in appendix-rows
+  @for $c from 4 through 18 {
+    &.c#{$c} {
+      &.g19 {
+        grid-row: 9;
+        grid-column: #{$c};
+      }
+
+      &.g20 {
+        grid-row: 10;
+        grid-column: #{$c};
+      }
+    }
+  }
+
+  // Block-specific element colors
+  &.b-s {
+    --mat-fab-container-color: var(--ps-element-b-s-color, var(--ps-element-color));
+  }
+
+  &.b-f {
+    --mat-fab-container-color: var(--ps-element-b-f-color, var(--ps-element-color));
+  }
+
+  &.b-d {
+    --mat-fab-container-color: var(--ps-element-b-d-color, var(--ps-element-color));
+  }
+
+  &.b-p {
+    --mat-fab-container-color: var(--ps-element-b-p-color, var(--ps-element-color));
+  }
+
+  &.b-g {
+    --mat-fab-container-color: var(--ps-element-b-g-color, var(--ps-element-color));
+  }
+}

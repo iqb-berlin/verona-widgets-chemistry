@@ -1,0 +1,15 @@
+services:
+  widget-webserver:
+    image: "nginx:latest"
+    ports:
+      - "4300:80"
+    volumes:
+      - "./dist/periodic-system-select-widget/browser:/usr/share/nginx/html"
+  testbed-webserver:
+    build:
+      context: docker/testbed
+      args:
+        TESTBED_HTML_URL: "https://iqb-berlin.github.io/verona-player-testbed"
+    image: "iqb-testbed:latest"
+    ports:
+      - "80:80"
