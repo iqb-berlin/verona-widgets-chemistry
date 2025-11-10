@@ -2,4 +2,7 @@
  * Public API Surface of verona-widget
  */
 
-export * from './lib/verona-widget';
+export * from './lib/components/verona-widget/verona-widget';
+export * from './lib/services/verona-widget.service';
+export * from './lib/services/verona-widget.events';
+export * from './lib/services/verona-metadata.model';

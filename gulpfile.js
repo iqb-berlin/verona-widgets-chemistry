@@ -2,10 +2,12 @@ const gulp = require('gulp');
 const inline = require('gulp-inline');
 const { join } = require('node:path');
 
-const [buildDir] = process.argv.slice(2);
+gulp.task('periodic-system-select-widget', singleHtmlTask('periodic-system-select-widget'));
 
-gulp.task('default', () => gulp
-  .src(join(buildDir, 'index.html'))
-  .pipe(inline())
-  .pipe(gulp.dest(join(buildDir, 'index-single.html'))),
-);
+function singleHtmlTask(distName) {
+  const distPath = join('./dist', distName);
+  return () => gulp
+    .src(join(distPath, 'browser/index.html'))
+    .pipe(inline())
+    .pipe(gulp.dest(join(distPath, 'packed')));
+}

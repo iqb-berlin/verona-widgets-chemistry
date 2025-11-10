@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -20,21 +21,23 @@
   </label>
 </div>
 <div id="host"></div>
+
 <script type="application/javascript">
   const hostElement = document.getElementById('host');
   const statusElement = document.getElementById('status');
   const widgetFileInput = document.getElementById('widgetFile');
+
+  // Add iframe to document, start listening to messages
   const widgetFrameElement = document.createElement('iframe');
   widgetFrameElement.style.display = 'block';
   widgetFrameElement.style.border = '1px solid red';
-
-  document.addEventListener('load', () => {
-    hostElement.appendChild(widgetFrameElement);
-  });
+  widgetFrameElement.width = '100%';
+  widgetFrameElement.height = '800px';
+  hostElement.appendChild(widgetFrameElement);
 
   // File input, iframe srcdoc loading
   widgetFileInput.addEventListener('change', () => {
-    const [file] = widgetFileInput.files;
+    const file = widgetFileInput.files[0];
     if (!file) {
       statusElement.innerText = 'No file selected, please select a file';
       return;
@@ -46,7 +49,7 @@
       const percentage = Math.round(fraction * 1_00_00) / 1_00;
       statusElement.innerText = `File selected, please wait ... ${ percentage }%`;
     });
-    fileReader.addEventListener('load', () => {
+    fileReader.addEventListener('loadend', () => {
       statusElement.innerText = 'File loaded, initializing iframe';
       widgetFrameElement.srcdoc = String(fileReader.result);
     });
@@ -54,7 +57,34 @@
     statusElement.innerText = 'File selected, please wait ...';
   });
 
-
+  // Handle messages received from widget iframe
+  window.addEventListener('message', message => {
+    if (message.source !== widgetFrameElement.contentWindow) {
+      return;
+    }
+    console.log('received widget message:', message.data);
+    statusElement.innerText = `Received widget message: ${ JSON.stringify(message.data) }`;
+    const event = message.data;
+    switch (event.type) {
+      case 'vowReadyNotification':
+        widgetFrameElement.contentWindow.postMessage({
+          type: 'vowStartCommand',
+          sessionId: 'dummySession',
+          parameters: [
+            {
+              key: 'defaultTextColor',
+              value: '#ffffff',
+            },
+            {
+              key: 'multiSelect',
+              value: 'true',
+            },
+          ],
+          state: 'Br Ba',
+        });
+        break;
+    }
+  });
 </script>
 </body>
 </html>
