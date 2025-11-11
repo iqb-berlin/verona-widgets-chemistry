@@ -20,23 +20,22 @@ export type VeronaModuleType =
   | 'SCHEMER'
   | 'WIDGET_CALC'
   | 'WIDGET_PERIODIC_TABLE'
-  | 'WIDGET_MOLECULE_EDITOR'
-  ;
+  | 'WIDGET_MOLECULE_EDITOR';
 
 /**
  * The id will be used as reference by any application using this module
  */
-export type VeronaIdentifier = string
+export type VeronaIdentifier = string;
 
 /**
  * This language code declares the language of the value.
  */
-export type LanguageAsISO6391Alpha2Code = string
+export type LanguageAsISO6391Alpha2Code = string;
 
 /**
  * Name to be used in lists or forms when the identifier is too short
  */
-export type VeronaTranslatedText = ReadonlyArray<{ lang: LanguageAsISO6391Alpha2Code; value: string }>
+export type VeronaTranslatedText = ReadonlyArray<{ lang: LanguageAsISO6391Alpha2Code; value: string }>;
 
 /**
  * The description should include any use case and should refer to used data formats.
@@ -46,7 +45,7 @@ export type VeronaDescription = ReadonlyArray<{ lang: LanguageAsISO6391Alpha2Cod
 /**
  * Type of dependency. This helps to find and access the dependency.
  */
-export type VeronaDependencyType = 'FILE' | 'WIDGET' | 'SERVICE'
+export type VeronaDependencyType = 'FILE' | 'WIDGET' | 'SERVICE';
 
 export interface VeronaDependency {
   id: string;

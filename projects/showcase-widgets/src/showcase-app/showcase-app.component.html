@@ -1,0 +1,10 @@
+<nav mat-tab-nav-bar [tabPanel]="tabNavPanel">
+  <a mat-tab-link routerLink="/">Home</a>
+  <a mat-tab-link [routerLink]="PeriodicSystemSelectPath">Periodic-System Select</a>
+  <a mat-tab-link [routerLink]="MoleculeEditorPath">Molecule Editor</a>
+</nav>
+<main>
+  <mat-tab-nav-panel #tabNavPanel>
+    <router-outlet />
+  </mat-tab-nav-panel>
+</main>

@@ -49,6 +49,12 @@
     },
     {
       "path": "./projects/periodic-system-select-widget/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/showcase-widgets/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/showcase-widgets/tsconfig.spec.json"
     }
   ]
 }

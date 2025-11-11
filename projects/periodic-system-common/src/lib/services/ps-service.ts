@@ -1,6 +1,6 @@
+import { InjectionToken, Signal } from '@angular/core';
 import { PsElement, PsElementBlock, PsElementNumber, PsLocale } from '../data/PsData';
 import { ReadonlyRecord } from '../util/typing';
-import { InjectionToken, Signal } from '@angular/core';
 
 export const PsService = new InjectionToken<PsService>('PsService');
 
@@ -12,8 +12,10 @@ export interface PsService {
 export interface PsAppearance {
   readonly locale: PsLocale;
   readonly showSymbol: boolean;
+  readonly showNumber: boolean;
   readonly showName: boolean;
   readonly showMass: boolean;
+  readonly showENeg: boolean;
   readonly enableBlockColors: boolean;
   readonly defaultTextColor: string;
   readonly defaultBaseColor: string;

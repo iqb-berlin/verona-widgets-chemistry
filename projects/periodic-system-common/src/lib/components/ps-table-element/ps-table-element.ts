@@ -18,6 +18,7 @@ export class PsTableElement {
   readonly elementNumber = computed(() => this.element().number);
   readonly elementSymbol = computed(() => this.element().symbol);
   readonly atomicMass = computed(() => this.element().atomic_mass);
+  readonly electroNegativity = computed(() => this.element().negativity?.pauling);
 
   readonly elementName = computed(() => {
     const element = this.element();

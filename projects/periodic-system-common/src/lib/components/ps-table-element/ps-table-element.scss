@@ -6,6 +6,7 @@
 .number {
   float: right;
   font-size: 70%;
+  visibility: var(--ps-element-number-visible);
 }
 
 .symbol {
@@ -27,8 +28,14 @@
   visibility: var(--ps-element-mass-visible);
 }
 
+.e-neg {
+  font-size: 70%;
+  visibility: var(--ps-element-e-neg-visible);
+}
+
 .name,
-.mass {
+.mass,
+.e-neg {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

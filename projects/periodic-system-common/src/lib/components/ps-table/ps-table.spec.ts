@@ -46,8 +46,10 @@ export class TestPsService implements PsService {
     enableBlockColors: false,
     locale: PsLocale.English,
     showMass: false,
-    showName: false,
-    showSymbol: false,
+    showName: true,
+    showSymbol: true,
+    showENeg: false,
+    showNumber: true,
   });
   readonly interaction = {
     selectedElements: signal(new Set<PsElementNumber>()),

@@ -11,8 +11,21 @@
 >
   <div class="label-container">
     <div [hidden]="!appearance.showSymbol" class="symbol">{{ elementSymbol() }}</div>
-    <div class="number">{{ elementNumber() }}</div>
-    <div [hidden]="!appearance.showName" class="name">{{ elementName() }}</div>
-    <div [hidden]="!appearance.showMass" class="mass">{{ atomicMass() }}</div>
+    <div [hidden]="!appearance.showNumber" class="number">{{ elementNumber() }}</div>
+    <div class="name">
+      @if (appearance.showName) {
+        {{ elementName() }}
+      }
+    </div>
+    <div [hidden]="!appearance.showMass" class="mass">
+      @if (appearance.showMass) {
+        {{ atomicMass() }}
+      }
+    </div>
+    <div [hidden]="!appearance.showENeg" class="e-neg">
+      @if (appearance.showENeg) {
+        {{ electroNegativity() ?? '&mdash;' }}
+      }
+    </div>
   </div>
 </button>

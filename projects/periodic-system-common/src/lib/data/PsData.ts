@@ -14,6 +14,7 @@ export interface PsElement {
   readonly names: ReadonlyRecord<PsLocale, PsElementName>;
   readonly symbol: PsElementSymbol;
   readonly atomic_mass: number;
+  readonly negativity?: PsElementNegativity;
 }
 
 export const enum PsElementBlock {
@@ -28,6 +29,10 @@ export const enum PsLocale {
   English = 'en',
   German = 'de',
   Latin = 'la',
+}
+
+export interface PsElementNegativity {
+  readonly pauling?: number;
 }
 
 export type PsElementSymbol = Nominal<string, 'PsElementSymbol'>;

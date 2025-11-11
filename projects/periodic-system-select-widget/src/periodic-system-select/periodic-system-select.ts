@@ -1,16 +1,25 @@
-import { Component, computed, effect, inject, Injectable, signal, WritableSignal } from '@angular/core';
-import {
-  PeriodicSystemModule,
-  PsAppearance,
-  PsElement,
-  PsElementBlock,
-  PsElementNumber,
-  PsElements,
-  PsInteraction,
-  PsLocale,
-  PsService,
-} from 'periodic-system-common';
+import type { EffectRef, Signal, WritableSignal } from '@angular/core';
+import { Component, computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import type { PsAppearance, PsElement, PsElementNumber, PsInteraction, PsLocale } from 'periodic-system-common';
+import { PeriodicSystemModule, PsElementBlock, PsElements, PsService } from 'periodic-system-common';
 import { VeronaWidgetService } from 'verona-widget';
+
+export const enum PeriodicSystemSelectParam {
+  language = 'LANGUAGE',
+  showInfoOrder = 'SHOW_INFO_ORDER',
+  showInfoName = 'SHOW_INFO_NAME',
+  showInfoSymbol = 'SHOW_INFO_SYMBOL',
+  showInfoENeg = 'SHOW_INFO_E_NEG',
+  showInfoAMass = 'SHOW_INFO_A_MASS',
+  maxNumberOfSelections = 'MAX_NUMBER_OF_SELECTIONS',
+  highlightBlocks = 'HIGHLIGHT_BLOCKS',
+  closeOnSelection = 'CLOSE_ON_SELECTION',
+}
+
+export const enum PeriodicSystemSharedParam {
+  textColor = 'TEXT_COLOR',
+  backgroundColor = 'BACKGROUND_COLOR',
+}
 
 @Injectable()
 class PeriodicSystemSelectService implements PsService {
@@ -21,18 +30,28 @@ class PeriodicSystemSelectService implements PsService {
   readonly appearance = computed((): PsAppearance => {
     const config = this.widgetService.configuration();
     const {
-      defaultTextColor = '#ffffff',
-      defaultBaseColor = '#4000ff',
+      [PeriodicSystemSharedParam.textColor]: defaultTextColor = '#ffffff',
+      [PeriodicSystemSharedParam.backgroundColor]: defaultBaseColor = '#4000ff',
+    } = config.sharedParameters;
+
+    const {
+      [PeriodicSystemSelectParam.language]: language = 'de',
+      [PeriodicSystemSelectParam.showInfoOrder]: showInfoOrder = 'true',
+      [PeriodicSystemSelectParam.showInfoSymbol]: showInfoSymbol = 'true',
+      [PeriodicSystemSelectParam.showInfoName]: showInfoName = 'true',
+      [PeriodicSystemSelectParam.showInfoENeg]: showInfoENeg = 'false',
+      [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'false',
+      [PeriodicSystemSelectParam.highlightBlocks]: highlightBlocks = 'false',
     } = config.parameters;
 
-    //TODO: Derive appearance from widget configuration
-
     return {
-      locale: PsLocale.English,
-      showSymbol: true,
-      showName: true,
-      showMass: true,
-      enableBlockColors: true,
+      locale: language as PsLocale,
+      showSymbol: flagAsBool(showInfoSymbol),
+      showName: flagAsBool(showInfoName),
+      showNumber: flagAsBool(showInfoOrder),
+      showMass: flagAsBool(showInfoAMass),
+      showENeg: flagAsBool(showInfoENeg),
+      enableBlockColors: flagAsBool(highlightBlocks),
       defaultTextColor,
       defaultBaseColor,
       blockColors: {
@@ -57,50 +76,29 @@ class PeriodicSystemSelectService implements PsService {
     },
   ],
 })
-export class PeriodicSystemSelect {
-}
-
-const elementByNumber: ReadonlyMap<PsElementNumber, PsElement> = new Map(PsElements.map(element => {
-  return [element.number, element] as const;
-}));
-
-const elementBySymbolLowercase: ReadonlyMap<string, PsElement> = new Map(PsElements.map(element => {
-  return [element.symbol.toLowerCase(), element] as const;
-}));
+export class PeriodicSystemSelect {}
 
 class PeriodicSystemSelectInteraction implements PsInteraction {
   readonly selectedElementList: WritableSignal<ReadonlyArray<PsElementNumber>>;
 
-  constructor(
-    private readonly widgetService: VeronaWidgetService,
-  ) {
+  constructor(private readonly widgetService: VeronaWidgetService) {
     // Deserialize initial state received by widget
     const initialSerializedElementSymbols = this.widgetService.stateData();
-    const initialElements = initialSerializedElementSymbols
-      .split(/\s+/)
-      .filter(item => Boolean(item))
-      .map(item => elementBySymbolLowercase.get(item.toLowerCase()))
-      .filter(element => element !== undefined)
-      .map(element => element.number);
-
-    this.selectedElementList = signal(initialElements);
+    this.selectedElementList = signal(parseSerializedElements(initialSerializedElementSymbols));
 
     // Serialize selection state to widget on change
-    let firedOnce = false;
-    effect(() => {
-      const selectedElementList = this.selectedElementList();
-      if (!firedOnce) { // ignore initial value on first run
-        firedOnce = true;
-        return;
-      }
-
-      const serializedElementSymbols = selectedElementList
-        .map(nr => elementByNumber.get(nr))
-        .filter(element => element !== undefined)
-        .map(element => element.symbol)
-        .join(' ');
-
+    changeEffect(this.selectedElementList, (selectedElementList) => {
+      const serializedElementSymbols = serializeElementSymbols(selectedElementList);
       this.widgetService.stateData.set(serializedElementSymbols);
+    });
+
+    // Request close on selection if configured accordingly
+    changeEffect(this.selectedElementList, (selectedElementList) => {
+      const { closeOnSelection } = untracked(this.interactionConfig);
+      const firstSelectedElement = selectedElementList[0];
+      if (closeOnSelection && firstSelectedElement) {
+        this.widgetService.sendReturn(true);
+      }
     });
   }
 
@@ -110,10 +108,17 @@ class PeriodicSystemSelectInteraction implements PsInteraction {
 
   readonly interactionConfig = computed(() => {
     const config = this.widgetService.configuration();
-    const { multiSelect, maxSelectCount } = config.parameters;
+
+    const {
+      [PeriodicSystemSelectParam.maxNumberOfSelections]: maxNumberOfSelections = '1',
+      [PeriodicSystemSelectParam.closeOnSelection]: closeOnSelection = 'false',
+    } = config.parameters;
+
+    const maxSelectCount = flagAsInt(maxNumberOfSelections, 1);
     return {
-      multiSelect: multiSelect === 'true' || multiSelect === '1',
-      maxSelectCount: Number.parseInt(maxSelectCount) || -1,
+      maxSelectCount,
+      multiSelect: maxSelectCount !== 1,
+      closeOnSelection: flagAsBool(closeOnSelection),
     } as const;
   });
 
@@ -142,4 +147,54 @@ class PeriodicSystemSelectInteraction implements PsInteraction {
       }
     });
   }
+}
+
+function flagAsBool(flag: string): boolean {
+  return flag === 'true' || flag === '1';
+}
+
+function flagAsInt(flag: string, defaultValue = 0): number {
+  const value = Number.parseInt(flag);
+  return Number.isNaN(value) ? defaultValue : value;
+}
+
+function changeEffect<T>(source: Signal<T>, onChange: (newValue: T, oldValue: T) => void): EffectRef {
+  let oldValue = untracked(source);
+  return effect(() => {
+    const newValue = source();
+    if (!Object.is(oldValue, newValue)) {
+      onChange(newValue, oldValue);
+    }
+  });
+}
+
+// Index elements by element-symbol, e.g. "He => Element(Helium)"
+const elementBySymbolLowercase: ReadonlyMap<string, PsElement> = new Map(
+  PsElements.map((element) => {
+    return [element.symbol.toLowerCase(), element] as const;
+  })
+);
+
+function parseSerializedElements(serializedElementSymbols: string): ReadonlyArray<PsElementNumber> {
+  return serializedElementSymbols
+    .split(/\s+/)
+    .filter((item) => Boolean(item))
+    .map((item) => elementBySymbolLowercase.get(item.toLowerCase()))
+    .filter((element) => element !== undefined)
+    .map((element) => element.number);
+}
+
+// Index elements by element-number, e.g. "2 => Element(Helium)"
+const elementByNumber: ReadonlyMap<PsElementNumber, PsElement> = new Map(
+  PsElements.map((element) => {
+    return [element.number, element] as const;
+  })
+);
+
+function serializeElementSymbols(selectedElementList: ReadonlyArray<PsElementNumber>): string {
+  return selectedElementList
+    .map((nr) => elementByNumber.get(nr))
+    .filter((element) => element !== undefined)
+    .map((element) => element.symbol)
+    .join(' ');
 }

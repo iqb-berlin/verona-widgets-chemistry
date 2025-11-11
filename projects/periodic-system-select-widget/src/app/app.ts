@@ -13,5 +13,4 @@ import { PeriodicSystemSelect } from '../periodic-system-select/periodic-system-
     </lib-verona-widget>
   `,
 })
-export class App {
-}
+export class App {}

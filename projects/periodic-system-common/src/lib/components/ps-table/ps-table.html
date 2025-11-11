@@ -11,6 +11,8 @@
   [style.--ps-element-name-visible]="appearance.showName ? 'visible' : 'hidden'"
   [style.--ps-element-mass-visible]="appearance.showMass ? 'visible' : 'hidden'"
   [style.--ps-element-symbol-visible]="appearance.showSymbol ? 'visible' : 'hidden'"
+  [style.--ps-element-number-visible]="appearance.showNumber ? 'visible' : 'hidden'"
+  [style.--ps-element-e-neg-visible]="appearance.showENeg ? 'visible' : 'hidden'"
 >
   @for (element of elements; track element.number) {
     <section class="ps-element" [class]="elementClassNames(element)">

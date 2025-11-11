@@ -31,11 +31,7 @@ export interface VeronaWidgetService {
   sendReturn(saveState?: boolean): void;
 }
 
-export type VeronaWidgetState =
-  | VeronaWidgetInitializing
-  | VeronaWidgetReady
-  | VeronaWidgetRunning
-  ;
+export type VeronaWidgetState = VeronaWidgetInitializing | VeronaWidgetReady | VeronaWidgetRunning;
 
 export interface VeronaWidgetInitializing {
   readonly state: 'initializing';
@@ -159,9 +155,15 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
   }
 
   private handleStartCommand(command: VowStartCommand) {
-    // Requires widget to be in "running" state
-    const state = untracked(this.state);
-    if (state.state !== 'ready' && state.state !== 'running') {
+    const origState = untracked(this.state);
+    // If widget is already in "running" state, revert back to "ready"
+    if (origState.state === 'running') {
+      this.state.set({ state: 'ready', metadata: origState.metadata });
+    }
+
+    // Requires widget to be in "ready" state
+    const readyState = untracked(this.state);
+    if (readyState.state !== 'ready') {
       console.warn('vowStartCommand received before widget was ready:', command);
       return;
     }
@@ -172,7 +174,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
     // Update internal state, triggering child components to be rendered
     this.state.set({
       state: 'running',
-      metadata: state.metadata,
+      metadata: readyState.metadata,
       config: createWidgetConfig(command),
     });
   }
@@ -192,7 +194,9 @@ function createWidgetConfig(command: VowStartCommand): VeronaWidgetConfiguration
 }
 
 function parametersToRecord(parameters: ReadonlyArray<VowParameter>): Record<string, string> {
-  return Object.fromEntries(parameters.map(({ key, value }) => {
-    return [key, value ?? ''] as const;
-  }));
+  return Object.fromEntries(
+    parameters.map(({ key, value }) => {
+      return [key, value ?? ''] as const;
+    })
+  );
 }

@@ -4,14 +4,14 @@
     <p>Initializing ...</p>
   }
   @case ('ready') {
-    <p>Widget ready: <code>{{ JSON.stringify(state.metadata) }}</code></p>
+    <p>
+      Widget ready: <code>{{ JSON.stringify(state.metadata) }}</code>
+    </p>
   }
   @case ('running') {
     @let ref = contentRef();
     @let stateData = service.stateData();
     @let configuration = service.configuration();
-    <ng-container
-      *ngTemplateOutlet="ref; context: { config: configuration, state: stateData }"
-    ></ng-container>
+    <ng-container *ngTemplateOutlet="ref; context: { config: configuration, state: stateData }"></ng-container>
   }
 }

@@ -1,12 +1,6 @@
-export type VeronaWidgetSendEvent =
-  | VowReadyNotification
-  | VowStateChangedNotification
-  | VowReturnRequested
-  ;
+export type VeronaWidgetSendEvent = VowReadyNotification | VowStateChangedNotification | VowReturnRequested;
 
-export type VeronaWidgetReceiveEvent =
-  | VowStartCommand
-  ;
+export type VeronaWidgetReceiveEvent = VowStartCommand;
 
 export interface VowReadyNotification {
   readonly type: 'vowReadyNotification';

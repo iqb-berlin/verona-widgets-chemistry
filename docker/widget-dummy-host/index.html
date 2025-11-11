@@ -1,17 +1,29 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="author" content="Alexander Dahmen">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Alexander Dahmen" />
   <title>Widget Dummy-Host</title>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 8px;
+    }
+
     #host {
-      margin: 4px;
+      margin-top: 4px;
     }
   </style>
 </head>
+
 <body>
+<!-- Widget Host Content -->
 <h2>Widget Dummy-Host</h2>
 <div id="status">Please select a file</div>
 <div>
@@ -20,23 +32,34 @@
     <input id="widgetFile" type="file" accept="text/html" />
   </label>
 </div>
+<div>
+  <button id="widgetLoadBtn" type="button">Load Widget</button>
+  <button id="widgetCancelBtn" type="button">Destroy Widget</button>
+  <input id="widgetConfigInput" type="text" value="{}" alt="Start config" style="width: 30rem;" />
+  <input id="widgetStateInput" type="text" placeholder="Initial state" alt="State" />
+</div>
 <div id="host"></div>
 
+<!-- Widget Host Script -->
 <script type="application/javascript">
   const hostElement = document.getElementById('host');
   const statusElement = document.getElementById('status');
   const widgetFileInput = document.getElementById('widgetFile');
+  const widgetLoadButton = document.getElementById('widgetLoadBtn');
+  const widgetCancelButton = document.getElementById('widgetCancelBtn');
+  const widgetConfigInput = document.getElementById('widgetConfigInput');
+  const widgetStateInput = document.getElementById('widgetStateInput');
 
   // Add iframe to document, start listening to messages
   const widgetFrameElement = document.createElement('iframe');
   widgetFrameElement.style.display = 'block';
-  widgetFrameElement.style.border = '1px solid red';
-  widgetFrameElement.width = '100%';
-  widgetFrameElement.height = '800px';
+  widgetFrameElement.style.border = '1px solid grey';
+  widgetFrameElement.width = '1096px';
+  widgetFrameElement.height = '700px';
   hostElement.appendChild(widgetFrameElement);
 
-  // File input, iframe srcdoc loading
-  widgetFileInput.addEventListener('change', () => {
+  // Control button handlers
+  widgetLoadButton.addEventListener('click', () => {
     const file = widgetFileInput.files[0];
     if (!file) {
       statusElement.innerText = 'No file selected, please select a file';
@@ -44,7 +67,7 @@
     }
 
     const fileReader = new FileReader();
-    fileReader.addEventListener('progress', e => {
+    fileReader.addEventListener('progress', (e) => {
       const fraction = e.loaded / e.total;
       const percentage = Math.round(fraction * 1_00_00) / 1_00;
       statusElement.innerText = `File selected, please wait ... ${ percentage }%`;
@@ -53,38 +76,61 @@
       statusElement.innerText = 'File loaded, initializing iframe';
       widgetFrameElement.srcdoc = String(fileReader.result);
     });
-    fileReader.readAsText(file, 'utf8');
     statusElement.innerText = 'File selected, please wait ...';
+    fileReader.readAsText(file, 'utf8');
+  });
+  widgetCancelButton.addEventListener('click', () => {
+    widgetFrameElement.srcdoc = '';
+    statusElement.innerText = 'Widget destroyed';
   });
 
   // Handle messages received from widget iframe
-  window.addEventListener('message', message => {
+  window.addEventListener('message', (message) => {
     if (message.source !== widgetFrameElement.contentWindow) {
       return;
     }
-    console.log('received widget message:', message.data);
-    statusElement.innerText = `Received widget message: ${ JSON.stringify(message.data) }`;
+
     const event = message.data;
+    console.log('received widget message:', event);
+    statusElement.innerHTML = `Received widget message: <code>${ JSON.stringify(event) }</code>`;
     switch (event.type) {
       case 'vowReadyNotification':
-        widgetFrameElement.contentWindow.postMessage({
-          type: 'vowStartCommand',
-          sessionId: 'dummySession',
-          parameters: [
-            {
-              key: 'defaultTextColor',
-              value: '#ffffff',
-            },
-            {
-              key: 'multiSelect',
-              value: 'true',
-            },
-          ],
-          state: 'Br Ba',
-        });
+        handleReadyNotification(event);
+        break;
+      case 'vowStateChangedNotification':
+        handleStateChangedNotification(event);
         break;
     }
   });
+
+  function handleReadyNotification(event) {
+    const initState = widgetStateInput.value;
+    const configJson = widgetConfigInput.value;
+    const configParams = {};
+    try {
+      Object.assign(configParams, JSON.parse(configJson));
+    } catch (e) {
+      statusElement.innerHTML = `Could not parse start-command config JSON: <code>${ e.message }</code>`;
+      console.warn('could not parse start config json:', e);
+      return;
+    }
+
+    sendWidgetMessage({
+      type: 'vowStartCommand',
+      sessionId: 'dummySession',
+      parameters: Object.entries(configParams).map(([key, value]) => ({ key, value: String(value) })),
+      state: initState,
+    });
+  }
+
+  function handleStateChangedNotification(event) {
+    widgetStateInput.value = event.state;
+  }
+
+  function sendWidgetMessage(event) {
+    console.log(`sending widget message:`, event);
+    widgetFrameElement.contentWindow.postMessage(event);
+  }
 </script>
 </body>
 </html>
