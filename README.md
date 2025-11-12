@@ -1,59 +1,360 @@
-# IqbWidgets
+# IQB Widgets
+
+wer denkt was GmbH, 2025
+
+## Build Widgets
+
+Benötigt Node.js ≥ v22.x
+
+```
+$ npm install
+$ npm run build:all
+$ npm run inline:all
+```
+
+Build-Dateien:
+
+- Periodensystem Auswahl Widget in `dist/periodic-system-select-widget/browser/index_packed.html`
+- Molekül Editor Widget in `dist/molecule-editor-widget/browser/index_packed.html`
+
+## Serve Showcase
+
+Showcase-App auf http://localhost:4200/
+
+```
+$ npm install
+$ npm run start:all
+```
+
+Optional in zweitem Terminal, um Library-Module fortlaufend zu bauen:
+
+```
+$ npm run watch:all
+```
+
+## Widget Dummy Host
+
+Um Widgets in `index_packed.html` Dateien zu testen, wird ein Widget-Dummy-Host bereitgestellt.
+Diese Testumgebung kann packed Widgets laden, konfigurieren, und ausführen.
+Benötigt Docker.
+
+Widget Dummy Host auf http://localhost:4400/
+
+```
+$ docker compose up
+```
+
+1. Wähle eine `index_packed.html` Datei als "Widget HTML File"
+2. Konfiguriere Widget Parameters und initialen State
+3. Klick "Create Widget"
+
+## Tests
+
+[Karma Tests](https://karma-runner.github.io/latest/index.html), welche prüfen, ob die Komponenten fehlerfrei rendern können.
+Benötigt [Google Chrome](https://www.google.com/intl/de_de/chrome/) Browser.
+
+```
+$ npm run test:all
+```
+
+## Architektur
+
+Die IQB-Widgets sind modular aufgebaut. Es gibt folgende Kategorien von Modulen:
+
+- Library Modul: Wiederverwendbare Komponenten und Services für andere Module
+  - `verona-widget`: Komponenten und Services für die Integration mit Verona-Widget
+  - `perioduc-system-common`: Komponenten uns Services für das interaktive Periodensystem
+- Widget Modul: Widget-Applikationen, welche in IFrame-Elementen eingebunden werden können
+  - `periodic-system-select-widget`: Widget zur Auswahl von Elementen im Periodensystem
+  - `molecule-editor-widget`: Widget zum Bauen und Bearbeiten von Molekülen
+- Showcase Modul: Alleinstehende Applikation, welche Widget-PsSelectApp Komponenten demonstrieren
+  - `showcase-widgets`: Demo für Widget-PsSelectApp Komponenten
+
+Jedes Modul enthält Services (injectable Interfaces oder Klassen), welche die Funktionalität der Komponenten bestimmen
+und entweder von den Komponenten bereitgestellt ("provided") oder benötigt ("injected") werden.
+
+### Modul `verona-widget`
+
+Das `verona-widget` Modul bietet Integration mit der [Widget-Spezifikation von Verona-Interfaces](https://verona-interfaces.github.io/widget-docs/).
+
+- Komponente `VeronaWidget` (Selektor `<lib-verona-widget>`)
+  - Verantwortlich für Integration und Kommunikation mit Widget IFrame
+  - Input `metadataSelector`, welcher als CSS-Selektor das [Verona-Modul Metadaten](https://verona-interfaces.github.io/intro/metadata.html) Element sucht
+  - Provides `IFrameVeronaWidgetService` als Implementierung für `VeronaWidgetService`
+- Interface `VeronaWidgetService`
+  - Verwaltet Widget-Zustand und Kommunikation mit Widget-Host
+  - Verfügbar als InjectionToken
+- Klasse `IFrameVeronaWidgetService`, implementiert `VeronaWidgetService`
+  - Implementierung für Ausführung des Widgets innerhalb eines `<iframe>` in einer Verona Host-Applikation
+  - Injects `VeronaWidgetIFrame`, welches von der Applikation mit `provideVeronaWidgetIFrame` bereitgestellt werden kann
+  - Verfügbar als Injectable
+- Funktion `provideVeronaWidgetIFrame`, stellt ein `VeronaWidgetIFrame` basierend auf dem aktuellen `window` bereit
+- Klasse `DummyVeronaWidgetService`, implementiert `VeronaWidgetService`
+  - Implementierung, welche innerhalb von Tests eine Widget-Umgebung mocked
+  - Wird bereitgestellt durch die `provideDummyVeronaWidgetService` Funktion
+
+### Modul `periodic-system-common`
+
+Das `periodic-system-common` Modul bietet Komponenten für ein interaktives Periodensystem.
+
+- Interface `PsService` bestimmt Interaktion und Erscheinungsbild der Periodensystem-Komponenten
+  - Zusammen mit Interface `PsAppearance`, welches das Erscheinungsbild konfiguriert
+  - Zusammen mit Interface `PsInteraction`, welches Interaktion mit dem Periodensystem bestimmt
+  - Verfügbar als InjectionToken
+- Komponente `PsTable` (Selektor `<lib-ps-table>`)
+  - Verantwortlich für die Darstellung eines interaktiven Periodensystems
+  - Zusammen mit Komponente `PsTableElement` (Selektor `<lib-ps-table-element>`)
+  - Injects `PsService`, welches von einer darüberliegenden Komponente bereitgestellt werden muss
+- Konstante `PsData` enthält konkrete Daten über die Elemente des Periodensystems
+
+### Modul `periodic-system-select-widget`
+
+Das `periodic-system-select-widget` ist ein Verona-Widget Modul, welches die interaktive Auswahl eines oder mehrerer Elemente aus dem Periodensystem ermöglicht.
+
+- Angular Application-Projekt
+- Index `index.html` enthält ein `<script type="application/ld+json">`, welches Metadaten über das Verona-Modul bereitstellt
+- Bootstrap `psSelectAppConfig` konfiguriert die Application
+  - Provides `VeronaWidgetIFrame` per `provideVeronaWidgetIFrame`
+  - Bootstraps `PsSelectApp`, welche ein `VeronaWidget` mit `PsSelect` als Content rendert
+- Komponente `PsSelect`
+  - Provides `PsSelectService` als `PsSelect` Implementation
+  - Rendert direkt eine `PsTable` Komponente
+- Klasse `PsSelectService`
+  - Verantwortlich für Verhalten des Widgets, agiert als Adapter von Widget zu Auswahl-Funktionalität
+  - Implementiert `PsService` mit `PsAppearance` und `PsInteraction`
+  - Injects `VeronaWidgetService` für Kommunikation und Daten
+
+### Modul `showcase-widgets`
+
+Das `showcase-widgets` ist ein Angular Application-Modul, welches die Funktionsweise der hier verfügbaren Widgets außerhalb eines Widget-Host demonstriert.
+Dieses Modul kann mit `ng serve` zum Test, Evaluation, und Entwicklung der Widgets verwendet werden.
+
+- Angular Application-Projekt mit App-Router
+- Klasse `ShowcaseVeronaWidgetService`, implementiert `VeronaWidgetService`
+  - Implementierung für Ausführung des Widgets innerhalb einer Showcase-Page, _ohne_ Verona-Host Applikation
+  - Injects `ShowcaseVeronaWidgetConfig`, eine initiale und reaktive Konfiguration des Widgets bereitstellt
+  - Injects `MatSnackbar` für Benachrichtigungen bei Widget-Events
+  - Inhalt der Komponente muss eine `showcaseVeronaWidget` Direktive enthalten, um korrekt zu funktionieren
+  - Verfügbar als Injectable
+- Funktion `provideShowcaseVeronaWidgetService`
+  - Provides `ShowcaseVeronaWidgetConfig`
+  - Provides `ShowcaseVeronaWidgetService` als `VeronaWidgetService` Implementierung
+- Direktive `ShowcaseVeronaWidgetDirective` (Selektor `*showcaseVeronaWidget`)
+  - Verwaltet die Interaktion und den Inhalt des Widgets in einer Showcase-Umgebung
+  - Input `showcaseVeronaWidget` als Module-Info (Tupel mit Modul-Typ und Modul-ID)
+  - Injects `ShowcaseVeronaWidgetService`
+- Bootstrap `showcaseAppConfig` konfiguriert die Application
+  - Provided einen Router mit `routes`
+  - Bootstraps `WidgetShowcaseApp`, welche ein Navigationsmenü und Router-Outlet rendert
+- Komponente `PsSelectPage`, verfügbar unter Route `/ps-select`
+  - Provides `ShowcaseVeronaWidgetConfig`/`ShowcaseVeronaWidgetService` mit `provideShowcaseVeronaWidgetService`
+  - Stellt eine `PsSelect` Komponente dar
+
+### Architekturdiagramme
+
+<!--
+  Dieser Abschnitt enthält PlantUML Diagramme (siehe https://plantuml.com/de/).
+  Wenn diese nicht korrekt dargestellt werden, installiere ein PlantUML Plugin für deinen Markdown-Preview.
+-->
+
+`VeronaWidgetService` Implementierungen für unterschiedliche Umgebungen
+
+```plantuml
+@startuml iqb-widgets-verona
+skinparam linetype ortho
+<style>
+frame {
+    BackGroundColor #dddddd
+}
+</style>
+
+title Verona-Widget Architektur
+
+frame "verona-widget" {
+    rectangle DOCUMENT <<InjectionToken>>
+
+    rectangle VeronaWidgetService <<InjectionToken interface>>
+    rectangle IFrameVeronaWidgetService <<Injectable class>>
+    
+    rectangle VeronaWidgetIFrame <<InjectionToken interface>>
+    IFrameVeronaWidgetService --( VeronaWidgetIFrame : inject
+    IFrameVeronaWidgetService --|> VeronaWidgetService : implement
+    
+    rectangle provideVeronaWidgetIFrame <<function>>
+    provideVeronaWidgetIFrame --> VeronaWidgetIFrame : provide
+
+    'rectangle DummyVeronaWidgetService <<class>>
+    'DummyVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle VeronaWidget <<Component>>
+    VeronaWidget --> IFrameVeronaWidgetService : provide
+    VeronaWidget -( DOCUMENT : inject
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelectService --( VeronaWidgetService : inject
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> VeronaWidget : import
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+    PsSelectAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle ShowcaseVeronaWidgetService <<Injectable class>>
+    ShowcaseVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+    PsSelectPage --> ShowcaseVeronaWidgetService : provide
+    
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+}
+
+note bottom of VeronaWidgetService : Service wird für iframe- oder showcase-Umgebung unterschiedlich implementiert
+note top of VeronaWidget : Stellt eine iframe-Umgebung bereit
+note right of PsSelectPage : Stellt eine showcase-Umgebung bereit
+@enduml
+```
+
+`PsService` Implementierungen für unterschiedliche Interaktionen
+
+```plantuml
+@startuml iqb-widgets-ps
+skinparam linetype ortho
+<style>
+frame {
+    BackGroundColor #dddddd
+}
+</style>
+
+title Periodensystem Architektur
+
+frame "periodic-system-common" {
+    rectangle PsService <<InjectionToken interface>>
+
+    rectangle PsTableElement <<Component>>
+    PsTableElement --( PsService : inject
+
+    rectangle PsTable <<Component>>
+    PsTable --( PsService : inject
+    PsTable .> PsTableElement : import
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelect ..> PsTable : import
+    PsSelectService --|> PsService : implement
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+    
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+}
+
+note top of PsTableElement : Delegiert Interaktion an PsService Implementierung
+note bottom of PsService : Kann unterschiedliches Verhalten realisieren
+note bottom of PsSelectService : Implementiert Element-Auswahl Funktionalität
+@enduml
+```
+
+Gesamtübersicht der Architektur und Abhängigkeiten
+
+```plantuml
+@startuml iqb-widgets-complete
+skinparam linetype ortho
+<style>
+frame {
+    BackGroundColor #dddddd
+}
+</style>
+
+title Vollständige Übersicht
+
+frame "verona-widget" {
+    rectangle DOCUMENT <<InjectionToken>>
+
+    rectangle VeronaWidgetService <<InjectionToken interface>>
+    rectangle IFrameVeronaWidgetService <<Injectable class>>
+    
+    rectangle VeronaWidgetIFrame <<InjectionToken interface>>
+    IFrameVeronaWidgetService --( VeronaWidgetIFrame : inject
+    IFrameVeronaWidgetService --|> VeronaWidgetService : implement
+    
+    rectangle provideVeronaWidgetIFrame <<function>>
+    provideVeronaWidgetIFrame --> VeronaWidgetIFrame : provide
+
+    'rectangle DummyVeronaWidgetService <<class>>
+    'DummyVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle VeronaWidget <<Component>>
+    VeronaWidget --> IFrameVeronaWidgetService : provide
+    VeronaWidget -( DOCUMENT : inject
+}
+
+frame "periodic-system-common" {
+    rectangle PsService <<InjectionToken interface>>
+
+    rectangle PsTableElement <<Component>>
+    PsTableElement --( PsService : inject
+
+    rectangle PsTable <<Component>>
+    PsTable --( PsService : inject
+    PsTable .> PsTableElement : import
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelect ..> PsTable : import
+    PsSelectService --|> PsService : implement
+    PsSelectService --( VeronaWidgetService : inject
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> VeronaWidget : import
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+    PsSelectAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle ShowcaseVeronaWidgetService <<Injectable class>>
+    ShowcaseVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+    PsSelectPage --> ShowcaseVeronaWidgetService : provide
+    
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+}
+@enduml
+```
+
+---
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.9.
-
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
