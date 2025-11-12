@@ -9,6 +9,12 @@
       "options": {
         "parser": "angular"
       }
+    },
+    {
+      "files": "docker/widget-dummy-host/index.html",
+      "options": {
+        "parser": "vue"
+      }
     }
   ]
 }

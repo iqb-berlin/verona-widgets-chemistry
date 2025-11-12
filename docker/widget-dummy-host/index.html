@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <base href="/">
+  <link rel="icon" href="./iqb-logo-only-white.png">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="author" content="Alexander Dahmen" />
   <title>Widget Dummy-Host</title>
@@ -15,122 +17,46 @@
     body {
       margin: 8px;
     }
-
-    #host {
-      margin-top: 4px;
-    }
   </style>
 </head>
-
 <body>
-<!-- Widget Host Content -->
-<h2>Widget Dummy-Host</h2>
-<div id="status">Please select a file</div>
-<div>
-  <label>
-    Widget HTML File:
-    <input id="widgetFile" type="file" accept="text/html" />
-  </label>
-</div>
-<div>
-  <button id="widgetLoadBtn" type="button">Load Widget</button>
-  <button id="widgetCancelBtn" type="button">Destroy Widget</button>
-  <input id="widgetConfigInput" type="text" value="{}" alt="Start config" style="width: 30rem;" />
-  <input id="widgetStateInput" type="text" placeholder="Initial state" alt="State" />
-</div>
-<div id="host"></div>
 
-<!-- Widget Host Script -->
-<script type="application/javascript">
-  const hostElement = document.getElementById('host');
-  const statusElement = document.getElementById('status');
-  const widgetFileInput = document.getElementById('widgetFile');
-  const widgetLoadButton = document.getElementById('widgetLoadBtn');
-  const widgetCancelButton = document.getElementById('widgetCancelBtn');
-  const widgetConfigInput = document.getElementById('widgetConfigInput');
-  const widgetStateInput = document.getElementById('widgetStateInput');
-
-  // Add iframe to document, start listening to messages
-  const widgetFrameElement = document.createElement('iframe');
-  widgetFrameElement.style.display = 'block';
-  widgetFrameElement.style.border = '1px solid grey';
-  widgetFrameElement.width = '1096px';
-  widgetFrameElement.height = '700px';
-  hostElement.appendChild(widgetFrameElement);
-
-  // Control button handlers
-  widgetLoadButton.addEventListener('click', () => {
-    const file = widgetFileInput.files[0];
-    if (!file) {
-      statusElement.innerText = 'No file selected, please select a file';
-      return;
+<!-- Widget-Host PsSelectApp -->
+<div id="app"></div>
+<script type="importmap">
+  {
+    "imports": {
+      "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+      "vue3-sfc-loader": "https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js"
     }
+  }
+</script>
+<script type="module">
+  import * as Vue from 'vue';
+  import { loadModule } from 'vue3-sfc-loader';
 
-    const fileReader = new FileReader();
-    fileReader.addEventListener('progress', (e) => {
-      const fraction = e.loaded / e.total;
-      const percentage = Math.round(fraction * 1_00_00) / 1_00;
-      statusElement.innerText = `File selected, please wait ... ${ percentage }%`;
-    });
-    fileReader.addEventListener('loadend', () => {
-      statusElement.innerText = 'File loaded, initializing iframe';
-      widgetFrameElement.srcdoc = String(fileReader.result);
-    });
-    statusElement.innerText = 'File selected, please wait ...';
-    fileReader.readAsText(file, 'utf8');
-  });
-  widgetCancelButton.addEventListener('click', () => {
-    widgetFrameElement.srcdoc = '';
-    statusElement.innerText = 'Widget destroyed';
-  });
+  const loadModuleOptions = {
+    moduleCache: { vue: Vue },
+    async getFile(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${ response.status } ${ url }`);
+      return { getContentData: binary => binary ? response.arrayBuffer() : response.text() };
+    },
+    addStyle(styleContent) {
+      const style = document.createElement('style');
+      style.textContent = styleContent;
+      document.head.appendChild(style);
+    },
+  };
 
-  // Handle messages received from widget iframe
-  window.addEventListener('message', (message) => {
-    if (message.source !== widgetFrameElement.contentWindow) {
-      return;
-    }
-
-    const event = message.data;
-    console.log('received widget message:', event);
-    statusElement.innerHTML = `Received widget message: <code>${ JSON.stringify(event) }</code>`;
-    switch (event.type) {
-      case 'vowReadyNotification':
-        handleReadyNotification(event);
-        break;
-      case 'vowStateChangedNotification':
-        handleStateChangedNotification(event);
-        break;
-    }
-  });
-
-  function handleReadyNotification(event) {
-    const initState = widgetStateInput.value;
-    const configJson = widgetConfigInput.value;
-    const configParams = {};
-    try {
-      Object.assign(configParams, JSON.parse(configJson));
-    } catch (e) {
-      statusElement.innerHTML = `Could not parse start-command config JSON: <code>${ e.message }</code>`;
-      console.warn('could not parse start config json:', e);
-      return;
-    }
-
-    sendWidgetMessage({
-      type: 'vowStartCommand',
-      sessionId: 'dummySession',
-      parameters: Object.entries(configParams).map(([key, value]) => ({ key, value: String(value) })),
-      state: initState,
-    });
+  function loadModuleComponent(module) {
+    return Vue.defineAsyncComponent(() => loadModule(module, loadModuleOptions));
   }
 
-  function handleStateChangedNotification(event) {
-    widgetStateInput.value = event.state;
-  }
-
-  function sendWidgetMessage(event) {
-    console.log(`sending widget message:`, event);
-    widgetFrameElement.contentWindow.postMessage(event);
-  }
+  Vue
+    .createApp({ name: 'PsSelectApp', template: `<widget-dummy-host/>` })
+    .component('widget-dummy-host', loadModuleComponent('WidgetDummyHost.vue'))
+    .mount('#app');
 </script>
 </body>
 </html>
