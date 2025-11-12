@@ -1,0 +1,33 @@
+<div class="params-container">
+  <div class="params-column">
+    <mat-form-field>
+      <mat-label>Max number of selections</mat-label>
+      <input matInput type="number" step="1" min="0" [(ngModel)]="maxNrOfSelections" />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Language</mat-label>
+      <mat-select [(ngModel)]="language">
+        <mat-option [value]="PsLangGerman">German</mat-option>
+        <mat-option [value]="PsLangEnglish">English</mat-option>
+        <mat-option [value]="PsLangLatin">Latin</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-slide-toggle [(ngModel)]="closeOnSelection"> Close on selection</mat-slide-toggle>
+  </div>
+  <div class="params-column">
+    <mat-slide-toggle [(ngModel)]="showInfoOrder">Show element number</mat-slide-toggle>
+    <mat-slide-toggle [(ngModel)]="showInfoSymbol">Show element symbol</mat-slide-toggle>
+    <mat-slide-toggle [(ngModel)]="showInfoName">Show element name</mat-slide-toggle>
+    <mat-slide-toggle [(ngModel)]="showInfoAMass">Show atomic mass</mat-slide-toggle>
+    <mat-slide-toggle [(ngModel)]="showInfoENeg">Show electro negativity</mat-slide-toggle>
+    <mat-slide-toggle [(ngModel)]="highlightBlocks">Highlight blocks</mat-slide-toggle>
+  </div>
+  <div class="spacer"></div>
+  <div>
+    State = <code>"{{ stateData() }}"</code>
+  </div>
+</div>
+
+<section class="widget" *showcaseVeronaWidget="['WIDGET_PERIODIC_TABLE', 'periodic-system-select']">
+  <app-ps-select></app-ps-select>
+</section>

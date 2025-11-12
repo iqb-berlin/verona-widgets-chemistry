@@ -11,17 +11,17 @@ import {
   ShowcaseVeronaWidgetService,
 } from '../service/showcase-verona-widget.service';
 import { ShowcaseVeronaWidgetDirective } from '../service/showcase-verona-widget.directive';
-import { PeriodicSystemSelect } from '../../../periodic-system-select-widget/src/periodic-system-select/periodic-system-select';
+import { PsSelect } from '../../../periodic-system-select-widget/src/ps-select/ps-select';
 import {
   PeriodicSystemSelectParam,
   PeriodicSystemSharedParam,
-} from '../../../periodic-system-select-widget/src/periodic-system-select/periodic-system-select.service';
+} from '../../../periodic-system-select-widget/src/ps-select/ps-select.service';
 import { boolParam, intParam, languageParam } from '../widget-page-common/param-converters';
 
 @Component({
-  selector: 'app-periodic-system-select-page',
+  selector: 'app-ps-select-page',
   imports: [
-    PeriodicSystemSelect,
+    PsSelect,
     MatFormField,
     MatLabel,
     MatInput,
@@ -31,8 +31,8 @@ import { boolParam, intParam, languageParam } from '../widget-page-common/param-
     MatOption,
     ShowcaseVeronaWidgetDirective,
   ],
-  templateUrl: './periodic-system-select-page.html',
-  styleUrls: ['./periodic-system-select-page.scss', '../widget-page-common/widget-page.scss'],
+  templateUrl: './ps-select-page.html',
+  styleUrls: ['./ps-select-page.scss', '../widget-page-common/widget-page.scss'],
   providers: [
     provideShowcaseVeronaWidgetService({
       dummySessionId: 'ps-select',
@@ -54,7 +54,7 @@ import { boolParam, intParam, languageParam } from '../widget-page-common/param-
     }),
   ],
 })
-export class PeriodicSystemSelectPage {
+export class PsSelectPage {
   readonly config = inject(ShowcaseVeronaWidgetConfig);
   readonly service = inject(ShowcaseVeronaWidgetService);
 
@@ -65,10 +65,7 @@ export class PeriodicSystemSelectPage {
   readonly showInfoAMass = this.config.parameterSignal(PeriodicSystemSelectParam.showInfoAMass, boolParam);
   readonly showInfoENeg = this.config.parameterSignal(PeriodicSystemSelectParam.showInfoENeg, boolParam);
   readonly highlightBlocks = this.config.parameterSignal(PeriodicSystemSelectParam.highlightBlocks, boolParam);
-  readonly maxNumberOfSelections = this.config.parameterSignal(
-    PeriodicSystemSelectParam.maxNumberOfSelections,
-    intParam,
-  );
+  readonly maxNrOfSelections = this.config.parameterSignal(PeriodicSystemSelectParam.maxNumberOfSelections, intParam);
   readonly closeOnSelection = this.config.parameterSignal(PeriodicSystemSelectParam.closeOnSelection, boolParam);
 
   readonly stateData = this.service.stateData;

@@ -1,22 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MoleculeEditor } from './molecule-editor.component';
+import { PsSelect } from './ps-select';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideDummyVeronaWidgetService } from 'verona-widget';
 
-describe('MoleculeBuilder', () => {
-  let component: MoleculeEditor;
-  let fixture: ComponentFixture<MoleculeEditor>;
+describe('PsSelect', () => {
+  let component: PsSelect;
+  let fixture: ComponentFixture<PsSelect>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MoleculeEditor],
+      imports: [PsSelect],
       providers: [
         provideZonelessChangeDetection(),
         provideDummyVeronaWidgetService({
           testMetadata: {
-            type: 'WIDGET_MOLECULE_EDITOR',
-            id: 'test-molecule-editor',
+            type: 'WIDGET_PERIODIC_TABLE',
+            id: 'test-periodic-table',
             name: [],
             version: '0.0',
             specVersion: '0.0',
@@ -31,7 +31,7 @@ describe('MoleculeBuilder', () => {
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(MoleculeEditor);
+    fixture = TestBed.createComponent(PsSelect);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

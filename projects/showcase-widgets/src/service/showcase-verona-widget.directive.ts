@@ -2,9 +2,11 @@ import { Directive, effect, inject, input, TemplateRef, ViewContainerRef } from 
 import { ShowcaseVeronaWidgetService } from './showcase-verona-widget.service';
 import { VeronaModuleMetadata, VeronaModuleType } from 'verona-widget';
 
+type ModuleInfo = readonly [type: VeronaModuleType, id?: string];
+
 @Directive({ selector: '[showcaseVeronaWidget]' })
 export class ShowcaseVeronaWidgetDirective {
-  readonly moduleType = input.required<VeronaModuleType>({ alias: 'showcaseVeronaWidget' });
+  readonly moduleInfo = input.required<ModuleInfo>({ alias: 'showcaseVeronaWidget' });
 
   readonly service = inject(ShowcaseVeronaWidgetService);
 
@@ -32,9 +34,10 @@ export class ShowcaseVeronaWidgetDirective {
   }
 
   private createMetadata(): VeronaModuleMetadata {
+    const [type, id = 'showcase-widget'] = this.moduleInfo();
     return {
-      id: 'dummy-widget',
-      type: this.moduleType(),
+      id,
+      type,
       name: [{ lang: 'en', value: 'showcase dummy widget' }],
       version: '0.0',
       specVersion: '0.0',

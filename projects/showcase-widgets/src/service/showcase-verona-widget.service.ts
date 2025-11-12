@@ -4,13 +4,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 
 type Params = Record<string, string>;
 
-export interface ShowcaseVeronaWidgetConfigOptions {
+export interface ShowcaseVeronaWidgetOptions {
   readonly dummySessionId: string;
   readonly initParameters: Params;
   readonly initSharedParameters: Params;
 }
 
-export function provideShowcaseVeronaWidgetService(options: ShowcaseVeronaWidgetConfigOptions): Provider[] {
+export function provideShowcaseVeronaWidgetService(options: ShowcaseVeronaWidgetOptions): Provider[] {
   return [
     {
       provide: ShowcaseVeronaWidgetConfig,
@@ -18,10 +18,7 @@ export function provideShowcaseVeronaWidgetService(options: ShowcaseVeronaWidget
         return new ShowcaseVeronaWidgetConfig(options);
       },
     },
-    {
-      provide: ShowcaseVeronaWidgetService,
-      useClass: ShowcaseVeronaWidgetService,
-    },
+    ShowcaseVeronaWidgetService,
     {
       provide: VeronaWidgetService,
       useExisting: ShowcaseVeronaWidgetService,
@@ -34,7 +31,7 @@ export class ShowcaseVeronaWidgetConfig {
   readonly parameters: WritableSignal<Params>;
   readonly sharedParameters: WritableSignal<Params>;
 
-  constructor(options: ShowcaseVeronaWidgetConfigOptions) {
+  constructor(options: ShowcaseVeronaWidgetOptions) {
     this.dummySessionId = options.dummySessionId;
     this.parameters = signal(options.initParameters);
     this.sharedParameters = signal(options.initSharedParameters);
@@ -142,14 +139,19 @@ function propertySignal<T>(
 
   type WritableParts = Pick<WritableSignal<T | undefined>, 'set' | 'update' | 'asReadonly'>;
 
-  const read = computed(() => {
-    const params = source();
-    return stringToValue(params[key]);
-  });
+  const readProperty = computed(
+    () => {
+      const params = source();
+      return stringToValue(params[key]);
+    },
+    {
+      debugName: `readProperty[${key}]`,
+    },
+  );
 
-  return Object.assign(read, {
+  return Object.assign(readProperty, {
     set: (value) => updateProperty(() => value),
     update: (updateFn) => updateProperty(updateFn),
-    asReadonly: () => read,
+    asReadonly: () => readProperty,
   } satisfies WritableParts) as unknown as WritableSignal<T | undefined>;
 }

@@ -6,6 +6,7 @@
   "scripts": {
     "ng": "ng",
     "start:showcase-widgets": "ng serve showcase-widgets",
+    "start:all": "run-s build:all start:showcase-widgets",
     "test:project:verona-widget": "ng test verona-widget",
     "test:project:periodic-system-common": "ng test periodic-system-common",
     "test:project:periodic-system-select-widget": "ng test periodic-system-select-widget",

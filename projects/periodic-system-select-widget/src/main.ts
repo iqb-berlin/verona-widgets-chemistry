@@ -1,5 +1,5 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+import { psSelectAppConfig } from './ps-select-app/ps-select-app.config';
+import { PsSelectApp } from './ps-select-app/ps-select-app';
 
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+bootstrapApplication(PsSelectApp, psSelectAppConfig).catch((err) => console.error(err));

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { PeriodicSystemSelectPage } from '../periodic-system-select-page/periodic-system-select-page';
+import { PsSelectPage } from '../ps-select-page/ps-select-page';
 import { MoleculeEditorPage } from '../molecule-editor-page/molecule-editor-page';
 
 export const enum ShowcasePath {
@@ -10,7 +10,7 @@ export const enum ShowcasePath {
 export const routes: Routes = [
   {
     path: ShowcasePath.PeriodicSystemSelect,
-    component: PeriodicSystemSelectPage,
+    component: PsSelectPage,
   },
   {
     path: ShowcasePath.MoleculeEditor,

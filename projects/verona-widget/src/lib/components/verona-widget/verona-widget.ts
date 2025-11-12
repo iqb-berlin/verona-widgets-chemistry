@@ -1,7 +1,8 @@
 import { AfterViewInit, Component, contentChild, DOCUMENT, inject, input, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IFrameVeronaWidgetService, VeronaWidgetService } from '../../services/verona-widget.service';
+import { VeronaWidgetService } from '../../services/verona-widget.service';
 import { VeronaModuleMetadata } from '../../services/verona-metadata.model';
+import { IFrameVeronaWidgetService } from '../../services/verona-widget.service.iframe';
 
 @Component({
   selector: 'lib-verona-widget',
