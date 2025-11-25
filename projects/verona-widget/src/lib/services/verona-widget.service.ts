@@ -32,6 +32,6 @@ export interface VeronaWidgetRunning {
 
 export interface VeronaWidgetConfiguration {
   readonly sessionId: string;
-  readonly parameters: Record<string, string>;
-  readonly sharedParameters: Record<string, string>;
+  readonly parameters: Record<string, undefined | string>;
+  readonly sharedParameters: Record<string, undefined | string>;
 }

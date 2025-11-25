@@ -1,0 +1,12 @@
+<lib-ps-table>
+  <ng-template [psTableHighlight] let-hoveredElement="hoveredElement">
+    @if (hoveredElement) {
+      <lib-ps-element-focus [element]="hoveredElement" />
+    }
+  </ng-template>
+  <ng-template [psTableInteractions]>
+    <div style="height: 100%; border: 1px solid red;">
+      <!-- TODO: INTERACTIONS -->
+    </div>
+  </ng-template>
+</lib-ps-table>

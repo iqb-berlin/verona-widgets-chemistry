@@ -1,29 +1,25 @@
 @let e = element();
 @let appearance = service.appearance();
-<button
-  matFab
-  [matTooltip]="elementName()"
-  matTooltipPosition="above"
-  [matTooltipDisabled]="!appearance.showName"
-  [disabled]="isSelected()"
-  disabledInteractive
-  [disableRipple]="service.interaction.elementClickBlocked()"
-  (click)="service.interaction.clickElement(element())"
+<mat-card
+  appearance="outlined"
+  class="ps-focus-container"
+  [style.--ps-focus-base-color]="computeBaseColor()"
+  [style.--ps-focus-text-color]="appearance.defaultTextColor"
 >
-  <div class="label-container">
+  <div class="ps-focus-element">
     @if (appearance.showNumber) {
       <div class="number">{{ e.number }}</div>
     }
     @if (appearance.showMass) {
       <div class="mass">
-        {{ e.atomic_mass | number: '1.1-2' }}
+        {{ e.atomic_mass | number: '1.2-4' }}
       </div>
     }
     @if (appearance.showENeg) {
       <div class="e-neg">
         @let eNeg = e.negativity?.pauling;
         @if (eNeg) {
-          {{ eNeg | number: '1.1-2' }}
+          {{ eNeg | number: '1.2-4' }}
         } @else {
           &mdash;
         }
@@ -40,4 +36,4 @@
       </div>
     }
   </div>
-</button>
+</mat-card>

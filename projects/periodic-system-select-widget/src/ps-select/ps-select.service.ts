@@ -31,7 +31,7 @@ export class PsSelectService implements PsService {
     const config = this.widgetService.configuration();
     const {
       [PeriodicSystemSharedParam.textColor]: defaultTextColor = '#ffffff',
-      [PeriodicSystemSharedParam.backgroundColor]: defaultBaseColor = '#4000ff',
+      [PeriodicSystemSharedParam.backgroundColor]: defaultBaseColor = '#6b369a',
     } = config.sharedParameters;
 
     const {

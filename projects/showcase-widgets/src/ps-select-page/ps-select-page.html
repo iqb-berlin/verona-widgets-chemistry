@@ -22,6 +22,26 @@
     <mat-slide-toggle [(ngModel)]="showInfoENeg">Show electro negativity</mat-slide-toggle>
     <mat-slide-toggle [(ngModel)]="highlightBlocks">Highlight blocks</mat-slide-toggle>
   </div>
+  <div class="params-column" style="margin-left: 2rem">
+    <mat-form-field>
+      <mat-label>Text color</mat-label>
+      <input matInput type="color" [(ngModel)]="textColor" />
+      @if (textColor()) {
+        <button matSuffix matIconButton aria-label="Clear" (click)="textColor.set(undefined)">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Background color</mat-label>
+      <input matInput type="color" [(ngModel)]="backgroundColor" />
+      @if (backgroundColor()) {
+        <button matSuffix matIconButton aria-label="Clear" (click)="backgroundColor.set(undefined)">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+  </div>
   <div class="spacer"></div>
   <div>
     State = <code>"{{ stateData() }}"</code>

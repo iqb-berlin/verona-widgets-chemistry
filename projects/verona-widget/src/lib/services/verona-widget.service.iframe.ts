@@ -1,10 +1,9 @@
 import {
   VeronaWidgetReceiveEvent,
+  VeronaWidgetSendEvent,
   VowParameter,
   VowReadyNotification,
-  VowReturnRequested,
   VowStartCommand,
-  VowStateChangedNotification,
 } from './verona-widget.events';
 import { computed, effect, inject, Injectable, InjectionToken, Provider, signal, untracked } from '@angular/core';
 import { VeronaModuleMetadata } from './verona-metadata.model';
@@ -17,14 +16,13 @@ export interface VeronaWidgetIFrame {
   readonly messageTarget: Window;
 }
 
-export function provideVeronaWidgetIFrame(iFrameWindow: Window, parentWindow?: Window): Provider[] {
+export function provideVeronaWidgetIFrame(iFrameWindow?: Window, parentWindow?: Window): Provider[] {
+  const messageSource = iFrameWindow ?? window;
+  const messageTarget = parentWindow ?? messageSource.top ?? messageSource.parent;
   return [
     {
       provide: VeronaWidgetIFrame,
-      useValue: {
-        messageSource: iFrameWindow,
-        messageTarget: parentWindow ?? iFrameWindow.top ?? iFrameWindow.parent,
-      } satisfies VeronaWidgetIFrame,
+      useValue: { messageSource, messageTarget } satisfies VeronaWidgetIFrame,
     },
   ];
 }
@@ -32,7 +30,6 @@ export function provideVeronaWidgetIFrame(iFrameWindow: Window, parentWindow?: W
 @Injectable()
 export class IFrameVeronaWidgetService implements VeronaWidgetService {
   readonly widgetIFrame = inject(VeronaWidgetIFrame);
-
   readonly messageSource = this.widgetIFrame.messageSource;
   readonly messageTarget = this.widgetIFrame.messageTarget;
 
@@ -54,12 +51,12 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
       const state = untracked(this.state);
 
       if (state.state === 'running') {
-        this.messageTarget.postMessage({
+        this.sendEventMessage({
           type: 'vowStateChangedNotification',
           sessionId: state.config.sessionId,
           timeStamp: currentTimestamp(),
           state: stateData,
-        } satisfies VowStateChangedNotification);
+        });
       }
     });
 
@@ -71,7 +68,9 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
           this.handleStartCommand(event);
           break;
         default:
-          console.error('Received unknown message event:', event);
+          // explicitly assign to "never" to provoke a compiler error on unhandled case
+          const unknownEventType: never = event.type;
+          console.error('Received unknown message event:', unknownEventType, '=>', event);
           break;
       }
     });
@@ -79,7 +78,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
 
   sendReady(metadata: VeronaModuleMetadata) {
     // Send ready-event message
-    this.messageTarget.postMessage({
+    this.sendEventMessage({
       type: 'vowReadyNotification',
       metadata: JSON.stringify(metadata),
     } satisfies VowReadyNotification);
@@ -99,16 +98,18 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
       return;
     }
 
-    // Create return-event message
-    const message = {
-      type: 'vowReturnRequested',
-      sessionId: state.config.sessionId,
-      timeStamp: currentTimestamp(),
-      saveState: saveState,
-    } satisfies VowReturnRequested;
-
+    // Create return-event
     // Send return-event message WITH DELAY (to ensure state-change events arrive before requesting to return)
-    setTimeout(() => this.messageTarget.postMessage(message), 100);
+    setTimeout(
+      () =>
+        this.sendEventMessage({
+          type: 'vowReturnRequested',
+          sessionId: state.config.sessionId,
+          timeStamp: currentTimestamp(),
+          saveState: saveState,
+        }),
+      100,
+    );
   }
 
   private handleStartCommand(command: VowStartCommand) {
@@ -134,6 +135,11 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
       metadata: readyState.metadata,
       config: createWidgetConfig(command),
     });
+  }
+
+  private sendEventMessage(event: VeronaWidgetSendEvent) {
+    //TODO: properly handle target origin
+    this.messageTarget.postMessage(event);
   }
 }
 

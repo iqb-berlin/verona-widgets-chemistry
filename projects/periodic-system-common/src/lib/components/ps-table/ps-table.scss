@@ -1,13 +1,16 @@
 .ps-table {
   --row-height: var(--ps-table-row-height, 60px);
+  --gutter-height: var(--ps-table-gutter-height, 24px);
   --separator-height: var(--ps-table-separator-height, 40px);
 
   width: 1080px;
 
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns:
+    var(--gutter-height)
+    repeat(18, 1fr);
   grid-template-rows:
+    var(--gutter-height)
     repeat(7, var(--row-height))
     var(--separator-height)
     repeat(2, var(--row-height));
@@ -17,20 +20,50 @@
   --mat-fab-foreground-color: var(--ps-text-color);
 }
 
+.ps-highlight {
+  grid-row: 2/5;
+  grid-column: 4/14;
+}
+
+.ps-interactions {
+  grid-row: 10/12;
+  grid-column: 17/20;
+}
+
+.ps-label {
+  opacity: 70%;
+  text-align: center;
+  align-content: center;
+
+  @for $p from 1 through 7 {
+    &.p#{$p} {
+      grid-column: 1;
+      grid-row: #{$p + 1};
+    }
+  }
+
+  @for $g from 1 through 18 {
+    &.g#{$g} {
+      grid-row: 1;
+      grid-column: #{$g + 1};
+    }
+  }
+}
+
 .ps-element {
   margin: 2px;
 
   // Period classes p1 through p7 for row positioning
   @for $p from 1 through 7 {
     &.p#{$p} {
-      grid-row: #{$p};
+      grid-row: #{$p + 1};
     }
   }
 
   // Group classes g1 through g18 for column positioning
   @for $g from 1 through 18 {
     &.g#{$g} {
-      grid-column: #{$g};
+      grid-column: #{$g + 1};
     }
   }
 
@@ -38,13 +71,13 @@
   @for $c from 4 through 18 {
     &.c#{$c} {
       &.g19 {
-        grid-row: 9;
-        grid-column: #{$c};
+        grid-row: 10;
+        grid-column: #{$c - 1};
       }
 
       &.g20 {
-        grid-row: 10;
-        grid-column: #{$c};
+        grid-row: 11;
+        grid-column: #{$c - 1};
       }
     }
   }

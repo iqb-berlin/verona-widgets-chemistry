@@ -1,0 +1,59 @@
+.ps-focus-container {
+  height: 100%;
+
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.ps-focus-element {
+  position: relative;
+  height: 80%;
+  aspect-ratio: 1 / 1;
+
+  color: var(--ps-focus-text-color);
+  background-color: var(--ps-focus-base-color);
+  box-shadow: var(--mat-sys-level3);
+
+  border-radius: 4px;
+
+  align-content: center;
+
+  .number {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+  }
+
+  .mass,
+  .e-neg {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
+
+  .name {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    text-align: center;
+  }
+
+  .symbol {
+    text-align: center;
+    font-size: 72px;
+    font-weight: bold;
+  }
+
+  .name,
+  .mass,
+  .e-neg {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

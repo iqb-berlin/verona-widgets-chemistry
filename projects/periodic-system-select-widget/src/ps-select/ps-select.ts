@@ -4,7 +4,7 @@ import { PsSelectService } from './ps-select.service';
 
 @Component({
   selector: 'app-ps-select',
-  template: '<lib-ps-table></lib-ps-table>',
+  templateUrl: './ps-select.html',
   imports: [PeriodicSystemModule],
   providers: [
     {
@@ -13,4 +13,5 @@ import { PsSelectService } from './ps-select.service';
     },
   ],
 })
-export class PsSelect {}
+export class PsSelect {
+}

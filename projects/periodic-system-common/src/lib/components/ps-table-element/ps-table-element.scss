@@ -1,36 +1,41 @@
 .label-container {
   width: 50px;
   height: 50px;
+  line-height: 1.1;
+  align-content: center;
 }
 
 .number {
-  float: right;
+  position: absolute;
+  top: 0;
+  left: 0;
+
   font-size: 70%;
-  visibility: var(--ps-element-number-visible);
 }
 
-.symbol {
-  float: left;
-  font-weight: bold;
-  font-size: 120%;
-  visibility: var(--ps-element-symbol-visible);
+.mass,
+.e-neg {
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  font-size: 70%;
 }
 
 .name {
-  clear: both;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+
   font-size: 60%;
-  margin: 2px 0;
-  visibility: var(--ps-element-name-visible);
 }
 
-.mass {
-  font-size: 70%;
-  visibility: var(--ps-element-mass-visible);
-}
-
-.e-neg {
-  font-size: 70%;
-  visibility: var(--ps-element-e-neg-visible);
+.symbol {
+  text-align: center;
+  font-weight: bold;
+  font-size: 150%;
 }
 
 .name,

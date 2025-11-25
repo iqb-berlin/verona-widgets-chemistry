@@ -2,7 +2,7 @@ import { computed, inject, Injectable, Provider, signal, WritableSignal } from '
 import { VeronaModuleMetadata, VeronaWidgetConfiguration, VeronaWidgetService, VeronaWidgetState } from 'verona-widget';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-type Params = Record<string, string>;
+type Params = Record<string, undefined | string>;
 
 export interface ShowcaseVeronaWidgetOptions {
   readonly dummySessionId: string;

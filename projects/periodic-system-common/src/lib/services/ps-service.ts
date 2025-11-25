@@ -1,4 +1,4 @@
-import { InjectionToken, Signal } from '@angular/core';
+import { computed, InjectionToken, Signal } from '@angular/core';
 import { PsElement, PsElementBlock, PsElementNumber, PsLocale } from '../data/PsData';
 import { ReadonlyRecord } from '../util/typing';
 
@@ -27,4 +27,20 @@ export interface PsInteraction {
   readonly elementClickBlocked: Signal<boolean>;
 
   clickElement(element: PsElement): void;
+}
+
+export function computeElementName(service: PsService, element: Signal<PsElement>): Signal<string> {
+  return computed(() => {
+    const e = element();
+    const a = service.appearance();
+    return e.names[a.locale];
+  });
+}
+
+export function computeElementSelected(service: PsService, element: Signal<PsElement>): Signal<boolean> {
+  return computed(() => {
+    const e = element();
+    const s = service.interaction.selectedElements();
+    return s.has(e.number);
+  });
 }
