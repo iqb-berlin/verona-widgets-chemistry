@@ -16,6 +16,7 @@ export interface PsAppearance {
   readonly showName: boolean;
   readonly showMass: boolean;
   readonly showENeg: boolean;
+  readonly showLabels: boolean;
   readonly enableBlockColors: boolean;
   readonly defaultTextColor: string;
   readonly defaultBaseColor: string;

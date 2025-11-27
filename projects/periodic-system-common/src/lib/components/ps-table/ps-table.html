@@ -10,6 +10,7 @@
   [style.--ps-element-b-f-color]="appearance.enableBlockColors ? appearance.blockColors.f : undefined"
   [style.--ps-element-b-g-color]="appearance.enableBlockColors ? appearance.blockColors.g : undefined"
   [style.--ps-element-b-p-color]="appearance.enableBlockColors ? appearance.blockColors.p : undefined"
+  [style.--gutter-height]="appearance.showLabels ? undefined : 0"
 >
   @let highlight = highlightRef();
   @if (highlight) {
@@ -25,16 +26,18 @@
     </div>
   }
 
-  @for (periodNr of periodNumbers; track periodNr) {
-    <div class="ps-label" role="presentation" [class]="periodClassNames(periodNr)">
-      {{ periodNr }}
-    </div>
-  }
+  @if (appearance.showLabels) {
+    @for (periodNr of periodNumbers; track periodNr) {
+      <div class="ps-label" role="presentation" [class]="periodClassNames(periodNr)">
+        {{ periodNr }}
+      </div>
+    }
 
-  @for (groupNr of groupNumbers; track groupNr) {
-    <div class="ps-label" role="presentation" [class]="groupClassNames(groupNr)">
-      {{ groupNr }}
-    </div>
+    @for (groupNr of groupNumbers; track groupNr) {
+      <div class="ps-label" role="presentation" [class]="groupClassNames(groupNr)">
+        {{ groupNr }}
+      </div>
+    }
   }
 
   @for (element of elements; track element.number) {

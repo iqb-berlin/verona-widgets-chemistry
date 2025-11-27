@@ -7,14 +7,14 @@
 
 html {
   @include mat.theme(
-    (
-      color: (
-        primary: mat.$cyan-palette,
-        tertiary: mat.$orange-palette,
-      ),
-      typography: Roboto,
-      density: 0,
-    )
+      (
+        color: (
+          primary: mat.$cyan-palette,
+          tertiary: mat.$orange-palette,
+        ),
+        typography: Roboto,
+        density: 0,
+      )
   );
 }
 
@@ -34,13 +34,21 @@ body {
   // Reset the user agent margin.
   margin: 0;
 }
+
 /* You can add global styles to this file, and also import other style files */
 
 html,
 body {
   height: 100%;
 }
+
 body {
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+app-molecule-editor,
+app-molecule-editor-root {
+  display: block;
+  height: 100%;
 }

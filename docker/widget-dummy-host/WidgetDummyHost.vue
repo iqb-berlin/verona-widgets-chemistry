@@ -149,7 +149,7 @@ function sendWidgetMessage(event) {
     Widget config error: {{ widgetConfig.message }}
   </div>
   <div class="widget-host">
-    <iframe ref="widgetIframe" class="widget" width="1096px" height="700px" :srcdoc="widgetSrcdoc"></iframe>
+    <iframe ref="widgetIframe" class="widget" width="1096px" height="800px" :srcdoc="widgetSrcdoc"></iframe>
   </div>
 </template>
 

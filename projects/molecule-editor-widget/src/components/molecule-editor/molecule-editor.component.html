@@ -1,0 +1,21 @@
+<mat-drawer-container class="main-container">
+  <!-- Element picker -->
+  <mat-drawer mode="over" position="end" [(opened)]="service.openPicker">
+    <div class="ps-table-container">
+      <lib-ps-table>
+        <div *psTableInteractions class="ps-table-interactions">
+          <button matButton="filled" type="button" (click)="service.dismissElementPicker()">
+            <mat-icon>close</mat-icon>
+            Schließen
+          </button>
+        </div>
+      </lib-ps-table>
+    </div>
+  </mat-drawer>
+
+  <!-- Canvas and Menu UI -->
+  <main>
+    <app-editor-canvas />
+    <app-editor-controls />
+  </main>
+</mat-drawer-container>

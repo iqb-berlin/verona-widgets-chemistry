@@ -1,6 +1,20 @@
 <div class="params-container">
   <div class="params-column">
-    <!-- TODO: Add params -->
+    <mat-form-field>
+      <mat-label>Bonding Type</mat-label>
+      <mat-select [(ngModel)]="bondingType">
+        <mat-option [value]="BondingTypeElectrons">Electrons</mat-option>
+        <mat-option [value]="BondingTypeValence">Valence</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Language</mat-label>
+      <mat-select [(ngModel)]="language">
+        <mat-option [value]="PsLangGerman">German</mat-option>
+        <mat-option [value]="PsLangEnglish">English</mat-option>
+        <mat-option [value]="PsLangLatin">Latin</mat-option>
+      </mat-select>
+    </mat-form-field>
   </div>
 </div>
 

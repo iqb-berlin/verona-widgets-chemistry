@@ -11,10 +11,7 @@ import { PsSelectAlert } from '../ps-select-alert/ps-select-alert';
   templateUrl: './ps-select.html',
   styleUrl: './ps-select.scss',
   imports: [PeriodicSystemModule, MatButton, MatIcon, PsSelectAlert],
-  providers: [
-    PsSelectService,
-    { provide: PsService, useExisting: PsSelectService },
-  ],
+  providers: [PsSelectService, { provide: PsService, useExisting: PsSelectService }],
 })
 export class PsSelect {
   readonly psService = inject(PsSelectService);
@@ -33,7 +30,7 @@ export class PsSelect {
   readonly multiSelectMaxedOut = computed(() => {
     const { multiSelect, maxSelectCount } = this.psService.interaction.interactionConfig();
     const selectedElements = this.psService.interaction.selectedElements();
-    return multiSelect && (maxSelectCount > 1) && (selectedElements.size >= maxSelectCount);
+    return multiSelect && maxSelectCount > 1 && selectedElements.size >= maxSelectCount;
   });
 
   doSubmit() {

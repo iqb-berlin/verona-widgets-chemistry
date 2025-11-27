@@ -1,0 +1,30 @@
+:host {
+  --mat-sidenav-container-width: min(1144px, 100%);
+  --mat-sidenav-container-background-color: transparent;
+  --mat-sidenav-container-shape: 0;
+}
+
+.main-container {
+  height: 100%;
+}
+
+main {
+  height: 100%;
+  min-height: var(--molecule-editor-min-height, 720px);
+  position: relative; // Root for absolute positioning of ui-elements within editor-application
+  overflow: hidden;
+}
+
+.ps-table-container {
+  padding-top: 1rem;
+}
+
+.ps-table-interactions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: end;
+
+  --mat-button-filled-container-color: black;
+  --mat-button-filled-label-text-color: white;
+}

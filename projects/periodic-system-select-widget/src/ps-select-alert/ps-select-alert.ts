@@ -42,5 +42,4 @@ import { MatIcon } from '@angular/material/icon';
     }
   `,
 })
-export class PsSelectAlert {
-}
+export class PsSelectAlert {}

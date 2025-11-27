@@ -34,6 +34,16 @@ export function provideTestPsService() {
 
 export class TestPsService implements PsService {
   readonly appearance = signal<PsAppearance>({
+    locale: PsLocale.English,
+    showMass: false,
+    showName: true,
+    showSymbol: true,
+    showENeg: false,
+    showNumber: true,
+    showLabels: true,
+    enableBlockColors: false,
+    defaultBaseColor: '',
+    defaultTextColor: '',
     blockColors: {
       [PsElementBlock.S]: '',
       [PsElementBlock.P]: '',
@@ -41,15 +51,6 @@ export class TestPsService implements PsService {
       [PsElementBlock.F]: '',
       [PsElementBlock.G]: '',
     },
-    defaultBaseColor: '',
-    defaultTextColor: '',
-    enableBlockColors: false,
-    locale: PsLocale.English,
-    showMass: false,
-    showName: true,
-    showSymbol: true,
-    showENeg: false,
-    showNumber: true,
   });
   readonly interaction = {
     selectedElements: signal(new Set<PsElementNumber>()),

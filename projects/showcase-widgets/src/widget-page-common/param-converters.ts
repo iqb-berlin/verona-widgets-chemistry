@@ -1,5 +1,3 @@
-import { PsLocale } from 'periodic-system-common';
-
 export const intParam = {
   read: (value: string) => Number.parseInt(value, 10),
   write: (value: number) => value.toString(10),
@@ -10,7 +8,9 @@ export const boolParam = {
   write: (value: boolean) => (value ? 'true' : 'false'),
 } as const;
 
-export const languageParam = {
-  read: (value: string) => value as PsLocale,
-  write: (value: PsLocale) => value,
-} as const;
+export const typeCastParam = <T>() => ({
+  read: (value: string) => value as T,
+  write: (value: T) => value as any,
+} as const);
+
+

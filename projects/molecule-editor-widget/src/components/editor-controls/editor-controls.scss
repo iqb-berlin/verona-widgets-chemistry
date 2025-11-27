@@ -1,0 +1,81 @@
+:host {
+  // Position to fill out parent component
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+
+  // Display in front of canvas, but pass through pointer-events
+  pointer-events: none;
+  z-index: 100;
+}
+
+.top-container {
+  position: absolute;
+  inset: 0 0 auto 0;
+
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.right-container {
+  position: absolute;
+  inset: 0 0 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.toolbar {
+  pointer-events: auto;
+  box-shadow: var(--mat-sys-level2);
+  background-color: var(--mat-sys-surface-variant);
+
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+
+  border-radius: 50px;
+
+  &.top {
+    flex-direction: row;
+    padding: 0.25rem 1rem;
+
+    .divider {
+      width: 1px;
+      height: 2rem;
+      margin: 0 0.75rem;
+    }
+  }
+
+  &.right {
+    flex-direction: column;
+    padding: 1rem 0.25rem;
+
+    .divider {
+      width: 2rem;
+      height: 1px;
+      margin: 0.75rem 0;
+    }
+  }
+
+  .divider {
+    opacity: 25%;
+    background-color: var(--mat-sys-on-surface);
+  }
+
+  button {
+    background-color: var(--mat-sys-surface);
+    box-shadow: var(--mat-sys-level1);
+
+    &.active-tool {
+      background-color: var(--mat-sys-primary);
+      --mat-icon-button-icon-color: var(--mat-sys-on-primary);
+    }
+  }
+}

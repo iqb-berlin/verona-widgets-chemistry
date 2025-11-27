@@ -81,6 +81,11 @@
       }
     }
   }
+  @for $g from 19 through 20 {
+    &.c3.g#{$g} {
+      grid-column: 4;
+    }
+  }
 
   // Block-specific element colors
   &.b-s {

@@ -11,6 +11,7 @@ export const enum PeriodicSystemSelectParam {
   showInfoSymbol = 'SHOW_INFO_SYMBOL',
   showInfoENeg = 'SHOW_INFO_E_NEG',
   showInfoAMass = 'SHOW_INFO_A_MASS',
+  showInfoLabels = 'SHOW_INFO_LABELS',
   maxNumberOfSelections = 'MAX_NUMBER_OF_SELECTIONS',
   highlightBlocks = 'HIGHLIGHT_BLOCKS',
   closeOnSelection = 'CLOSE_ON_SELECTION',
@@ -41,6 +42,7 @@ export class PsSelectService implements PsService {
       [PeriodicSystemSelectParam.showInfoName]: showInfoName = 'true',
       [PeriodicSystemSelectParam.showInfoENeg]: showInfoENeg = 'false',
       [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'false',
+      [PeriodicSystemSelectParam.showInfoLabels]: showInfoLabels = 'true',
       [PeriodicSystemSelectParam.highlightBlocks]: highlightBlocks = 'false',
     } = config.parameters;
 
@@ -51,6 +53,7 @@ export class PsSelectService implements PsService {
       showNumber: flagAsBool(showInfoOrder),
       showMass: flagAsBool(showInfoAMass),
       showENeg: flagAsBool(showInfoENeg),
+      showLabels: flagAsBool(showInfoLabels),
       enableBlockColors: flagAsBool(highlightBlocks),
       defaultTextColor,
       defaultBaseColor,

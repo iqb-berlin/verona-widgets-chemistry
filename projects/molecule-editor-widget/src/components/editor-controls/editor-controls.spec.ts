@@ -1,17 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PsSelectAlert } from './ps-select-alert';
+import { EditorControls } from './editor-controls';
 
-describe('PsSelectAlert', () => {
-  let component: PsSelectAlert;
-  let fixture: ComponentFixture<PsSelectAlert>;
+describe('EditorControls', () => {
+  let component: EditorControls;
+  let fixture: ComponentFixture<EditorControls>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PsSelectAlert],
-    }).compileComponents();
+      imports: [EditorControls]
+    })
+    .compileComponents();
 
-    fixture = TestBed.createComponent(PsSelectAlert);
+    fixture = TestBed.createComponent(EditorControls);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

@@ -18,7 +18,7 @@ import {
   PeriodicSystemSelectParam,
   PeriodicSystemSharedParam,
 } from '../../../periodic-system-select-widget/src/ps-select/ps-select.service';
-import { boolParam, intParam, languageParam } from '../widget-page-common/param-converters';
+import { boolParam, intParam, typeCastParam } from '../widget-page-common/param-converters';
 
 @Component({
   selector: 'app-ps-select-page',
@@ -63,7 +63,7 @@ export class PsSelectPage {
   readonly config = inject(ShowcaseVeronaWidgetConfig);
   readonly service = inject(ShowcaseVeronaWidgetService);
 
-  readonly language = this.config.parameterSignal(PeriodicSystemSelectParam.language, languageParam);
+  readonly language = this.config.parameterSignal(PeriodicSystemSelectParam.language, typeCastParam());
   readonly showInfoOrder = this.config.parameterSignal(PeriodicSystemSelectParam.showInfoOrder, boolParam);
   readonly showInfoSymbol = this.config.parameterSignal(PeriodicSystemSelectParam.showInfoSymbol, boolParam);
   readonly showInfoName = this.config.parameterSignal(PeriodicSystemSelectParam.showInfoName, boolParam);

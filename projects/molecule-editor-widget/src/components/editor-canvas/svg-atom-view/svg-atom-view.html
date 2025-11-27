@@ -1,0 +1,40 @@
+@let atom = atomView();
+@let centerX = atom.position[0];
+@let centerY = atom.position[1];
+<ng-container xmlns:svg="http://www.w3.org/2000/svg">
+  <svg:circle
+    class="atom-handle"
+    [class.selected]="atom.selected"
+    [class.temporary]="atom.temporary"
+    r="20"
+    [attr.cx]="centerX"
+    [attr.cy]="centerY"
+    (pointermove)="service.handleAtomEvent(atom.itemId, $event)"
+    (pointerdown)="service.handleAtomEvent(atom.itemId, $event)"
+    (pointerup)="service.handleAtomEvent(atom.itemId, $event)"
+    (click)="service.handleAtomEvent(atom.itemId, $event)"
+  ></svg:circle>
+
+  <svg:text
+    class="atom-symbol"
+    [class.selected]="atom.selected"
+    [class.temporary]="atom.temporary"
+    [attr.x]="centerX"
+    [attr.y]="centerY"
+  >
+    {{ atom.element.symbol }}
+  </svg:text>
+
+  @for (angle of outerElectronAngles(); track angle) {
+    @let offset = Vector2.mul(anglePosition(angle), 24);
+    @let position = Vector2.add(atom.position, offset);
+    @let x = position[0];
+    @let y = position[1];
+    @if (outerElectronsPositive()) {
+      <svg:line class="atom-positive" [attr.x1]="x - 4" [attr.x2]="x + 4" [attr.y1]="y" [attr.y2]="y"></svg:line>
+      <svg:line class="atom-positive" [attr.x1]="x" [attr.x2]="x" [attr.y1]="y - 4" [attr.y2]="y + 4"></svg:line>
+    } @else {
+      <svg:circle class="atom-electron" r="4" [attr.cx]="x" [attr.cy]="y"></svg:circle>
+    }
+  }
+</ng-container>

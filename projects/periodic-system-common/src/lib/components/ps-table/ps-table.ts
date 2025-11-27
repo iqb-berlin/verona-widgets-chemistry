@@ -7,7 +7,7 @@ import { PsTableHighlightContext, PsTableHighlightDirective } from '../directive
 import { PsService } from '../../services/ps-service';
 import { PsTableInteractionsDirective } from '../../periodic-system-module';
 
-type ContentChildRef<T> = Signal<undefined | TemplateRef<T>>
+type ContentChildRef<T> = Signal<undefined | TemplateRef<T>>;
 
 const psElementEqual: ValueEqualityFn<undefined | PsElement> = (a, b) => a?.number === b?.number;
 
@@ -21,7 +21,9 @@ export class PsTable {
   readonly service = inject(PsService);
   readonly hoveredElement = signal<undefined | PsElement>(undefined, { equal: psElementEqual });
 
-  readonly highlightRef: ContentChildRef<PsTableHighlightContext> = contentChild(PsTableHighlightDirective, { read: TemplateRef });
+  readonly highlightRef: ContentChildRef<PsTableHighlightContext> = contentChild(PsTableHighlightDirective, {
+    read: TemplateRef,
+  });
   readonly interactionsRef: ContentChildRef<{}> = contentChild(PsTableInteractionsDirective, { read: TemplateRef });
 
   protected readonly elements = PsElements;

@@ -1,0 +1,78 @@
+<!-- Top Toolbar -->
+<div class="top-container">
+  <div class="toolbar top">
+    @let disableItemButtons = !isItemSelected();
+    <button matIconButton type="button" [disabled]="disableItemButtons || decrementElectronDisabled()"
+            (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)">
+      <mat-icon>remove</mat-icon>
+    </button>
+    <mat-icon fontSet="material-symbols">{{ selectedAtomElectronsIcon() }}</mat-icon>
+    <button matIconButton type="button" [disabled]="disableItemButtons || incrementElectronDisabled()"
+            (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)">
+      <mat-icon>add</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <button matIconButton type="button" title="1" [class.active-tool]="bondingSingleModeActive()"
+            (click)="$event.stopPropagation(); setBondingModeActive(1)">
+      /
+    </button>
+    <button matIconButton type="button" title="2" [class.active-tool]="bondingDoubleModeActive()"
+            (click)="$event.stopPropagation(); setBondingModeActive(2)">
+      //
+    </button>
+    <button matIconButton type="button" title="3" [class.active-tool]="bondingTripleModeActive()"
+            (click)="$event.stopPropagation(); setBondingModeActive(3)">
+      ///
+    </button>
+
+    <div class="divider"></div>
+
+    <button matIconButton type="button" [class.active-tool]="pointerModeActive()" (click)="setToolMode('pointer')">
+      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
+    </button>
+    <button matIconButton type="button" [class.active-tool]="duplicateModeActive()" (click)="setToolMode('duplicate')">
+      <mat-icon fontSet="material-symbols">content_copy</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <button matIconButton type="button" [disabled]="!service.model.undoAvailable()" (click)="service.model.undo()">
+      <mat-icon>undo</mat-icon>
+    </button>
+    <button matIconButton type="button" [disabled]="!service.model.redoAvailable()" (click)="service.model.redo()">
+      <mat-icon>redo</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <button matIconButton type="button" [disabled]="disableItemButtons" (click)="service.deleteSelectedItem()">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </div>
+</div>
+
+<!-- Right Toolbar -->
+<div class="right-container">
+  <div class="toolbar right">
+    @for (element of quickPickElements1; track element.number) {
+      <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
+    }
+    <div class="divider"></div>
+    @for (element of quickPickElements2; track element.number) {
+      <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
+    }
+    <div class="divider"></div>
+    <button matIconButton type="button" (click)="handlePickElement($event)">
+      <mat-icon>keyboard_double_arrow_left</mat-icon>
+    </button>
+  </div>
+</div>
+
+<!-- Template for quick-pick element button -->
+<ng-template #quickPickButton let-element="element">
+  <button matIconButton type="button" (click)="handleAddElement(element, $event)">
+    {{ element.symbol }}
+  </button>
+</ng-template>
