@@ -164,7 +164,10 @@
             ],
             "styles": [
               "projects/showcase-widgets/src/styles.scss"
-            ]
+            ],
+            "loader": {
+              ".svg": "text"
+            }
           },
           "configurations": {
             "production": {
@@ -248,7 +251,10 @@
             ],
             "styles": [
               "projects/molecule-editor-widget/src/styles.scss"
-            ]
+            ],
+            "loader": {
+              ".svg": "text"
+            }
           },
           "configurations": {
             "production": {
@@ -282,6 +288,11 @@
             },
             "development": {
               "buildTarget": "molecule-editor-widget:build:development"
+            }
+          },
+          "options": {
+            "loader": {
+              ".svg": "text"
             }
           },
           "defaultConfiguration": "development"

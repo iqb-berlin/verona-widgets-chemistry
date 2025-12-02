@@ -16,15 +16,15 @@
 
     <button matIconButton type="button" title="1" [class.active-tool]="bondingSingleModeActive()"
             (click)="$event.stopPropagation(); setBondingModeActive(1)">
-      /
+      <mat-icon svgIcon="iqb:bond_line_1"/>
     </button>
     <button matIconButton type="button" title="2" [class.active-tool]="bondingDoubleModeActive()"
             (click)="$event.stopPropagation(); setBondingModeActive(2)">
-      //
+      <mat-icon svgIcon="iqb:bond_line_2"/>
     </button>
     <button matIconButton type="button" title="3" [class.active-tool]="bondingTripleModeActive()"
             (click)="$event.stopPropagation(); setBondingModeActive(3)">
-      ///
+      <mat-icon svgIcon="iqb:bond_line_3"/>
     </button>
 
     <div class="divider"></div>
