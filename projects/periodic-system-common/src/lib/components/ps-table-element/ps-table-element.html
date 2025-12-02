@@ -2,9 +2,6 @@
 @let appearance = service.appearance();
 <button
   matFab
-  [matTooltip]="elementName()"
-  matTooltipPosition="above"
-  [matTooltipDisabled]="!appearance.showName"
   [disabled]="isSelected()"
   disabledInteractive
   [disableRipple]="service.interaction.elementClickBlocked()"
