@@ -4,7 +4,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { PsElement, PsElements, PsElementSymbol } from 'periodic-system-common';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
-import { BondMultiplicity } from '../../services/molecule-editor.model';
+import { BondMultiplicity, MoleculeEditorModel } from '../../services/molecule-editor.model';
 
 @Component({
   selector: 'app-editor-controls',
@@ -46,28 +46,25 @@ export class EditorControls {
   });
 
   readonly selectedAtom = computed(() => {
-    const { items } = this.service.model();
+    const { atoms } = this.service.model();
     const state = this.service.state();
     if (state.state !== 'selected') return undefined;
-    const item = items[state.itemId];
-    return (item && item.type === 'Atom') ? item : undefined;
-  });
-
-  readonly selectedAtomElectrons = computed(() => {
-    const { elementElectrons } = this.service.model();
-    const selectedAtom = this.selectedAtom();
-    if (!selectedAtom) return Number.NaN;
-    const selectedAtomElectrons = elementElectrons[selectedAtom.element.number];
-    return selectedAtomElectrons ?? 0;
+    return atoms[state.id] ?? undefined;
   });
 
   readonly selectedAtomElectronsIcon = computed(() => {
-    const electrons = this.selectedAtomElectrons();
-    return Number.isNaN(electrons) ? 'atr' : `counter_${electrons}`;
+    const { electrons } = this.selectedAtom() ?? {};
+    return (electrons === undefined) ? 'atr' : `counter_${electrons}`;
   });
 
-  readonly incrementElectronDisabled = computed(() => this.selectedAtomElectrons() >= 8);
-  readonly decrementElectronDisabled = computed(() => this.selectedAtomElectrons() <= 0);
+  readonly incrementElectronDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.electrons >= MoleculeEditorModel.ATOM_MAX_ELECTRONS;
+  });
+  readonly decrementElectronDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.electrons <= MoleculeEditorModel.ATOM_MIN_ELECTRONS;
+  });
 
   setToolMode(mode: 'pointer' | 'duplicate') {
     this.service.toolMode.set({ mode });

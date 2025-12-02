@@ -1,13 +1,13 @@
 <!-- Top Toolbar -->
 <div class="top-container">
   <div class="toolbar top">
-    @let disableItemButtons = !isItemSelected();
-    <button matIconButton type="button" [disabled]="disableItemButtons || decrementElectronDisabled()"
+    @let noItemSelected = !isItemSelected();
+    <button matIconButton type="button" [disabled]="noItemSelected || decrementElectronDisabled()"
             (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)">
       <mat-icon>remove</mat-icon>
     </button>
     <mat-icon fontSet="material-symbols">{{ selectedAtomElectronsIcon() }}</mat-icon>
-    <button matIconButton type="button" [disabled]="disableItemButtons || incrementElectronDisabled()"
+    <button matIconButton type="button" [disabled]="noItemSelected || incrementElectronDisabled()"
             (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)">
       <mat-icon>add</mat-icon>
     </button>
@@ -47,7 +47,7 @@
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" [disabled]="disableItemButtons" (click)="service.deleteSelectedItem()">
+    <button matIconButton type="button" [disabled]="noItemSelected" (click)="service.deleteSelectedItem()">
       <mat-icon>delete</mat-icon>
     </button>
   </div>

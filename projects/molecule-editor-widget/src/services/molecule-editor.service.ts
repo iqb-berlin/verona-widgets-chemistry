@@ -3,6 +3,7 @@ import { VeronaWidgetService } from 'verona-widget';
 import { PsElement } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
 import {
+  AtomId,
   BondMultiplicity,
   EditorState,
   ItemId,
@@ -65,12 +66,12 @@ export class MoleculeEditorService {
       if (toolMode.mode === 'bonding' && state.state === 'addingBond') {
         // special case: while bonding, set new bonding multiplicity
         const { multiplicity } = toolMode;
-        this.state.set({ ...state, multiplicity });
+        this.state.set({ ...state, multi: multiplicity });
       } else if (toolMode.mode === 'bonding' && state.state === 'selected') {
-        const { items } = untracked(this.model);
-        const item = items[state.itemId];
-        if (item && item.type === 'Bond') {
-          this.model.update(model => MoleculeEditorModel.setBondMultiplicity(model, item.itemId, toolMode.multiplicity));
+        const { bonds } = untracked(this.model);
+        const bond = bonds[state.id];
+        if (bond) {
+          this.model.update(model => MoleculeEditorModel.setBondMultiplicity(model, bond.itemId, toolMode.multiplicity));
         }
       } else {
         // default case: reset to idle
@@ -121,22 +122,10 @@ export class MoleculeEditorService {
   //region Modify element electrons
 
   changeSelectedElementAtoms(delta: -1 | 1) {
-    const minElectrons = 0;
-    const maxElectrons = 8;
-
     const state = this.state();
-    if (state.state !== 'selected') return;
-
-    this.model.update(model => {
-      const { itemId } = state;
-      const item = model.items[itemId];
-      if (item.type !== 'Atom') return model;
-
-      const { element } = item;
-      const electrons = model.elementElectrons[element.number] ?? 0;
-      const newElectrons = Math.max(minElectrons, Math.min(maxElectrons, electrons + delta));
-      return MoleculeEditorModel.setElementElectrons(model, element, newElectrons);
-    });
+    if (state.state === 'selected') {
+      this.model.update(model => MoleculeEditorModel.changeAtomElectrons(model, state.id, delta));
+    }
   }
 
   //endregion
@@ -145,8 +134,9 @@ export class MoleculeEditorService {
   deleteSelectedItem() {
     const state = this.state();
     if (state.state === 'selected') {
-      const { itemId } = state;
-      this.model.update(model => MoleculeEditorModel.deleteItem(model, itemId));
+      const { id } = state;
+      this.model.update(model => MoleculeEditorModel.deleteItem(model, id));
+      this.state.set(EditorState.idle);
     }
   }
 
@@ -163,7 +153,7 @@ export class MoleculeEditorService {
         this.handleCanvasUp(position);
         break;
       case 'down':
-        this.handleCanvasDown(position);
+        // Ignore for now - possibly "drag to select area"?
         break;
       case 'click':
         this.handleCanvasClick(position);
@@ -181,10 +171,10 @@ export class MoleculeEditorService {
         break;
       case 'addingAtom': {
         const { element } = state;
-        const itemId = uniqueItemId();
-        this.model.update(model => MoleculeEditorModel.addAtom(model, itemId, element, position), true);
+        const atomId = uniqueItemId<'Atom'>();
+        this.model.update(model => MoleculeEditorModel.addAtom(model, atomId, element, position), true);
         this.state.set(EditorState.idle);
-        setTimeout(() => this.afterAtomAdded(itemId, element, position), 0);
+        setTimeout(() => this.afterAtomAdded(atomId, element, position), 0);
         break;
       }
       case 'addingBond': {
@@ -194,19 +184,19 @@ export class MoleculeEditorService {
     }
   }
 
-  private afterAtomAdded(itemId: ItemId, element: PsElement, position: Vector2) {
+  private afterAtomAdded(id: AtomId, element: PsElement, position: Vector2) {
     const toolMode = this.toolMode();
     switch (toolMode.mode) {
       case 'pointer':
         // In pointer-mode, select newly created atom
-        this.state.set(EditorState.select(itemId));
+        this.state.set(EditorState.select(id));
         break;
       case 'duplicate':
         // In duplicate-mode, add another atom of the same element
         this.state.set(EditorState.addAtom(element, position));
         break;
       case 'bonding':
-        this.state.set(EditorState.addBond(itemId, toolMode.multiplicity, position));
+        this.state.set(EditorState.addBond(id, toolMode.multiplicity, position));
         break;
     }
   }
@@ -219,10 +209,10 @@ export class MoleculeEditorService {
         break;
       case 'preMoveAtom':
       case 'movingAtom':
-        this.state.set(EditorState.moveAtom(state.itemId, position));
+        this.state.set(EditorState.moveAtom(state.id, position));
         break;
       case 'addingBond':
-        this.state.set({ ...state, hoverPosition: position });
+        this.state.set({ ...state, hoverPos: position });
         break;
     }
   }
@@ -234,21 +224,17 @@ export class MoleculeEditorService {
         this.state.set(EditorState.idle);
         break;
       case 'movingAtom':
-        const { itemId } = state;
-        this.model.update(model => MoleculeEditorModel.moveAtom(model, itemId, position), true);
+        const { id } = state;
+        this.model.update(model => MoleculeEditorModel.moveAtom(model, id, position), true);
         this.state.set(EditorState.idle);
         break;
     }
   }
 
-  private handleCanvasDown(position: Vector2) {
-
-  }
-
   //endregion
   //region Atom pointer events
 
-  handleAtomEvent(atomId: ItemId, pointerEvent: PointerEvent | TouchEvent) {
+  handleAtomEvent(atomId: AtomId, pointerEvent: PointerEvent | TouchEvent) {
     // bubble up to canvas for temporary atoms (id not present in model)
     if (this.isTemporaryItem(atomId)) {
       this.handleCanvasEvent(pointerEvent);
@@ -277,36 +263,47 @@ export class MoleculeEditorService {
     }
   }
 
-  private handleAtomClick(atomId: ItemId, position: Vector2) {
+  private handleAtomClick(atomId: AtomId, position: Vector2) {
     const state = this.state();
     const toolMode = this.toolMode();
 
-    if (state.state === 'addingBond' && state.startId !== atomId) {
-      this.completeAddBond(state.startId, atomId, state.multiplicity);
+    // Special case: Clicking on a second atom while adding a bond will always complete adding the bond
+    if ((state.state === 'addingBond') && (state.startId !== atomId)) {
+      this.completeAddBond(state.startId, atomId, state.multi);
       return;
     }
 
     switch (toolMode.mode) {
-      case 'pointer':
-        this.state.set(EditorState.select(atomId));
+      case 'pointer': {
+        this.toggleAtomSelected(atomId);
         break;
+      }
       case 'duplicate': {
-        const { items } = this.model();
-        const item = items[atomId];
-        if (item && item.type === 'Atom') {
-          this.state.set(EditorState.addAtom(item.element, position));
+        const { atoms } = this.model();
+        const atom = atoms[atomId];
+        if (atom) {
+          this.state.set(EditorState.addAtom(atom.element, position));
         }
         break;
       }
     }
   }
 
-  private handleAtomUp(atomId: ItemId, position: Vector2) {
+  private toggleAtomSelected(id: AtomId) {
+    const state = this.state();
+    if ((state.state === 'selected' || state.state === 'preMoveAtom') && (id === state.id)) {
+      this.state.set(EditorState.idle);
+    } else {
+      this.state.set(EditorState.select(id));
+    }
+  }
+
+  private handleAtomUp(atomId: AtomId, position: Vector2) {
     const state = this.state();
     switch (state.state) {
       case 'addingBond': {
         if (state.startId !== atomId) {
-          this.completeAddBond(state.startId, atomId, state.multiplicity);
+          this.completeAddBond(state.startId, atomId, state.multi);
         }
         break;
       }
@@ -315,7 +312,7 @@ export class MoleculeEditorService {
     }
   }
 
-  private handleAtomDown(atomId: ItemId, position: Vector2) {
+  private handleAtomDown(atomId: AtomId, position: Vector2) {
     const state = this.state();
     const toolMode = this.toolMode();
     switch (toolMode.mode) {
@@ -326,7 +323,9 @@ export class MoleculeEditorService {
         // Do nothing
         break;
       case 'bonding': {
-        if (state.state !== 'addingBond' || state.startId === atomId) {
+        // In bonding tool-mode, go to add-bond state if not already bonding or on the already bonding atom
+        // (See handleAtomClick for add-bond state completion)
+        if ((state.state !== 'addingBond') || (state.startId === atomId)) {
           const { multiplicity } = toolMode;
           this.state.set(EditorState.addBond(atomId, multiplicity, position));
         }
@@ -335,9 +334,9 @@ export class MoleculeEditorService {
     }
   }
 
-  private completeAddBond(startId: ItemId, endId: ItemId, multiplicity: BondMultiplicity) {
-    const bondId = uniqueItemId();
-    this.model.update(model => MoleculeEditorModel.addBond(model, bondId, startId, endId, multiplicity));
+  private completeAddBond(startId: AtomId, endId: AtomId, mul: BondMultiplicity) {
+    const bondId = uniqueItemId<'Bond'>();
+    this.model.update(model => MoleculeEditorModel.addBond(model, bondId, startId, endId, mul));
     this.state.set(EditorState.idle);
   }
 
@@ -362,20 +361,26 @@ export class MoleculeEditorService {
         this.handleCanvasEvent(pointerEvent); // bubble up to canvas
         break;
       case 'click':
-        this.handleBondClick(bondId, position);
+        this.handleBondClick(bondId);
         break;
     }
   }
 
-  private handleBondClick(bondId: ItemId, position: Vector2) {
-    this.state.set(EditorState.select(bondId));
+  private handleBondClick(bondId: ItemId) {
+    // Toggle bond selected
+    const state = this.state();
+    if ((state.state === 'selected') && (state.id === bondId)) {
+      this.state.set(EditorState.idle);
+    } else {
+      this.state.set(EditorState.select(bondId));
+    }
   }
 
   //endregion
 
   private isTemporaryItem(itemId: ItemId) {
     const model = this.model();
-    return !(itemId in model.items);
+    return !(itemId in model.atoms) && !(itemId in model.bonds);
   }
 }
 

@@ -1,8 +1,8 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { BondView } from '../../../services/molecule-editor.view';
 import { MoleculeEditorService } from '../../../services/molecule-editor.service';
-import { AngleMath } from '../../../util/angular-math';
 import { Vector2 } from '../../../services/molecule-editor.model';
+import { AngleMath } from '../../../util/angle-math';
 
 type LinePosition = readonly [a: Vector2, b: Vector2];
 
@@ -12,9 +12,9 @@ type LinePosition = readonly [a: Vector2, b: Vector2];
   styleUrl: './svg-bond-view.scss',
 })
 export class SvgBondView {
-  readonly service = inject(MoleculeEditorService);
-
   readonly bondView = input.required<BondView>({ alias: 'bondView' });
+
+  readonly service = inject(MoleculeEditorService);
 
   readonly bondLinePositions = computed((): ReadonlyArray<LinePosition> => {
     const { leftPosition, rightPosition, multiplicity } = this.bondView();

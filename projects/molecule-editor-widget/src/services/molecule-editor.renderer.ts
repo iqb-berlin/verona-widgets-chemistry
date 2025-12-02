@@ -1,112 +1,120 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { computed, effect, EffectCleanupFn, inject, Injectable, signal } from '@angular/core';
 import { MoleculeEditorService } from './molecule-editor.service';
-import { AtomModel, BondModel, EditorState, ItemId, MoleculeEditorModel } from './molecule-editor.model';
-import { AtomView, BondView, MoleculeEditorView } from './molecule-editor.view';
+import type { AtomId, AtomModel, MoleculeEditorModel } from './molecule-editor.model';
+import { EditorState, ItemId } from './molecule-editor.model';
+import type { AtomView, BondView, MoleculeEditorAnimatedView, MoleculeEditorView } from './molecule-editor.view';
+import { AngleMath } from '../util/angle-math';
+import { produce } from 'immer';
+
+type AnimFrameHandle = ReturnType<typeof requestAnimationFrame>
+
+const relaxElectronsIterationCount = 30;
 
 @Injectable()
 export class MoleculeEditorRenderer {
   readonly service = inject(MoleculeEditorService);
 
-  readonly renderedView = computed((): MoleculeEditorView => {
+  readonly view = computed((): MoleculeEditorView => {
     const model = this.service.model();
     const editorState = this.service.state();
 
     const atoms: Array<AtomView> = [];
     const bonds: Array<BondView> = [];
-    renderModelItems(model, editorState, atoms, bonds);
+    renderModelAtoms(model, editorState, atoms);
+    renderModelBonds(model, editorState, bonds);
     renderTemporaryAtom(model, editorState, atoms);
     renderTemporaryBonds(model, editorState, bonds);
 
     return { atoms, bonds };
   });
+
+  readonly animatedView = signal<MoleculeEditorAnimatedView>({
+    atomElectronAnimations: {},
+  });
+
+  constructor() {
+    effect((onCleanup) => {
+      // Trigger view -> Update+animate animated-view
+      const nextView = this.view();
+
+      // Synchronously: Add/update/remove atoms in view to animated-view
+      this.animatedView.update(animatedView => reconcileAnimatedView(animatedView, nextView));
+
+      //TODO: Fix this algorithm, currently not working properly yet.
+      // Animated: Relax angles of electrons in animated-view
+      /*const cleanupAnim = iterativeAnimationEffect(relaxElectronsIterationCount, () => {
+        this.animatedView.update(animatedView => relaxAnimatedViewIteration(animatedView));
+      });
+
+      onCleanup(cleanupAnim);*/
+    });
+  }
 }
 
-function renderModelItems(
-  model: MoleculeEditorModel,
-  state: EditorState,
-  atomViews: Array<AtomView>,
-  bondViews: Array<BondView>,
-) {
-  const bondCountByAtomId = new Map<ItemId, number>();
-  for (const item of Object.values(model.items)) {
-    if (item.type === 'Bond') {
-      const { multiplicity, leftAtomId, rightAtomId } = item;
-      bondCountByAtomId.set(leftAtomId, multiplicity + (bondCountByAtomId.get(leftAtomId) ?? 0));
-      bondCountByAtomId.set(rightAtomId, multiplicity + (bondCountByAtomId.get(rightAtomId) ?? 0));
-    }
+//region Render model to view
+
+function renderModelAtoms(model: MoleculeEditorModel, state: EditorState, atomViews: Array<AtomView>) {
+  const atomList = Object.values(model.atoms);
+  const bondList = Object.values(model.bonds);
+
+  // Aggregate number of connected bonds per atom
+  const bondCountByAtomId = new Map<AtomId, number>();
+  for (const { multiplicity, leftAtomId, rightAtomId } of bondList) {
+    bondCountByAtomId.set(leftAtomId, multiplicity + (bondCountByAtomId.get(leftAtomId) ?? 0));
+    bondCountByAtomId.set(rightAtomId, multiplicity + (bondCountByAtomId.get(rightAtomId) ?? 0));
   }
 
-  for (const [itemKey, item] of Object.entries(model.items)) {
-    const itemId = itemKey as ItemId;
-    switch (item.type) {
-      case 'Atom':
-        if (EditorState.isMovingAtom(state, itemId)) {
-          continue; // Skip rendering model-atom that is currently being moved
-        }
-        atomViews.push(modelAtomView(item, state, model, bondCountByAtomId));
-        break;
-      case 'Bond':
-        // Renders bonds, including temporary bonds connected to atoms currently being moved
-        bondViews.push(...modelBondView(item, state, model));
-        break;
-      default:
-        console.warn('Rendering unknown item:', item satisfies never);
+  // Render atoms
+  for (const atom of atomList) {
+    if (EditorState.isMovingAtom(state, atom.itemId)) {
+      continue; // Skip rendering atom that is currently being moved
     }
+    atomViews.push(modelAtomView(atom, state, model, bondCountByAtomId));
   }
 }
 
 function modelAtomView(
-  item: AtomModel,
+  atom: AtomModel,
   state: EditorState,
   model: MoleculeEditorModel,
   bondCountByAtomId: ReadonlyMap<ItemId, number>,
 ): AtomView {
-  const { itemId, element, position } = item;
+  const { itemId, element, position, electrons } = atom;
   const selected = EditorState.isItemSelected(state, itemId);
-  const bondCount = bondCountByAtomId.get(itemId) ?? 0;
-  const totalOuterElectrons = model.elementElectrons[element.number] ?? 0;
-  const unboundOuterElectrons = totalOuterElectrons - bondCount;
   return {
     itemId,
     element,
     position,
     selected,
     temporary: false,
-    outerElectrons: unboundOuterElectrons,
+    outerElectrons: electrons,
+    bondAngles: [0, 0, 0], //TODO: Implement this for a proper force-directed layout; requires bond/atom indexing
   };
 }
 
-function modelBondView(
-  item: BondModel,
-  state: EditorState,
-  model: MoleculeEditorModel,
-): BondView[] {
-  const { itemId, leftAtomId, rightAtomId, multiplicity } = item;
-  const selected = EditorState.isItemSelected(state, itemId);
+function renderModelBonds(model: MoleculeEditorModel, state: EditorState, bondViews: Array<BondView>) {
+  const bondList = Object.values(model.bonds);
+  for (const { itemId, leftAtomId, rightAtomId, multiplicity } of bondList) {
+    const { [leftAtomId]: leftAtom, [rightAtomId]: rightAtom } = model.atoms;
+    if (!leftAtom || !rightAtom) continue; // Skip bonds referencing missing atoms
 
-  const leftAtom = model.items[leftAtomId];
-  if (!leftAtom || leftAtom.type !== 'Atom') {
-    console.warn(`Bond "${itemId}" references invalid atom "${leftAtomId}":`, leftAtom);
-    return [];
+    const isMovingLeft = EditorState.isMovingAtom(state, leftAtomId);
+    const isMovingRight = EditorState.isMovingAtom(state, rightAtomId);
+    const leftPosition = isMovingLeft ? state.targetPos : leftAtom.position;
+    const rightPosition = isMovingRight ? state.targetPos : rightAtom.position;
+
+    const selected = EditorState.isItemSelected(state, itemId);
+    const temporary = isMovingLeft || isMovingRight;
+
+    bondViews.push({
+      itemId,
+      multiplicity,
+      leftPosition,
+      rightPosition,
+      selected,
+      temporary,
+    });
   }
-  const rightAtom = model.items[rightAtomId];
-  if (!rightAtom || rightAtom.type !== 'Atom') {
-    console.warn(`Bond "${itemId}" references invalid atom "${rightAtomId}":`, rightAtom);
-    return [];
-  }
-
-  const leftPosition = EditorState.isMovingAtom(state, leftAtomId) ? state.targetPosition : leftAtom.position;
-  const rightPosition = EditorState.isMovingAtom(state, rightAtomId) ? state.targetPosition : rightAtom.position;
-  const temporary = EditorState.isMovingAtom(state, leftAtomId) || EditorState.isMovingAtom(state, rightAtomId);
-
-  return [{
-    itemId,
-    multiplicity,
-    leftPosition,
-    rightPosition,
-    selected,
-    temporary,
-  }];
 }
 
 function renderTemporaryAtom(
@@ -121,32 +129,34 @@ function renderTemporaryAtom(
     case 'addingBond':
       break; // No temporary atom
     case 'addingAtom': {
-      const { element, hoverPosition: position } = editorState;
+      const { element, hoverPos: position } = editorState;
       atomViews.push({
-        itemId: ItemId.temporaryAdd,
+        itemId: ItemId.tmpAddAtom,
         element,
         position,
         selected: false,
         temporary: true,
         outerElectrons: 0,
+        bondAngles: [],
       });
       break;
     }
     case 'movingAtom': {
-      const { itemId, targetPosition: position } = editorState;
-      const item = model.items[itemId];
-      if (!item || item.type !== 'Atom') {
-        console.warn(`Invalid item "${itemId}" referenced for move:`, item);
+      const { id, targetPos: position } = editorState;
+      const item = model.atoms[id];
+      if (!item) {
+        console.warn(`Invalid item "${id}" referenced for move:`, item);
         break;
       }
       const { element } = item;
       atomViews.push({
-        itemId: ItemId.temporaryMove,
+        itemId: ItemId.tmpMoveAtom,
         element,
         position,
         selected: false,
         temporary: true,
         outerElectrons: 0,
+        bondAngles: [],
       });
       break;
     }
@@ -168,17 +178,17 @@ function renderTemporaryBonds(
     case 'movingAtom':
       break; // No temporary bond (Rendered in renderModelItems for better performance)
     case 'addingBond':
-      const { startId, multiplicity, hoverPosition } = editorState;
-      const startItem = model.items[startId];
+      const { startId, multi, hoverPos } = editorState;
+      const startItem = model.atoms[startId];
       if (!startItem || startItem.type !== 'Atom') {
         console.warn(`EditorState references invalid atom "${startId}":`, startItem);
         break;
       }
       bonds.push({
-        itemId: ItemId.temporaryAdd,
-        multiplicity,
+        itemId: ItemId.tmpAddBond,
+        multiplicity: multi,
         leftPosition: startItem.position,
-        rightPosition: hoverPosition,
+        rightPosition: hoverPos,
         selected: false,
         temporary: true,
       });
@@ -187,3 +197,101 @@ function renderTemporaryBonds(
       console.warn('Rendering unknown state bond:', editorState satisfies never);
   }
 }
+
+//endregion
+//region Update animated view
+
+const reconcileAnimatedView = produce<MoleculeEditorAnimatedView, [MoleculeEditorView]>((draft, view) => {
+  const jitter = AngleMath.deg(5); // Apply small jitter to avoid extreme forces
+  const viewAtomIds = new Set(view.atoms.map(atom => atom.itemId));
+
+  // Add/update atoms in animation
+  for (const viewAtom of view.atoms) {
+    const atomId = viewAtom.itemId;
+    if (atomId in draft.atomElectronAnimations) {
+      const animatedAtom = draft.atomElectronAnimations[atomId];
+      // Update existing atom-electrons if atom electron count changed in view
+      // => Recreate electrons with new angles (will be animated later)
+      if (animatedAtom.electronAngles.length !== viewAtom.outerElectrons) {
+        animatedAtom.electronAngles = AngleMath.distributeAngles(viewAtom.outerElectrons, jitter);
+      }
+    } else {
+      // Create new atom-electrons
+      const electronAngles = AngleMath.distributeAngles(viewAtom.outerElectrons, jitter);
+      draft.atomElectronAnimations[atomId] = {
+        itemId: atomId,
+        bondAngles: viewAtom.bondAngles.slice(),
+        electronAngles,
+      };
+    }
+  }
+
+  // Remove missing atoms from animation
+  for (const animatedAtomKey in draft.atomElectronAnimations) {
+    const animatedAtomId = animatedAtomKey as AtomId;
+    if (!viewAtomIds.has(animatedAtomId)) {
+      delete draft.atomElectronAnimations[animatedAtomId];
+    }
+  }
+});
+
+function iterativeAnimationEffect(frameCount: number, animation: () => void): EffectCleanupFn {
+  let animFrameHandle: undefined | AnimFrameHandle;
+
+  const nextAnimationFrame = (remaining: number) => {
+    animation();
+
+    animFrameHandle = (remaining > 0)
+      ? requestAnimationFrame(() => nextAnimationFrame(remaining - 1))
+      : undefined;
+  };
+
+  requestAnimationFrame(() => nextAnimationFrame(frameCount));
+
+  return () => {
+    if (animFrameHandle !== undefined) {
+      cancelAnimationFrame(animFrameHandle);
+    }
+  };
+}
+
+//OPTIMIZATION: Introduce either dirty tracking or view-state hashing to avoid relaxing all atoms on every frame
+const relaxAnimatedViewIteration = produce<MoleculeEditorAnimatedView>((draft) => {
+  const step = 0.05;
+  const wEdge = 1.00;
+  const wSelf = 0.40;
+  const epsilon = AngleMath.deg(1);
+
+  for (const atomKey in draft.atomElectronAnimations) {
+    const atomId = atomKey as AtomId;
+    const atomAnim = draft.atomElectronAnimations[atomId];
+    const angles = atomAnim.electronAngles;
+    const k = angles.length;
+
+    for (let i = 0; i < k; i++) {
+      let force = 0;
+
+      // Repulsion from bonds
+      for (let p of atomAnim.bondAngles) {
+        const d = AngleMath.angleDiff(angles[i], p);
+        const dd = (d * d) + epsilon;
+        force += wEdge + (d / dd);
+      }
+
+      // Repulsion from other electrons
+      for (let j = 0; j < k; j++) {
+        if (i === j) continue;
+        const d = AngleMath.angleDiff(angles[i], angles[j]);
+        const dd = (d * d) + epsilon;
+        force += wSelf * (d / dd);
+      }
+
+      // Apply negative gradient descent to angle
+      const gradientDescend = -step * force;
+      angles[i] = AngleMath.normalize(angles[i] + gradientDescend);
+    }
+    angles.sort((a, b) => a - b);
+  }
+});
+
+//endregion

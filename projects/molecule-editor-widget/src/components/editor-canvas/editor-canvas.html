@@ -10,7 +10,7 @@
   (touchmove)="service.handleCanvasEvent($event)"
   (click)="service.handleCanvasEvent($event)"
 >
-  @let view = renderer.renderedView();
+  @let view = renderer.view();
   @for (bond of view.bonds; track bond.itemId) {
     <g [bondView]="bond"></g>
   }
