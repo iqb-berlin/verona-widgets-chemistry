@@ -126,7 +126,7 @@ function handleReturnRequested(event) {
 
 function sendWidgetMessage(event) {
   console.log('Sending widget message:', event);
-  widgetIframe.value.contentWindow.postMessage(event);
+  widgetIframe.value.contentWindow.postMessage(event, '*');
 }
 </script>
 
@@ -154,7 +154,6 @@ function sendWidgetMessage(event) {
 </template>
 
 <style scoped>
-
 .widget-status {
   padding: 2px;
   border: 1px solid grey;

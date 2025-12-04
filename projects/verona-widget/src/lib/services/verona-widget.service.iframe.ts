@@ -100,6 +100,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
 
     // Create return-event
     // Send return-event message WITH DELAY (to ensure state-change events arrive before requesting to return)
+    //FIXME: Once available, add "finalState" field to submit additional information on return
     setTimeout(
       () =>
         this.sendEventMessage({
@@ -138,8 +139,8 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
   }
 
   private sendEventMessage(event: VeronaWidgetSendEvent) {
-    //TODO: properly handle target origin
-    this.messageTarget.postMessage(event);
+    //TODO: Properly handle target origin, instead of using a wildcard (potential security risk)
+    this.messageTarget.postMessage(event, '*');
   }
 }
 
