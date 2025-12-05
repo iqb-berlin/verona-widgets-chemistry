@@ -3,7 +3,7 @@ import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
 import type { AtomId, AtomModel, MoleculeEditorGraph, MoleculeEditorModel } from './molecule-editor.model';
 import { EditorState, ItemId, Vector2 } from './molecule-editor.model';
-import type { AtomView, BondView, ElectronView, MoleculeEditorView } from './molecule-editor.view';
+import { AtomView, BondView, ElectronOrientation, ElectronView, MoleculeEditorView } from './molecule-editor.view';
 import { lookupElement } from './molecule-editor.helper';
 
 @Injectable()
@@ -64,20 +64,41 @@ function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: Edito
 }
 
 function renderAtomElectronViews(atom: AtomModel, graph: MoleculeEditorGraph): Array<ElectronView> {
+  // Pairs of two electrons are rendered as a line, single electrons as a dot.
+  // Total electrons is added from (2 x #doubles + #singles).
+  // Consequently, 0-4 total symbols are used for 0-8 electrons:
+  // 1 = '.', 2 = '-', 3 = '-.', 4 = '--', 5 = '--.', 6 = '---', 7 = '---.', 8 = '----'
   const singles = atom.electrons % 2;
   const doubles = Math.floor(atom.electrons / 2);
 
-  //TODO: Algorithm for deciding direction
-  const enumerateOrientations = ['N', 'E', 'S', 'W'] as const;
-  let orientationIndex = 0;
+  // To orient the required electron symbols, the orientation of existing bonds is taken into account
+  // to avoid (if possible) displaying both a bond and an electron on the same orientation of the atom.
+  const bondOrientations = new Set<ElectronOrientation>();
+  for (const atomBond of graph.atomBonds.get(atom) ?? []) {
+    const bondAtoms = graph.bondAtoms.get(atomBond);
+    if (bondAtoms === undefined) continue;
+
+    const [leftAtom, rightAtom] = bondAtoms;
+    const otherAtom = (leftAtom === atom) ? rightAtom : leftAtom;
+    const [deltaX, deltaY] = Vector2.sub(otherAtom.position, atom.position);
+    const horizontal = Math.abs(deltaX) > Math.abs(deltaY); // |x| > |y|
+    const bondOrientation = horizontal ?
+      (deltaX > 0 ? ElectronOrientation.E : ElectronOrientation.W) :
+      (deltaY > 0 ? ElectronOrientation.S : ElectronOrientation.N);
+
+    bondOrientations.add(bondOrientation);
+  }
+
+  const electronOrientations = ElectronView.prioritizeOrientations(Array.from(bondOrientations));
+  let electronIndex = 0;
 
   const result: Array<ElectronView> = [];
   for (let i = 0; i < doubles; i++) {
-    const orientation = enumerateOrientations[orientationIndex++];
+    const orientation = electronOrientations[electronIndex++];
     result.push({ type: 2, orientation });
   }
   for (let i = 0; i < singles; i++) {
-    const orientation = enumerateOrientations[orientationIndex++];
+    const orientation = electronOrientations[electronIndex++];
     result.push({ type: 1, orientation });
   }
   return result;

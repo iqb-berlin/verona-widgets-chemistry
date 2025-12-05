@@ -72,14 +72,26 @@ export class EditorControls {
     return atoms[state.itemId] ?? undefined;
   });
 
+  readonly selectedAtomMaxElectrons = computed<number>(() => {
+    const graph = this.service.graph();
+    const selectedAtom = this.selectedAtom();
+    if (!selectedAtom) return 0;
+
+    const occupiedByBonds = (graph.atomBonds.get(selectedAtom) ?? [])
+      .reduce((sum, bond) => sum + bond.multiplicity, 0);
+
+    return MoleculeEditorModel.ATOM_TOTAL_MAX_ELECTRONS - occupiedByBonds;
+  });
+
   readonly incrementElectronDisabled = computed(() => {
     const atom = this.selectedAtom();
-    return !atom || atom.electrons >= MoleculeEditorModel.ATOM_MAX_ELECTRONS;
+    const maxElectrons = this.selectedAtomMaxElectrons();
+    return !atom || atom.electrons >= maxElectrons;
   });
 
   readonly decrementElectronDisabled = computed(() => {
     const atom = this.selectedAtom();
-    return !atom || atom.electrons <= MoleculeEditorModel.ATOM_MIN_ELECTRONS;
+    return !atom || atom.electrons <= 0;
   });
 
   setPointerMode() {

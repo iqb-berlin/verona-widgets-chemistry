@@ -1,5 +1,5 @@
 import { Nominal, PsElementNumber } from 'periodic-system-common';
-import { produce } from 'immer';
+import { produce, WritableDraft } from 'immer';
 
 // --- Model data-structs ---
 
@@ -180,9 +180,7 @@ export namespace MoleculeEditorModel {
 
   export const moveAtom = produce<MoleculeEditorModel, [AtomId, Vector2]>((model, atomId, position) => {
     const atom = model.atoms[atomId];
-    if (atom && atom.type === 'Atom') {
-      atom.position = v2(position);
-    }
+    if (atom) atom.position = v2(position);
   });
 
   export const addBond = produce<MoleculeEditorModel, [BondId, AtomId, AtomId, BondMultiplicity]>(
@@ -197,14 +195,19 @@ export namespace MoleculeEditorModel {
         }
       }
 
-      // Add new bond
-      model.bonds[bondId] = {
+      const bond = {
         type: 'Bond',
         itemId: bondId,
         leftAtomId,
         rightAtomId,
         multiplicity,
       } satisfies BondModel;
+
+      // Add new bond
+      model.bonds[bondId] = bond;
+
+      // Trim number of electrons for atoms connected by new bond
+      trimBondConnectedAtomElectrons(model, bond);
     },
   );
 
@@ -213,22 +216,18 @@ export namespace MoleculeEditorModel {
       const bond = model.bonds[bondId];
       if (bond) {
         bond.multiplicity = multiplicity;
+
+        // Trim number of electrons for atoms connected by modified bond
+        trimBondConnectedAtomElectrons(model, bond);
       }
     },
   );
-
-  export const ATOM_MIN_ELECTRONS = 0;
-  export const ATOM_MAX_ELECTRONS = 8;
-
-  export const clampAtomElectrons = (count: number): number => {
-    return Math.max(ATOM_MIN_ELECTRONS, Math.min(ATOM_MAX_ELECTRONS, count));
-  };
 
   export const changeAtomElectrons = produce<MoleculeEditorModel, [atomId: ItemId, delta: number]>(
     (model, atomId, delta) => {
       const atom = model.atoms[atomId];
       if (atom) {
-        atom.electrons = clampAtomElectrons(atom.electrons + delta);
+        atom.electrons = limitAtomElectrons(model, atom, atom.electrons + delta);
       }
     },
   );
@@ -237,7 +236,7 @@ export namespace MoleculeEditorModel {
     (model, atomId, count) => {
       const atom = model.atoms[atomId];
       if (atom) {
-        atom.electrons = clampAtomElectrons(count);
+        atom.electrons = limitAtomElectrons(model, atom, count);
       }
     },
   );
@@ -270,6 +269,28 @@ export namespace MoleculeEditorModel {
       }
     },
   );
+
+  export const ATOM_TOTAL_MAX_ELECTRONS = 8;
+
+  /**
+   * Helper function determining the maximum allowed number of electrons an atom is allowed to have.
+   * Outer electrons are limited to `8 - sum(bond.multiplicity for bond where bond.left == atom or bond.right == atom)`
+   */
+  function limitAtomElectrons(model: MoleculeEditorModel, atom: AtomModel, electrons: number): number {
+    const occupiedByBonds = Object.values(model.bonds)
+      .filter(bond => (bond.leftAtomId === atom.itemId) || (bond.rightAtomId === atom.itemId))
+      .reduce((sum, bond) => sum + bond.multiplicity, 0);
+
+    const maxElectrons = ATOM_TOTAL_MAX_ELECTRONS - occupiedByBonds;
+    return Math.max(0, Math.min(maxElectrons, electrons));
+  }
+
+  /** Helper function trimming excess electrons from atoms connected by a given bond */
+  function trimBondConnectedAtomElectrons(model: WritableDraft<MoleculeEditorModel>, bond: BondModel) {
+    const { [bond.leftAtomId]: leftAtom, [bond.rightAtomId]: rightAtom } = model.atoms;
+    if (leftAtom) leftAtom.electrons = limitAtomElectrons(model, leftAtom, leftAtom.electrons);
+    if (rightAtom) rightAtom.electrons = limitAtomElectrons(model, rightAtom, rightAtom.electrons);
+  }
 }
 
 export namespace ToolMode {
