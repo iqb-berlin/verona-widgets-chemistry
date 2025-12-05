@@ -46,7 +46,7 @@ export class EditorCanvas {
       case 'idle':
       case 'selected':
       case 'addingBond':
-        break;
+        break; // use tool cursor below
       default:
         void (state satisfies never);
     }
@@ -61,6 +61,23 @@ export class EditorCanvas {
         return 'copy';
       case 'bonding':
         return 'crosshair';
+      default:
+        void (toolMode satisfies never);
+    }
+
+    return undefined;
+  });
+
+  readonly bondHandleCursor = computed(() => {
+    const toolMode = this.service.toolMode();
+
+    switch (toolMode.mode) {
+      case 'pointer':
+      case 'bonding':
+        return 'pointer';
+      case 'duplicate':
+      case 'groupMove':
+        return 'not-allowed';
       default:
         void (toolMode satisfies never);
     }

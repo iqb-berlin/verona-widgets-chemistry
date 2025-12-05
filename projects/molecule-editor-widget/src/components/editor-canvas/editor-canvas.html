@@ -4,6 +4,7 @@
   [svgCanvasScale]="canvasScale()"
   [style.cursor]="canvasCursor()"
   [style.--atom-handle-cursor]="atomHandleCursor()"
+  [style.--bond-handle-cursor]="bondHandleCursor()"
   (pointermove)="service.handleCanvasEvent($event)"
   (pointerdown)="service.handleCanvasEvent($event)"
   (pointerup)="service.handleCanvasEvent($event)"

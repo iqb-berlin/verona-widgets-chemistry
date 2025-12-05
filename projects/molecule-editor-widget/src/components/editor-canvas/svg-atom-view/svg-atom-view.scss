@@ -15,7 +15,7 @@
     stroke: var(--mat-sys-primary);
   }
 
-  &:not(.temporary):hover {
+  &:not(.temporary, .targeted):hover {
     fill: var(--mat-sys-surface-dim);
   }
 

@@ -403,6 +403,9 @@ export class MoleculeEditorService {
       case 'pointer':
         this.toggleBondSelected(bondId);
         break;
+      case 'bonding':
+        this.model.update(model => MoleculeEditorModel.setBondMultiplicity(model, bondId, mode.multiplicity));
+        break;
     }
   }
 

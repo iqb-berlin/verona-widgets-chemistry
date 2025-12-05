@@ -1,6 +1,8 @@
-.clickable {
+.bond-handle {
   stroke: transparent;
   stroke-width: 20;
+
+  cursor: var(--bond-handle-cursor);
 
   &:hover {
     stroke: var(--mat-sys-surface-dim);

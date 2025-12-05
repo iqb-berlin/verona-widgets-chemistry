@@ -1,17 +1,17 @@
 @let bond = bondView();
 <ng-container xmlns:svg="http://www.w3.org/2000/svg">
   @if (!bond.temporary) {
-    <!-- Invisible line behind visible bond, serves as a target for selection by clicking on it -->
-    @let clickableLeftX = bond.leftPosition[0];
-    @let clickableLeftY = bond.leftPosition[1];
-    @let clickableRightX = bond.rightPosition[0];
-    @let clickableRightY = bond.rightPosition[1];
+    <!-- Handle is an invisible line behind visible bond, serves as a target for selection by clicking on it -->
+    @let handleLeftX = bond.leftPosition[0];
+    @let handleLeftY = bond.leftPosition[1];
+    @let handleRightX = bond.rightPosition[0];
+    @let handleRightY = bond.rightPosition[1];
     <svg:line
-      class="clickable"
-      [attr.x1]="clickableLeftX"
-      [attr.y1]="clickableLeftY"
-      [attr.x2]="clickableRightX"
-      [attr.y2]="clickableRightY"
+      class="bond-handle"
+      [attr.x1]="handleLeftX"
+      [attr.y1]="handleLeftY"
+      [attr.x2]="handleRightX"
+      [attr.y2]="handleRightY"
       (click)="service.handleBondEvent(bond.itemId, $event)"
     ></svg:line>
   }
