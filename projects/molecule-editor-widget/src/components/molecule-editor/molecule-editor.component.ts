@@ -40,6 +40,7 @@ import IqbIcons from '../../assets/iqb-icons.svg';
 })
 export class MoleculeEditor {
   readonly service = inject(MoleculeEditorService);
+  readonly renderer = inject(MoleculeEditorRenderer);
   readonly imageService = inject(MoleculeEditorImageService);
 
   protected readonly iconRegistry = inject(MatIconRegistry);
@@ -67,7 +68,8 @@ export class MoleculeEditor {
 
     // Get current model, and render an image
     const model = untracked(this.service.model);
-    const modelWithImage = await this.imageService.createModelWithImage(model);
+    const view = untracked(this.renderer.view);
+    const modelWithImage = await this.imageService.createModelWithImage(model, view);
 
     // Send state and return-request to API
     this.sendStateData(modelWithImage); //TODO: Replace with finalState in return-request, once available
