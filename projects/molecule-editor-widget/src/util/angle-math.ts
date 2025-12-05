@@ -9,7 +9,7 @@ export namespace AngleMath {
 
   export function normalize(angle: number): number {
     const normalized = angle % rad;
-    return normalized < 0 ? (normalized + rad) : normalized;
+    return normalized < 0 ? normalized + rad : normalized;
   }
 
   export function angleDiff(a: number, b: number): number {
@@ -24,7 +24,7 @@ export namespace AngleMath {
     const sliceAngle = rad / count;
     for (let i = 0; i < count; i++) {
       const angle = i * sliceAngle;
-      const deviation = jitter ? (jitter * Math.random()) : 0;
+      const deviation = jitter ? jitter * Math.random() : 0;
       angles.push(angle + deviation);
     }
     return angles;

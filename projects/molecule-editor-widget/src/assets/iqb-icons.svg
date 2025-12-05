@@ -1,18 +1,129 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <!-- Define icons here -->
+
   <symbol id="bond_line_1" viewBox="-12 -12 24 24" stroke="currentColor" stroke-linecap="round" stroke-width="2">
     <line x1="-8" y1="8" x2="8" y2="-8" />
   </symbol>
+
   <symbol id="bond_line_2" viewBox="-12 -12 24 24" stroke="currentColor" stroke-linecap="round" stroke-width="2">
     <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(-1.5, -1.5)" />
     <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(1.5, 1.5)" />
   </symbol>
+
   <symbol id="bond_line_3" viewBox="-12 -12 24 24" stroke="currentColor" stroke-linecap="round" stroke-width="2">
-    <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(-2.5, -2.5)" />
+    <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(-2.75, -2.75)" />
     <line x1="-8" y1="8" x2="8" y2="-8" />
-    <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(2.5, 2.5)" />
+    <line x1="-8" y1="8" x2="8" y2="-8" transform="translate(2.75, 2.75)" />
+  </symbol>
+
+  <symbol id="bond_dots_1" viewBox="-12 -12 24 24" fill="currentColor" stroke-width="0">
+    <circle cx="-4" cy="0" r="3" />
+    <circle cx="4" cy="0" r="3" />
+  </symbol>
+
+  <symbol id="bond_dots_2" viewBox="-12 -12 24 24" fill="currentColor" stroke-width="0">
+    <circle cx="-4" cy="4" r="3" />
+    <circle cx="4" cy="4" r="3" />
+    <circle cx="-4" cy="-4" r="3" />
+    <circle cx="4" cy="-4" r="3" />
+  </symbol>
+
+  <symbol id="bond_dots_3" viewBox="-12 -12 24 24" fill="currentColor" stroke-width="0">
+    <circle cx="-4" cy="7" r="3" />
+    <circle cx="4" cy="7" r="3" />
+    <circle cx="-4" cy="0" r="3" />
+    <circle cx="4" cy="0" r="3" />
+    <circle cx="-4" cy="-7" r="3" />
+    <circle cx="4" cy="-7" r="3" />
+  </symbol>
+
+  <symbol id="atom_electrons" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+    <circle cx="0" cy="0" r="3" />
+    <circle cx="0" cy="0" r="2" transform="rotate(-90) translate(0, -9)" />
+    <circle cx="0" cy="0" r="2" transform="rotate(-20) translate(0, -9)" />
+    <circle cx="0" cy="0" r="2" transform="rotate(50) translate(0, -9)" />
+    <circle cx="0" cy="0" r="2" transform="rotate(150) translate(0, -9)" />
+    <line x1="0" y1="0" x2="0" y2="-9" transform="rotate(-90)" />
+    <line x1="0" y1="0" x2="0" y2="-9" transform="rotate(-20)" />
+    <line x1="0" y1="0" x2="0" y2="-9" transform="rotate(50)" />
+    <line x1="0" y1="0" x2="0" y2="-9" transform="rotate(150)" />
+  </symbol>
+
+  <symbol id="electrons_0" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      0
+    </text>
+  </symbol>
+
+  <symbol id="electrons_1" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      1
+    </text>
+    <circle cx="0" cy="-10" r="2" />
+  </symbol>
+
+  <symbol id="electrons_2" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      2
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+  </symbol>
+
+  <symbol id="electrons_3" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      3
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <circle cx="10" cy="0" r="2" />
+  </symbol>
+
+  <symbol id="electrons_4" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      4
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <line x1="10" x2="10" y1="-5" y2="5" stroke-width="2" />
+  </symbol>
+
+  <symbol id="electrons_5" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      5
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <line x1="10" x2="10" y1="-5" y2="5" stroke-width="2" />
+    <circle cx="0" cy="10" r="2" />
+  </symbol>
+
+  <symbol id="electrons_6" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      6
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <line x1="10" x2="10" y1="-5" y2="5" stroke-width="2" />
+    <line x1="-5" x2="5" y1="10" y2="10" stroke-width="2" />
+  </symbol>
+
+  <symbol id="electrons_7" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      7
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <line x1="10" x2="10" y1="-5" y2="5" stroke-width="2" />
+    <line x1="-5" x2="5" y1="10" y2="10" stroke-width="2" />
+    <circle cx="-10" cy="0" r="2" />
+  </symbol>
+
+  <symbol id="electrons_8" viewBox="-12 -12 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">
+    <text font-size="14" stroke-width="1" dominant-baseline="central" text-anchor="middle" font-family="sans-serif">
+      8
+    </text>
+    <line x1="-5" x2="5" y1="-10" y2="-10" stroke-width="2" />
+    <line x1="10" x2="10" y1="-5" y2="5" stroke-width="2" />
+    <line x1="-5" x2="5" y1="10" y2="10" stroke-width="2" />
+    <line x1="-10" x2="-10" y1="-5" y2="5" stroke-width="2" />
   </symbol>
 
   <!-- Try out icons here -->
-  <use href="#bond_line_3" x="0" y="0" color="black" />
+
+  <use href="#atom_electrons" x="0" y="0" color="black" />
 </svg>

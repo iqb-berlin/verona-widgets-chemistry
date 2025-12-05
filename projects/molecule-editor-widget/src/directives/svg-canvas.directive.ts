@@ -1,7 +1,8 @@
 import { Directive, effect, ElementRef, inject, input, signal } from '@angular/core';
 import { moleculeCanvasTransformPosition } from '../services/molecule-editor.event';
 import { MoleculeEditorService } from '../services/molecule-editor.service';
-import { Vector2 } from '../services/molecule-editor.model';
+import { MoleculeEditorImageService } from '../services/molecule-editor-image.service';
+import type { Vector2 } from '../services/molecule-editor.model';
 
 @Directive({ selector: '[appSvgCanvas]' })
 export class SvgCanvasDirective {
@@ -11,10 +12,11 @@ export class SvgCanvasDirective {
   protected readonly viewBoxSize = signal<undefined | Vector2>(undefined);
 
   protected readonly svgElementRef: ElementRef<SVGSVGElement> = inject(ElementRef);
-  protected readonly service = inject(MoleculeEditorService);
+  protected readonly editorService = inject(MoleculeEditorService);
+  protected readonly imageService = inject(MoleculeEditorImageService);
 
   private readonly resizeObserver = new ResizeObserver((entries) => {
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       const { width, height } = entry.contentRect;
       this.viewBoxSize.set([width, height]);
     });
@@ -28,7 +30,7 @@ export class SvgCanvasDirective {
       onCleanup(() => this.resizeObserver.disconnect());
     });
 
-    // Render view-box attribute based on size * scale
+    // Set viewBox attribute based on size * scale
     effect(() => {
       const scale = this.viewBoxScale();
       const size = this.viewBoxSize();
@@ -43,27 +45,19 @@ export class SvgCanvasDirective {
       }
     });
 
-    this.service.registerCanvasTransform(moleculeCanvasTransformPosition((event) => {
-      const { x, y } = event instanceof PointerEvent ? this.pointerToSvgPoint(event) : this.touchToSvgPoint(event);
-      return [x, y] as const;
-    }));
+    this.editorService.registerCanvasTransform(
+      moleculeCanvasTransformPosition((event) => {
+        const { x, y } = this.pointerToSvgPoint(event);
+        return [x, y] as const;
+      }),
+    );
   }
 
   private pointerToSvgPoint(event: PointerEvent): SVGPoint {
-    return this.clientToSvgPoint(event);
-  }
-
-  private touchToSvgPoint(event: TouchEvent): SVGPoint {
-    const firstTouch = event.touches.item(0);
-    return this.clientToSvgPoint(firstTouch);
-  }
-
-  private clientToSvgPoint(client: null | { clientX: number, clientY: number }): SVGPoint {
     const svgElement = this.svgElementRef.nativeElement;
     const clientPoint = svgElement.createSVGPoint();
-    if (!client) return clientPoint;
-    clientPoint.x = client.clientX;
-    clientPoint.y = client.clientY;
+    clientPoint.x = event.clientX;
+    clientPoint.y = event.clientY;
 
     const svgTransform = svgElement.getScreenCTM()!;
     return clientPoint.matrixTransform(svgTransform.inverse());

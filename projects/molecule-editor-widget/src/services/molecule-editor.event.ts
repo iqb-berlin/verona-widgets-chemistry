@@ -1,7 +1,7 @@
 import type { Vector2 } from './molecule-editor.model';
 
 export interface MoleculeCanvasTransform {
-  (event: PointerEvent | TouchEvent): MoleculeCanvasEvent;
+  (event: PointerEvent): MoleculeCanvasEvent;
 }
 
 export interface MoleculeCanvasEvent {
@@ -10,7 +10,7 @@ export interface MoleculeCanvasEvent {
 }
 
 interface TransformPosition {
-  (event: PointerEvent | TouchEvent): Vector2;
+  (event: PointerEvent): Vector2;
 }
 
 export function moleculeCanvasTransformPosition(transformPosition: TransformPosition): MoleculeCanvasTransform {
@@ -18,7 +18,6 @@ export function moleculeCanvasTransformPosition(transformPosition: TransformPosi
     const position = transformPosition(pointerEvent);
     switch (pointerEvent.type) {
       case 'pointermove':
-      case 'touchmove':
       case 'mousemove':
         return { event: 'move', position };
       case 'pointerdown':

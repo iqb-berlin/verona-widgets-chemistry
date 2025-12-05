@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { PsLocale } from 'periodic-system-common';
@@ -8,9 +8,7 @@ import {
   ShowcaseVeronaWidgetService,
 } from '../service/showcase-verona-widget.service';
 import { ShowcaseVeronaWidgetDirective } from '../service/showcase-verona-widget.directive';
-import {
-  MoleculeEditor,
-} from '../../../molecule-editor-widget/src/components/molecule-editor/molecule-editor.component';
+import { MoleculeEditor } from '../../../molecule-editor-widget/src/components/molecule-editor/molecule-editor.component';
 import {
   MoleculeEditorBondingType,
   MoleculeEditorParam,
@@ -31,7 +29,7 @@ import { FormsModule } from '@angular/forms';
         [MoleculeEditorParam.language]: PsLocale.German,
       },
       initSharedParameters: {
-        [MoleculeEditorSharedParam.bondingType]: MoleculeEditorBondingType.electrons,
+        [MoleculeEditorSharedParam.bondingType]: MoleculeEditorBondingType.valence,
       },
     }),
   ],
@@ -43,7 +41,26 @@ export class MoleculeEditorPage {
   readonly language = this.config.parameterSignal(MoleculeEditorParam.language, typeCastParam());
   readonly bondingType = this.config.sharedParameterSignal(MoleculeEditorSharedParam.bondingType, typeCastParam());
 
-  readonly stateData = this.service.stateData();
+  readonly stateData = this.service.stateData;
+  readonly parsedStateData = computed(() => {
+    try {
+      const data = this.stateData();
+      return data ? JSON.parse(data) : undefined;
+    } catch (error) {
+      return error;
+    }
+  });
+  readonly prettyStateData = computed(() => {
+    const data = this.parsedStateData();
+    if (data === undefined) return undefined;
+    else if (data instanceof Error) return `ERROR: ${data.message}`;
+    else return JSON.stringify(data, null, 2);
+  });
+  readonly stateDataImageUrl = computed(() => {
+    const data = this.parsedStateData();
+    if (data === undefined || data instanceof Error) return undefined;
+    else return data.asImage || undefined;
+  });
 
   protected readonly BondingTypeValence = MoleculeEditorBondingType.valence;
   protected readonly BondingTypeElectrons = MoleculeEditorBondingType.electrons;

@@ -19,12 +19,14 @@ export class PsTable {
   readonly service = inject(PsService);
 
   protected readonly elements = PsElements;
-  protected readonly elementByNumber = new Map(this.elements.map(e => [e.number, e] as const));
+  protected readonly elementByNumber = new Map(this.elements.map((e) => [e.number, e] as const));
 
   protected readonly periodNumbers = [1, 2, 3, 4, 5, 6, 7] as const;
   protected readonly groupNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
 
-  readonly highlightRef: ContentChildTemplateRef<PsTableHighlightContext> = contentChild(PsTableHighlightDirective, { read: TemplateRef });
+  readonly highlightRef: ContentChildTemplateRef<PsTableHighlightContext> = contentChild(PsTableHighlightDirective, {
+    read: TemplateRef,
+  });
   readonly interactionsRef: ContentChildTemplateRef = contentChild(PsTableInteractionsDirective, { read: TemplateRef });
   readonly notificationRef: ContentChildTemplateRef = contentChild(PsTableNotificationDirective, { read: TemplateRef });
 

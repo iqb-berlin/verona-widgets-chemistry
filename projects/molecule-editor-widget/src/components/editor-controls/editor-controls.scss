@@ -9,6 +9,11 @@
   z-index: 100;
 }
 
+.deactivated {
+  opacity: 50%;
+  pointer-events: none !important;
+}
+
 .top-container {
   position: absolute;
   inset: 0 0 auto 0;
@@ -27,6 +32,12 @@
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: center;
+}
+
+.save-container {
+  position: absolute;
+  inset: auto 0 0 auto;
+  pointer-events: auto;
 }
 
 .toolbar {
@@ -60,7 +71,7 @@
     .divider {
       width: 2rem;
       height: 1px;
-      margin: 0.75rem 0;
+      margin: 0.25rem 0;
     }
   }
 

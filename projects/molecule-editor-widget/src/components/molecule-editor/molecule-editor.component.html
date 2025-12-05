@@ -14,8 +14,20 @@
   </mat-drawer>
 
   <!-- Canvas and Menu UI -->
+  @let loading = isLoadingSubmit();
   <main>
-    <app-editor-canvas />
-    <app-editor-controls />
+    <app-editor-canvas [class.block-pointer-events]="loading" />
+    <app-editor-controls [deactivateControls]="loading">
+      <ng-template #save>
+        @if (loading) {
+          <mat-spinner [diameter]="50" />
+        } @else {
+          <button class="save-button" matButton="filled" [disabled]="isModelEmpty()" (click)="handleSubmitModel()">
+            <mat-icon>check</mat-icon>
+            Speichern
+          </button>
+        }
+      </ng-template>
+    </app-editor-controls>
   </main>
 </mat-drawer-container>

@@ -48,11 +48,7 @@
   }
 
   @for (element of elements; track element.number) {
-    <section
-      class="ps-element"
-      [class]="elementClassNames(element)"
-      [attr.aria-label]="element.symbol"
-    >
+    <section class="ps-element" [class]="elementClassNames(element)" [attr.aria-label]="element.symbol">
       <lib-ps-table-element [element]="element" />
     </section>
   }

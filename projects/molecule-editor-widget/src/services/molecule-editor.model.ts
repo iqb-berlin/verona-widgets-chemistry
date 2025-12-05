@@ -1,68 +1,87 @@
-import { Nominal, PsElement } from 'periodic-system-common';
+import { Nominal, PsElementNumber } from 'periodic-system-common';
 import { produce } from 'immer';
 
+// --- Model data-structs ---
+
+/** Vector in 2D Euclidean space */
 export type Vector2 = readonly [x: number, y: number];
 
+/** Single, double, or triple bonds */
 export type BondMultiplicity = 1 | 2 | 3;
 
+/** Tools available in the editor */
 export type ToolMode =
   | { readonly mode: 'pointer' }
   | { readonly mode: 'duplicate' }
-  | { readonly mode: 'bonding', readonly multiplicity: BondMultiplicity }
-  ;
+  | { readonly mode: 'groupMove' }
+  | { readonly mode: 'bonding'; readonly multiplicity: BondMultiplicity };
 
+/** Possible active states of the editor */
 export type EditorState =
-  | { readonly state: 'idle' }
-  | { readonly state: 'selected', readonly id: ItemId }
-  | { readonly state: 'addingAtom', readonly element: PsElement, readonly hoverPos: Vector2 }
-  | { readonly state: 'preMoveAtom', readonly id: AtomId }
-  | { readonly state: 'movingAtom', readonly id: AtomId, readonly targetPos: Vector2 }
   | {
-  readonly state: 'addingBond',
-  readonly startId: AtomId,
-  readonly multi: BondMultiplicity,
-  readonly hoverPos: Vector2
+  readonly state: 'idle';
 }
-  ;
+  | {
+  readonly state: 'selected';
+  readonly itemId: ItemId;
+}
+  | {
+  readonly state: 'addingAtom';
+  readonly elementNr: PsElementNumber;
+  readonly hoverPos: Vector2;
+}
+  | {
+  readonly state: 'preMoveAtom';
+  readonly atomId: AtomId;
+}
+  | {
+  readonly state: 'movingAtom';
+  readonly atomId: AtomId;
+  readonly targetPos: Vector2;
+}
+  | {
+  readonly state: 'addingBond';
+  readonly startId: AtomId;
+  readonly hoverPos: Vector2;
+  readonly multiplicity: BondMultiplicity;
+}
+  | {
+  readonly state: 'movingGroup';
+  readonly startPos: Vector2;
+  readonly targetPos: Vector2;
+  readonly groupItemIds: ReadonlyArray<ItemId>;
+};
 
-declare const itemType: unique symbol;
-
+/** Union literal of known item types */
 export type ItemType = 'Atom' | 'Bond';
 
-export type ItemId = Nominal<string, 'ItemId'>
+/** Nominal identifier type of model items */
+export type ItemId = Nominal<string, 'ItemId'>;
 
-type ItemIdSubtype<T extends ItemType> = ItemId & { [itemType]: T }
+/** Declared marker symbol for ItemId subtype branding */
+declare const itemType: unique symbol;
 
-export type AtomId = ItemIdSubtype<'Atom'>
-export type BondId = ItemIdSubtype<'Bond'>
+type ItemIdSubtype<T extends ItemType> = ItemId & { [itemType]: T };
 
-export namespace ItemId {
-  export const tmpAddAtom = 'tmp:addAtom' as AtomId;
-  export const tmpMoveAtom = 'tmp:moveAtom' as AtomId;
-  export const tmpAddBond = 'tmp:addBond' as BondId;
-}
+export type AtomId = ItemIdSubtype<'Atom'>;
+export type BondId = ItemIdSubtype<'Bond'>;
 
-export function uniqueItemId<T extends ItemType>(): ItemIdSubtype<T> {
-  const randomValue = Math.random().toString(36);
-  const randomItemId = randomValue.replace('0.', 'item:');
-  return randomItemId as ItemIdSubtype<T>;
-}
+type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;
 
-type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>
-
+/** Core model representing content of the molecule-editor */
 export interface MoleculeEditorModel {
   readonly atoms: ReadonlyRecord<ItemId, AtomModel>;
   readonly bonds: ReadonlyRecord<ItemId, BondModel>;
 }
 
-export interface ModelBase<T extends ItemType> {
+interface ModelBase<T extends ItemType> {
   readonly type: T;
   readonly itemId: ItemIdSubtype<T>;
 }
 
 export interface AtomModel extends ModelBase<'Atom'> {
   readonly position: Vector2;
-  readonly element: PsElement;
+  readonly elementNr: PsElementNumber;
   readonly electrons: number;
 }
 
@@ -70,6 +89,36 @@ export interface BondModel extends ModelBase<'Bond'> {
   readonly leftAtomId: AtomId;
   readonly rightAtomId: AtomId;
   readonly multiplicity: BondMultiplicity;
+}
+
+/** Indexed graph of connections within the model, used internally for operations that require item relations */
+export interface MoleculeEditorGraph {
+  readonly model: MoleculeEditorModel;
+  readonly itemIndex: ReadonlyMap<ItemId, AtomModel | BondModel>;
+  readonly atomBonds: ReadonlyMap<AtomModel, ReadonlyArray<BondModel>>;
+  readonly bondAtoms: ReadonlyMap<BondModel, readonly [left: AtomModel, right: AtomModel]>;
+}
+
+// --- Model functions ---
+
+export namespace ItemId {
+  /** Item IDs ""item:..." are generated from random numbers */
+  export function generate<T extends ItemType>(): ItemIdSubtype<T> {
+    const randomValue = Math.random().toString(36);
+    const randomItemId = randomValue.replace('0.', 'item:');
+    return randomItemId as ItemIdSubtype<T>;
+  }
+
+  export const tmpAddAtom = 'tmp:addAtom' as AtomId;
+  export const tmpAddBond = 'tmp:addBond' as BondId;
+
+  export function tmpMoveAtom(atomId: AtomId): AtomId {
+    return `tmp:moveAtom:${atomId}` as AtomId;
+  }
+
+  export function tmpMoveBond(bondId: BondId): BondId {
+    return `tmp:moveBond:${bondId}` as BondId;
+  }
 }
 
 export namespace Vector2 {
@@ -81,32 +130,53 @@ export namespace Vector2 {
     return [ax - bx, ay - by] as const;
   }
 
-  export function mul([x, y]: Vector2, s: number): Vector2 {
+  export function middle([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
+    return [(ax + bx) / 2, (ay + by) / 2];
+  }
+
+  export function scale(s: number, [x, y]: Vector2): Vector2 {
     return [x * s, y * s] as const;
   }
 
   export function neg([x, y]: Vector2): Vector2 {
     return [-x, -y] as const;
   }
+
+  export function flipY([x, y]: Vector2): Vector2 {
+    return [x, -y] as const;
+  }
+
+  export function flipX([x, y]: Vector2): Vector2 {
+    return [-x, y] as const;
+  }
+
+  export function magnitude([x, y]: Vector2): number {
+    return Math.sqrt(x * x + y * y);
+  }
+
+  export function normalize(v: Vector2): Vector2 {
+    const l = Vector2.magnitude(v);
+    return [v[0] / l, v[1] / l] as const;
+  }
 }
 
 export namespace MoleculeEditorModel {
+  // Helper function to create a temporary mutable copy of a Vector2 tuple, for usage in immer recipes
   const v2 = ([x, y]: Vector2): [number, number] => [x, y];
 
-  export const empty: MoleculeEditorModel = {
-    atoms: {},
-    bonds: {},
-  } as const;
+  export const empty: MoleculeEditorModel = { atoms: {}, bonds: {} } as const;
 
-  export const addAtom = produce<MoleculeEditorModel, [AtomId, PsElement, Vector2]>((model, atomId, element, position) => {
-    model.atoms[atomId] = {
-      type: 'Atom',
-      itemId: atomId,
-      element,
-      position: v2(position),
-      electrons: 0,
-    } satisfies AtomModel;
-  });
+  export const addAtom = produce<MoleculeEditorModel, [AtomId, PsElementNumber, Vector2]>(
+    (model, atomId, elementNr, position) => {
+      model.atoms[atomId] = {
+        type: 'Atom',
+        itemId: atomId,
+        elementNr,
+        position: v2(position),
+        electrons: 0,
+      } satisfies AtomModel;
+    },
+  );
 
   export const moveAtom = produce<MoleculeEditorModel, [AtomId, Vector2]>((model, atomId, position) => {
     const atom = model.atoms[atomId];
@@ -138,13 +208,14 @@ export namespace MoleculeEditorModel {
     },
   );
 
-  export const setBondMultiplicity = produce<MoleculeEditorModel, [ItemId, BondMultiplicity]>((model, bondId, multiplicity) => {
-    const bond = model.bonds[bondId];
-    if (bond) {
-      bond.multiplicity = multiplicity;
-    }
-  });
-
+  export const setBondMultiplicity = produce<MoleculeEditorModel, [ItemId, BondMultiplicity]>(
+    (model, bondId, multiplicity) => {
+      const bond = model.bonds[bondId];
+      if (bond) {
+        bond.multiplicity = multiplicity;
+      }
+    },
+  );
 
   export const ATOM_MIN_ELECTRONS = 0;
   export const ATOM_MAX_ELECTRONS = 8;
@@ -187,41 +258,137 @@ export namespace MoleculeEditorModel {
       }
     }
   });
+
+  export const moveGroup = produce<MoleculeEditorModel, [Vector2, ReadonlyArray<ItemId>]>(
+    (model, moveDelta, groupItemIds) => {
+      for (const itemId of groupItemIds) {
+        const atom = model.atoms[itemId];
+        if (atom) {
+          atom.position[0] += moveDelta[0];
+          atom.position[1] += moveDelta[1];
+        }
+      }
+    },
+  );
+}
+
+export namespace ToolMode {
+  export const pointer = { mode: 'pointer' } as const satisfies ToolMode;
+  export const duplicate = { mode: 'duplicate' } as const satisfies ToolMode;
+  export const groupMove = { mode: 'groupMove' } as const satisfies ToolMode;
+  export const bonding = (multiplicity: BondMultiplicity) => {
+    return { mode: 'bonding', multiplicity } as const satisfies ToolMode;
+  };
 }
 
 export namespace EditorState {
   export const idle = { state: 'idle' } as const satisfies EditorState;
 
-  export function select(id: ItemId) {
-    return { state: 'selected', id } as const satisfies EditorState;
+  export function select(itemId: ItemId) {
+    return { state: 'selected', itemId } as const satisfies EditorState;
   }
 
-  export function addAtom(element: PsElement, hoverPosition: Vector2) {
-    return { state: 'addingAtom', element, hoverPos: hoverPosition } as const satisfies EditorState;
+  export function addAtom(elementNr: PsElementNumber, hoverPosition: Vector2) {
+    return { state: 'addingAtom', elementNr, hoverPos: hoverPosition } as const satisfies EditorState;
   }
 
-  export function prepareMoveAtom(id: AtomId) {
-    return { state: 'preMoveAtom', id } as const satisfies EditorState;
+  export function prepareMoveAtom(atomId: AtomId) {
+    return { state: 'preMoveAtom', atomId } as const satisfies EditorState;
   }
 
-  export function moveAtom(id: AtomId, targetPosition: Vector2) {
-    return { state: 'movingAtom', id, targetPos: targetPosition } as const satisfies EditorState;
+  export function moveAtom(atomId: AtomId, targetPosition: Vector2) {
+    return { state: 'movingAtom', atomId, targetPos: targetPosition } as const satisfies EditorState;
   }
 
-  export function addBond(startId: AtomId, multiplicity: BondMultiplicity, hoverPosition: Vector2) {
+  export function groupMove(startPos: Vector2, groupItemIds: ReadonlyArray<ItemId>) {
+    return { state: 'movingGroup', startPos, targetPos: startPos, groupItemIds } as const satisfies EditorState;
+  }
+
+  export function addBond(startId: AtomId, multiplicity: BondMultiplicity, hoverPos: Vector2) {
     return {
       state: 'addingBond',
       startId,
-      multi: multiplicity,
-      hoverPos: hoverPosition,
+      multiplicity,
+      hoverPos,
     } as const satisfies EditorState;
   }
 
-  export function isMovingAtom(state: EditorState, atomId: ItemId): state is (EditorState & { state: 'movingAtom' }) {
-    return state.state === 'movingAtom' && state.id === atomId;
+  type EditorSubstate<S extends EditorState['state']> = EditorState & { state: S };
+
+  export function isMovingAtom(state: EditorState, atomId: ItemId): state is EditorSubstate<'movingAtom' | 'movingGroup'> {
+    return (state.state === 'movingAtom' && state.atomId === atomId)
+      || (state.state === 'movingGroup' && state.groupItemIds.includes(atomId));
   }
 
-  export function isItemSelected(state: EditorState, atomId: ItemId): state is (EditorState & { state: 'selected' }) {
-    return state.state === 'selected' && state.id === atomId;
+  export function isItemSelected(state: EditorState, atomId: ItemId): state is EditorSubstate<'selected'> {
+    return state.state === 'selected' && state.itemId === atomId;
+  }
+
+  export function isItemTargeted(state: EditorState, itemId: ItemId): state is EditorSubstate<'addingBond'> {
+    return state.state === 'addingBond' && state.startId === itemId;
+  }
+}
+
+export namespace MoleculeEditorGraph {
+  export function createFrom(model: MoleculeEditorModel): MoleculeEditorGraph {
+    const itemIndex = new Map<ItemId, AtomModel | BondModel>;
+    const atomBonds = new Map<AtomModel, Array<BondModel>>;
+    const bondAtoms = new Map<BondModel, [AtomModel, AtomModel]>;
+
+    for (const atomKey in model.atoms) {
+      const atomId = atomKey as AtomId;
+      const atomModel = model.atoms[atomId];
+      itemIndex.set(atomId, atomModel);
+      atomBonds.set(atomModel, []);
+    }
+
+    for (const bondKey in model.bonds) {
+      const bondId = bondKey as BondId;
+      const bondModel = model.bonds[bondId];
+      const { leftAtomId, rightAtomId } = bondModel;
+      const { [leftAtomId]: leftAtomModel, [rightAtomId]: rightAtomModel } = model.atoms;
+
+      itemIndex.set(bondId, bondModel);
+      atomBonds.get(leftAtomModel)?.push(bondModel);
+      atomBonds.get(rightAtomModel)?.push(bondModel);
+      bondAtoms.set(bondModel, [leftAtomModel, rightAtomModel]);
+    }
+
+    return { model, itemIndex, atomBonds, bondAtoms } as const;
+  }
+
+  export function findGroup(graph: MoleculeEditorGraph, pivotItemId: ItemId): Array<ItemId> {
+    const pivotItem = graph.itemIndex.get(pivotItemId);
+    if (pivotItem === undefined) {
+      return [];
+    } else switch (pivotItem.type) {
+      case 'Atom':
+        return findAtomRelationsRecursive(graph, pivotItem, new Set());
+      case 'Bond':
+        return [];
+      default:
+        console.error('Unknown pivot item: ', pivotItem satisfies never);
+        return [];
+    }
+  }
+
+  function findAtomRelationsRecursive(graph: MoleculeEditorGraph, atom: AtomModel, visited: Set<ItemId>): Array<ItemId> {
+    if (visited.has(atom.itemId)) return [];
+    else visited.add(atom.itemId);
+
+    const bonds = graph.atomBonds.get(atom) ?? [];
+    const relations = bonds.flatMap(bond => findBondRelationsRecursive(graph, bond, visited));
+    relations.push(atom.itemId);
+    return relations;
+  }
+
+  function findBondRelationsRecursive(graph: MoleculeEditorGraph, bond: BondModel, visited: Set<ItemId>): Array<ItemId> {
+    if (visited.has(bond.itemId)) return [];
+    else visited.add(bond.itemId);
+
+    const atoms = graph.bondAtoms.get(bond) ?? [];
+    const relations = atoms.flatMap(atom => findAtomRelationsRecursive(graph, atom, visited));
+    relations.push(bond.itemId);
+    return relations;
   }
 }

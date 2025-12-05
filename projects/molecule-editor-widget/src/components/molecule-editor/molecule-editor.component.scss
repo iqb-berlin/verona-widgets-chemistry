@@ -28,3 +28,16 @@ main {
   --mat-button-filled-container-color: black;
   --mat-button-filled-label-text-color: white;
 }
+
+.block-pointer-events {
+  pointer-events: none !important;
+}
+
+.hide-controls {
+  opacity: 0 !important;
+}
+
+.save-button {
+  --mat-button-filled-container-color: black;
+  --mat-button-filled-label-text-color: white;
+}

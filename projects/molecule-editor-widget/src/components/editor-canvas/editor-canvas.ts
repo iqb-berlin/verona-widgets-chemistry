@@ -9,14 +9,7 @@ import { SvgBondView } from './svg-bond-view/svg-bond-view';
   selector: 'app-editor-canvas',
   templateUrl: './editor-canvas.html',
   styleUrl: './editor-canvas.scss',
-  providers: [
-    MoleculeEditorRenderer,
-  ],
-  imports: [
-    SvgCanvasDirective,
-    SvgAtomView,
-    SvgBondView,
-  ],
+  imports: [SvgCanvasDirective, SvgAtomView, SvgBondView],
 })
 export class EditorCanvas {
   readonly service = inject(MoleculeEditorService);
@@ -26,7 +19,8 @@ export class EditorCanvas {
   readonly canvasScale = signal(1.0);
 
   readonly canvasCursor = computed(() => {
-    const state = this.service.state();
+    const state = this.service.editorState();
+
     if (state.state === 'addingAtom') return 'pointer';
     if (state.state === 'movingAtom') return 'grabbing';
     if (state.state === 'addingBond') return 'no-drop';
@@ -36,25 +30,41 @@ export class EditorCanvas {
   });
 
   readonly atomHandleCursor = computed(() => {
-    const state = this.service.state();
+    const state = this.service.editorState();
     const toolMode = this.service.toolMode();
 
     // state cursors
-    if (state.state === 'addingAtom') return 'pointer';
-    if (state.state === 'preMoveAtom') return 'pointer';
-    if (state.state === 'movingAtom') return 'grabbing';
+    switch (state.state) {
+      case 'addingAtom':
+        return 'pointer';
+      case 'preMoveAtom':
+        return 'pointer';
+      case 'movingAtom':
+        return 'grabbing';
+      case 'movingGroup':
+        return 'move';
+      case 'idle':
+      case 'selected':
+      case 'addingBond':
+        break;
+      default:
+        void (state satisfies never);
+    }
 
     // tool cursors
     switch (toolMode.mode) {
       case 'pointer':
-        return 'grab';
+        return 'pointer';
+      case 'groupMove':
+        return 'move';
       case 'duplicate':
         return 'copy';
       case 'bonding':
         return 'crosshair';
       default:
         void (toolMode satisfies never);
-        return undefined;
     }
+
+    return undefined;
   });
 }

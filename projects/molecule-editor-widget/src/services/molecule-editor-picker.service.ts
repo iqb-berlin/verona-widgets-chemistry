@@ -61,6 +61,6 @@ export class MoleculeEditorPickerService implements PsService, PsInteraction {
   }
 }
 
-function flagAsBool(flag: string): boolean {
-  return flag === 'true' || flag === '1';
+function flagAsBool(flag: unknown): boolean {
+  return flag === 'true' || flag === '1' || flag === true || flag === 1;
 }

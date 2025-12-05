@@ -8,9 +8,9 @@ export const boolParam = {
   write: (value: boolean) => (value ? 'true' : 'false'),
 } as const;
 
-export const typeCastParam = <T>() => ({
-  read: (value: string) => value as T,
-  write: (value: T) => value as any,
-} as const);
-
-
+export const typeCastParam = <T>() => {
+  return {
+    read: (value: string) => value as T,
+    write: (value: T) => value as any,
+  } as const;
+};

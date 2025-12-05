@@ -6,9 +6,10 @@
     class="atom-handle"
     [class.selected]="atom.selected"
     [class.temporary]="atom.temporary"
-    r="20"
+    [class.targeted]="atom.targeted"
     [attr.cx]="centerX"
     [attr.cy]="centerY"
+    [attr.r]="20"
     (pointermove)="service.handleAtomEvent(atom.itemId, $event)"
     (pointerdown)="service.handleAtomEvent(atom.itemId, $event)"
     (pointerup)="service.handleAtomEvent(atom.itemId, $event)"
@@ -19,22 +20,35 @@
     class="atom-symbol"
     [class.selected]="atom.selected"
     [class.temporary]="atom.temporary"
+    [class.targeted]="atom.targeted"
     [attr.x]="centerX"
     [attr.y]="centerY"
   >
     {{ atom.element.symbol }}
   </svg:text>
 
-  @for (angle of outerElectronAngles(); track angle) {
-    @let offset = Vector2.mul(anglePosition(angle), 24);
-    @let position = Vector2.add(atom.position, offset);
-    @let x = position[0];
-    @let y = position[1];
-    @if (outerElectronsPositive()) {
-      <svg:line class="atom-positive" [attr.x1]="x - 4" [attr.x2]="x + 4" [attr.y1]="y" [attr.y2]="y"></svg:line>
-      <svg:line class="atom-positive" [attr.x1]="x" [attr.x2]="x" [attr.y1]="y - 4" [attr.y2]="y + 4"></svg:line>
-    } @else {
-      <svg:circle class="atom-electron" r="4" [attr.cx]="x" [attr.cy]="y"></svg:circle>
+  @for (electron of atom.electrons; track $index) {
+    @switch (electron.type) {
+      @case (1) {
+        @let coords = singleElectronCoordinates(electron.orientation, 28);
+        <svg:circle
+          class="atom-electron"
+          [attr.cx]="coords.x"
+          [attr.cy]="coords.y"
+          r="4"
+        ></svg:circle>
+      }
+      @case (2) {
+        @let coords = doubleElectronCoordinates(electron.orientation, 28, 12);
+        <svg:line
+          class="atom-electron"
+          [attr.x1]="coords.x1"
+          [attr.y1]="coords.y1"
+          [attr.x2]="coords.x2"
+          [attr.y2]="coords.y2"
+          stroke-width="3.5"
+        ></svg:line>
+      }
     }
   }
 </ng-container>

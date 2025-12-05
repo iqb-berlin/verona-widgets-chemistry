@@ -1,0 +1,22 @@
+.state-data {
+  border: 1px solid grey;
+  padding: 2px;
+
+  width: 20rem;
+  max-width: 20rem;
+
+  height: 10rem;
+  max-height: 10rem;
+
+  align-self: stretch;
+  overflow-y: scroll;
+  white-space: pre-wrap;
+}
+
+.result-image {
+  border: 1px solid grey;
+
+  img {
+    max-height: 20rem;
+  }
+}

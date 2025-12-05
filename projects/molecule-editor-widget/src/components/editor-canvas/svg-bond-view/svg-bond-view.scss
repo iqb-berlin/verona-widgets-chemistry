@@ -1,3 +1,12 @@
+.clickable {
+  stroke: transparent;
+  stroke-width: 20;
+
+  &:hover {
+    stroke: var(--mat-sys-surface-dim);
+  }
+}
+
 .bond-line {
   pointer-events: none;
 
@@ -9,16 +18,25 @@
   }
 
   &.selected {
+    filter: brightness(150%);
     stroke: var(--mat-sys-primary);
-    stroke-width: 4;
+    stroke-width: 3;
   }
 }
 
-.clickable-bond-line {
-  stroke: transparent;
-  stroke-width: 20;
+.bond-dot {
+  pointer-events: none;
 
-  &:hover {
-    stroke: var(--mat-sys-surface-dim);
+  fill: var(--mat-sys-on-surface);
+  stroke-width: 0;
+
+  &.temporary {
+    opacity: 50%;
+  }
+
+  &.selected {
+    r: 5px;
+    filter: brightness(150%);
+    fill: var(--mat-sys-primary);
   }
 }

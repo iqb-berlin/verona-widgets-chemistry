@@ -8,9 +8,8 @@ describe('EditorCanvas', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EditorCanvas]
-    })
-    .compileComponents();
+      imports: [EditorCanvas],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(EditorCanvas);
     component = fixture.componentInstance;

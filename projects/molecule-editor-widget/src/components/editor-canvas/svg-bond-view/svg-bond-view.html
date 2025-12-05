@@ -1,31 +1,53 @@
 @let bond = bondView();
 <ng-container xmlns:svg="http://www.w3.org/2000/svg">
-  @let clickableLeftX = bond.leftPosition[0];
-  @let clickableLeftY = bond.leftPosition[1];
-  @let clickableRightX = bond.rightPosition[0];
-  @let clickableRightY = bond.rightPosition[1];
-  <svg:line
-    class="clickable-bond-line"
-    [attr.x1]="clickableLeftX"
-    [attr.y1]="clickableLeftY"
-    [attr.x2]="clickableRightX"
-    [attr.y2]="clickableRightY"
-    (click)="service.handleBondEvent(bond.itemId, $event)"
-  ></svg:line>
-
-  @for (line of bondLinePositions(); track $index) {
-    @let leftX = line[0][0];
-    @let leftY = line[0][1];
-    @let rightX = line[1][0];
-    @let rightY = line[1][1];
+  @if (!bond.temporary) {
+    <!-- Invisible line behind visible bond, serves as a target for selection by clicking on it -->
+    @let clickableLeftX = bond.leftPosition[0];
+    @let clickableLeftY = bond.leftPosition[1];
+    @let clickableRightX = bond.rightPosition[0];
+    @let clickableRightY = bond.rightPosition[1];
     <svg:line
-      class="bond-line"
-      [class.selected]="bond.selected"
-      [class.temporary]="bond.temporary"
-      [attr.x1]="leftX"
-      [attr.y1]="leftY"
-      [attr.x2]="rightX"
-      [attr.y2]="rightY"
+      class="clickable"
+      [attr.x1]="clickableLeftX"
+      [attr.y1]="clickableLeftY"
+      [attr.x2]="clickableRightX"
+      [attr.y2]="clickableRightY"
+      (click)="service.handleBondEvent(bond.itemId, $event)"
     ></svg:line>
+  }
+
+  <!-- Visible bond: Either draw as a line ("valence") or as dots ("electrons") -->
+  @switch (bondingType()) {
+    @case (ValenceBondingType) {
+      @for (line of bondLinePositions(); track $index) {
+        @let leftX = line[0][0];
+        @let leftY = line[0][1];
+        @let rightX = line[1][0];
+        @let rightY = line[1][1];
+        <svg:line
+          class="bond-line"
+          [class.selected]="bond.selected"
+          [class.temporary]="bond.temporary"
+          [attr.x1]="leftX"
+          [attr.y1]="leftY"
+          [attr.x2]="rightX"
+          [attr.y2]="rightY"
+        ></svg:line>
+      }
+    }
+    @case (ElectronsBondingType) {
+      @for (dot of bondDotsPositions(); track $index) {
+        @let cx = dot[0];
+        @let cy = dot[1];
+        <svg:circle
+          class="bond-dot"
+          [class.selected]="bond.selected"
+          [class.temporary]="bond.temporary"
+          [attr.cx]="cx"
+          [attr.cy]="cy"
+          [attr.r]="4"
+        ></svg:circle>
+      }
+    }
   }
 </ng-container>

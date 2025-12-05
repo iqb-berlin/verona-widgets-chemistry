@@ -118,7 +118,7 @@ class PeriodicSystemSelectInteraction implements PsInteraction {
   readonly elementClickBlocked = computed(() => {
     const { multiSelect, maxSelectCount } = this.interactionConfig();
     const selectedElements = this.selectedElementList();
-    return multiSelect && (maxSelectCount > 0) && (selectedElements.length >= maxSelectCount);
+    return multiSelect && maxSelectCount > 0 && selectedElements.length >= maxSelectCount;
   });
 
   highlightElement(element: undefined | PsElement): void {
@@ -143,7 +143,7 @@ class PeriodicSystemSelectInteraction implements PsInteraction {
       // multi-select remove click
       this.selectedElementList.set(selected.filter((x) => x !== element.number));
       this.highlightedElement.set(undefined);
-    } else if ((maxSelectCount < 1) || (selected.length < maxSelectCount)) {
+    } else if (maxSelectCount < 1 || selected.length < maxSelectCount) {
       // multi-select add click (either no max select count, or still below max select count)
       this.selectedElementList.set(selected.concat(element.number));
       this.highlightedElement.set(element.number);
@@ -157,7 +157,7 @@ class PeriodicSystemSelectInteraction implements PsInteraction {
 
 function flagAsBool(flag: unknown): boolean {
   // Check for common "truthy" parameter values, including non-standard types; Everything else is considered false
-  return (flag === 'true') || (flag === '1') || (flag === true) || (flag === 1);
+  return flag === 'true' || flag === '1' || flag === true || flag === 1;
 }
 
 function flagAsInt(flag: string, defaultValue = 0): number {

@@ -34,7 +34,7 @@ export function historySignal<T>(initialValue: T, options: HistorySignalOptions<
 
   function commit(nextValue: T) {
     const appendedUndo = [...untracked(undoStack), untracked(currentValue)];
-    const limitedUndo = (appendedUndo.length > options.capacity) ? appendedUndo.slice(1) : appendedUndo;
+    const limitedUndo = appendedUndo.length > options.capacity ? appendedUndo.slice(1) : appendedUndo;
     undoStack.set(limitedUndo);
     redoStack.set([]);
     setCurrentValue(nextValue);

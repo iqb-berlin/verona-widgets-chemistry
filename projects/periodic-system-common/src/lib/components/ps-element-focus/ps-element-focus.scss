@@ -90,7 +90,10 @@
     transform: translateX(-100%);
   }
 
-  .number-label, .mass-label, .e-neg-label, .name-label {
+  .number-label,
+  .mass-label,
+  .e-neg-label,
+  .name-label {
     color: var(--mat-sys-outline);
     pointer-events: none;
   }

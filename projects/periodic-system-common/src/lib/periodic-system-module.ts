@@ -36,5 +36,4 @@ export { PsTableNotificationDirective };
     PsTableNotificationDirective,
   ],
 })
-export class PeriodicSystemModule {
-}
+export class PeriodicSystemModule {}

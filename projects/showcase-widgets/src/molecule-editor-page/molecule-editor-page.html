@@ -16,6 +16,14 @@
       </mat-select>
     </mat-form-field>
   </div>
+  <div class="spacer"></div>
+  <div class="result-image">
+    @let url = stateDataImageUrl();
+    @if (url) {
+      <img [src]="url" alt="Molecule editor image" />
+    }
+  </div>
+  <div class="state-data" [innerText]="prettyStateData()"></div>
 </div>
 
 <section class="widget" *showcaseVeronaWidget="['WIDGET_MOLECULE_EDITOR', 'molecule-editor']">

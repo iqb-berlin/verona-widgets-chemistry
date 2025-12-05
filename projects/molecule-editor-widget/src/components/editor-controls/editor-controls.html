@@ -1,39 +1,66 @@
 <!-- Top Toolbar -->
 <div class="top-container">
-  <div class="toolbar top">
+  <div class="toolbar top" [class.deactivated]="deactivateControls()">
+    @let atom = selectedAtom();
     @let noItemSelected = !isItemSelected();
-    <button matIconButton type="button" [disabled]="noItemSelected || decrementElectronDisabled()"
-            (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)">
+    <button
+      matIconButton
+      type="button"
+      [disabled]="noItemSelected || decrementElectronDisabled()"
+      (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)"
+    >
       <mat-icon>remove</mat-icon>
     </button>
-    <mat-icon fontSet="material-symbols">{{ selectedAtomElectronsIcon() }}</mat-icon>
-    <button matIconButton type="button" [disabled]="noItemSelected || incrementElectronDisabled()"
-            (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)">
+    <mat-icon [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'" />
+    <button
+      matIconButton
+      type="button"
+      [disabled]="noItemSelected || incrementElectronDisabled()"
+      (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)"
+    >
       <mat-icon>add</mat-icon>
     </button>
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" title="1" [class.active-tool]="bondingSingleModeActive()"
-            (click)="$event.stopPropagation(); setBondingModeActive(1)">
-      <mat-icon svgIcon="iqb:bond_line_1"/>
+    <button
+      matIconButton
+      type="button"
+      title="1"
+      [class.active-tool]="bondingSingleModeActive()"
+      (click)="$event.stopPropagation(); setBondingModeActive(1)"
+    >
+      <mat-icon [svgIcon]="bondingSingleToolIcon()" />
     </button>
-    <button matIconButton type="button" title="2" [class.active-tool]="bondingDoubleModeActive()"
-            (click)="$event.stopPropagation(); setBondingModeActive(2)">
-      <mat-icon svgIcon="iqb:bond_line_2"/>
+    <button
+      matIconButton
+      type="button"
+      title="2"
+      [class.active-tool]="bondingDoubleModeActive()"
+      (click)="$event.stopPropagation(); setBondingModeActive(2)"
+    >
+      <mat-icon [svgIcon]="bondingDoubleToolIcon()" />
     </button>
-    <button matIconButton type="button" title="3" [class.active-tool]="bondingTripleModeActive()"
-            (click)="$event.stopPropagation(); setBondingModeActive(3)">
-      <mat-icon svgIcon="iqb:bond_line_3"/>
+    <button
+      matIconButton
+      type="button"
+      title="3"
+      [class.active-tool]="bondingTripleModeActive()"
+      (click)="$event.stopPropagation(); setBondingModeActive(3)"
+    >
+      <mat-icon [svgIcon]="bondingTripleToolIcon()" />
     </button>
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" [class.active-tool]="pointerModeActive()" (click)="setToolMode('pointer')">
+    <button matIconButton type="button" [class.active-tool]="pointerModeActive()" (click)="setPointerMode()">
       <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
     </button>
-    <button matIconButton type="button" [class.active-tool]="duplicateModeActive()" (click)="setToolMode('duplicate')">
+    <button matIconButton type="button" [class.active-tool]="duplicateModeActive()" (click)="setDuplicateMode()">
       <mat-icon fontSet="material-symbols">content_copy</mat-icon>
+    </button>
+    <button matIconButton type="button" [class.active-tool]="groupMoveModeActive()" (click)="setGroupMoveMode()">
+      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
     </button>
 
     <div class="divider"></div>
@@ -47,6 +74,9 @@
 
     <div class="divider"></div>
 
+    <button matIconButton type="button" [disabled]="!isModelEmpty()" (click)="handleClearAll()">
+      <mat-icon>restart_alt</mat-icon>
+    </button>
     <button matIconButton type="button" [disabled]="noItemSelected" (click)="service.deleteSelectedItem()">
       <mat-icon>delete</mat-icon>
     </button>
@@ -55,7 +85,7 @@
 
 <!-- Right Toolbar -->
 <div class="right-container">
-  <div class="toolbar right">
+  <div class="toolbar right" [class.deactivated]="deactivateControls()">
     @for (element of quickPickElements1; track element.number) {
       <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
     }
@@ -70,9 +100,14 @@
   </div>
 </div>
 
+<!-- Save button -->
+<div class="save-container">
+  <ng-container *ngTemplateOutlet="saveTemplateRef()" />
+</div>
+
 <!-- Template for quick-pick element button -->
 <ng-template #quickPickButton let-element="element">
-  <button matIconButton type="button" (click)="handleAddElement(element, $event)">
+  <button matIconButton type="button" (click)="handleAddElement(element.number, $event)">
     {{ element.symbol }}
   </button>
 </ng-template>
