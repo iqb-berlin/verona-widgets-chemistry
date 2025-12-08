@@ -11,7 +11,12 @@
     >
       <mat-icon>remove</mat-icon>
     </button>
-    <mat-icon [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'" />
+
+    <mat-icon
+      [style.--mat-icon-color]="atom ? undefined : 'var(--mat-sys-secondary)'"
+      [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'"
+    />
+
     <button
       matIconButton
       type="button"
