@@ -1,6 +1,6 @@
 <!-- Top Toolbar -->
 <div class="top-container">
-  <div class="toolbar top" [class.deactivated]="deactivateControls()">
+  <div class="toolbar top">
     @let atom = selectedAtom();
     @let noItemSelected = !isItemSelected();
     <button
@@ -90,7 +90,7 @@
 
 <!-- Right Toolbar -->
 <div class="right-container">
-  <div class="toolbar right" [class.deactivated]="deactivateControls()">
+  <div class="toolbar right">
     @for (element of quickPickElements1; track element.number) {
       <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
     }
@@ -109,7 +109,7 @@
 <!-- DISABLED, currently not required -->
 @if (false) {
   <div class="left-container">
-    <div class="toolbar left" [class.deactivated]="deactivateControls()">
+    <div class="toolbar left">
       <button matIconButton type="button" [disabled]="zoomInDisabled()" (click)="handleZoom(+1)">
         <mat-icon>zoom_in</mat-icon>
       </button>
@@ -124,9 +124,12 @@
 }
 
 <!-- Save button -->
-<div class="save-container">
-  <ng-container *ngTemplateOutlet="saveTemplateRef()" />
-</div>
+@let saveTemplate = saveTemplateRef();
+@if (saveTemplate) {
+  <div class="save-container">
+    <ng-container *ngTemplateOutlet="saveTemplate" />
+  </div>
+}
 
 <!-- Template for quick-pick element button -->
 <ng-template #quickPickButton let-element="element">

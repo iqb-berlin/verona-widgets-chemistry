@@ -1,5 +1,3 @@
-import { ReadonlyRecord } from 'periodic-system-common';
-
 export type VeronaWidgetSendEvent = VowReadyNotification | VowStateChangedNotification | VowReturnRequested;
 
 export type VeronaWidgetReceiveEvent = VowStartCommand;
@@ -39,5 +37,5 @@ export interface VowReturnRequested {
 
 export type VowParameterCollection =
   | ReadonlyArray<VowParameter>
-  | ReadonlyRecord<string, undefined | string>
+  | Readonly<Record<string, undefined | string>>
   ;

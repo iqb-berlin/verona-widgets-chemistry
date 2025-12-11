@@ -139,6 +139,96 @@
         }
       }
     },
+    "molecule-editor-widget": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/molecule-editor-widget",
+      "sourceRoot": "projects/molecule-editor-widget/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "projects/molecule-editor-widget/src/main.ts",
+            "tsConfig": "projects/molecule-editor-widget/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/molecule-editor-widget/public"
+              }
+            ],
+            "styles": [
+              "projects/molecule-editor-widget/src/styles.scss"
+            ],
+            "loader": {
+              ".svg": "text"
+            }
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "molecule-editor-widget:build:production"
+            },
+            "development": {
+              "buildTarget": "molecule-editor-widget:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n"
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "tsConfig": "projects/molecule-editor-widget/tsconfig.spec.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/molecule-editor-widget/public"
+              }
+            ],
+            "loader": {
+              ".svg": "text"
+            },
+            "styles": [
+              "projects/molecule-editor-widget/src/styles.scss"
+            ]
+          }
+        }
+      }
+    },
     "showcase-widgets": {
       "projectType": "application",
       "schematics": {
@@ -221,98 +311,6 @@
             ],
             "styles": [
               "projects/showcase-widgets/src/styles.scss"
-            ]
-          }
-        }
-      }
-    },
-    "molecule-editor-widget": {
-      "projectType": "application",
-      "schematics": {
-        "@schematics/angular:component": {
-          "style": "scss"
-        }
-      },
-      "root": "projects/molecule-editor-widget",
-      "sourceRoot": "projects/molecule-editor-widget/src",
-      "prefix": "app",
-      "architect": {
-        "build": {
-          "builder": "@angular/build:application",
-          "options": {
-            "browser": "projects/molecule-editor-widget/src/main.ts",
-            "tsConfig": "projects/molecule-editor-widget/tsconfig.app.json",
-            "inlineStyleLanguage": "scss",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "projects/molecule-editor-widget/public"
-              }
-            ],
-            "styles": [
-              "projects/molecule-editor-widget/src/styles.scss"
-            ],
-            "loader": {
-              ".svg": "text"
-            }
-          },
-          "configurations": {
-            "production": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
-                }
-              ],
-              "outputHashing": "all"
-            },
-            "development": {
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true
-            }
-          },
-          "defaultConfiguration": "production"
-        },
-        "serve": {
-          "builder": "@angular/build:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "molecule-editor-widget:build:production"
-            },
-            "development": {
-              "buildTarget": "molecule-editor-widget:build:development"
-            }
-          },
-          "options": {
-            "loader": {
-              ".svg": "text"
-            }
-          },
-          "defaultConfiguration": "development"
-        },
-        "extract-i18n": {
-          "builder": "@angular/build:extract-i18n"
-        },
-        "test": {
-          "builder": "@angular/build:karma",
-          "options": {
-            "tsConfig": "projects/molecule-editor-widget/tsconfig.spec.json",
-            "inlineStyleLanguage": "scss",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "projects/molecule-editor-widget/public"
-              }
-            ],
-            "styles": [
-              "projects/molecule-editor-widget/src/styles.scss"
             ]
           }
         }

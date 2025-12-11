@@ -53,8 +53,12 @@ export class TestPsService implements PsService {
     },
   });
   readonly interaction = {
-    selectedElements: signal(new Set<PsElementNumber>()),
+    selectedElements: signal<ReadonlySet<PsElementNumber>>(new Set()),
+    highlightedElement: signal<undefined | PsElementNumber>(undefined),
     elementClickBlocked: signal(false),
-    clickElement: function (element: PsElement): void {},
+    clickElement(element: PsElement): void {
+    },
+    highlightElement() {
+    },
   };
 }

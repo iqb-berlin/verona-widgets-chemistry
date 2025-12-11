@@ -32,8 +32,7 @@ export class EditorControls {
   readonly service = inject(MoleculeEditorService);
   readonly dialog = inject(MatDialog);
 
-  readonly deactivateControls = input<boolean>();
-  readonly saveTemplateRef = contentChild.required('save', { read: TemplateRef });
+  readonly saveTemplateRef = contentChild('save', { read: TemplateRef });
 
   readonly quickPickElements1 = [
     lookupElement('H'),

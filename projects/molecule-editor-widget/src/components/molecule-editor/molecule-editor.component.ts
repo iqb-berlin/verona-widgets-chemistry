@@ -1,7 +1,6 @@
 import { Component, computed, effect, inject, untracked } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
 import { MatButton } from '@angular/material/button';
-import { MatIcon, MatIconRegistry } from '@angular/material/icon';
+import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDrawer, MatDrawerContainer } from '@angular/material/sidenav';
 import { PsService, PsTable, PsTableInteractionsDirective } from 'periodic-system-common';
@@ -10,6 +9,7 @@ import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer';
 import { MoleculeEditorPickerService } from '../../services/molecule-editor-picker.service';
 import { MoleculeEditorImageService } from '../../services/molecule-editor-image.service';
+import { CustomIconsService, registerCustomIcons } from '../../services/custom-icons.service';
 import { EditorCanvas } from '../editor-canvas/editor-canvas';
 import { EditorControls } from '../editor-controls/editor-controls';
 import { debounceSignal } from '../../util/debounce-signal';
@@ -25,6 +25,7 @@ import IqbIcons from '../../assets/iqb-icons.svg';
     MoleculeEditorImageService,
     MoleculeEditorPickerService,
     { provide: PsService, useExisting: MoleculeEditorPickerService },
+    registerCustomIcons([{ namespace: 'iqb', svg: IqbIcons }]),
   ],
   imports: [
     MatDrawerContainer,
@@ -42,16 +43,14 @@ export class MoleculeEditor {
   readonly service = inject(MoleculeEditorService);
   readonly renderer = inject(MoleculeEditorRenderer);
   readonly imageService = inject(MoleculeEditorImageService);
-
-  protected readonly iconRegistry = inject(MatIconRegistry);
-  protected readonly domSanitizer = inject(DomSanitizer);
+  readonly customIcons = inject(CustomIconsService);
 
   // Synchronize model with widget state-data after 1 second of inactivity using this debounced signal
   protected readonly debouncedModel = debounceSignal(this.service.model, 1_000);
 
   constructor() {
-    this.registerCustomSvgIcons();
     this.registerModelSyncEffect();
+    this.customIcons.registerIcons();
   }
 
   readonly isLoadingSubmit = this.imageService.isLoading;
@@ -74,11 +73,6 @@ export class MoleculeEditor {
     // Send state and return-request to API
     this.sendStateData(modelWithImage); //TODO: Replace with finalState in return-request, once available
     this.service.widgetService.sendReturn(true);
-  }
-
-  private registerCustomSvgIcons() {
-    const safeIqbIcons = this.domSanitizer.bypassSecurityTrustHtml(IqbIcons);
-    this.iconRegistry.addSvgIconSetLiteralInNamespace('iqb', safeIqbIcons);
   }
 
   private registerModelSyncEffect() {
