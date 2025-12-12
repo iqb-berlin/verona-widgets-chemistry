@@ -102,16 +102,14 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
     // Create return-event
     // Send return-event message WITH DELAY (to ensure state-change events arrive before requesting to return)
     //FIXME: Once available, add "finalState" field to submit additional information on return
-    setTimeout(
-      () =>
-        this.sendEventMessage({
-          type: 'vowReturnRequested',
-          sessionId: state.config.sessionId,
-          timeStamp: currentTimestamp(),
-          saveState: saveState,
-        }),
-      100,
-    );
+    setTimeout(() => {
+      this.sendEventMessage({
+        type: 'vowReturnRequested',
+        sessionId: state.config.sessionId,
+        timeStamp: currentTimestamp(),
+        saveState: saveState,
+      });
+    }, 100);
   }
 
   private handleStartCommand(command: VowStartCommand) {
@@ -163,9 +161,9 @@ function parametersToRecord(parameters: undefined | VowParameterCollection): Rec
     return {};
   }
 
-  const entries = Array.isArray(parameters) ?
-    parameters.map(({ key, value }) => [key, value ?? ''] as const) :
-    Object.entries(parameters).map(([key, value]) => [key, value ?? ''] as const);
+  const entries = Array.isArray(parameters)
+    ? parameters.map(({ key, value }) => [key, value ?? ''] as const)
+    : Object.entries(parameters).map(([key, value]) => [key, value ?? ''] as const);
 
   return Object.fromEntries(entries);
 }

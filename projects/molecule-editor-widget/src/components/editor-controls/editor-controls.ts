@@ -102,7 +102,7 @@ export class EditorControls {
   });
 
   readonly zoomOutDisabled = computed(() => this.zoomLevelIndex() <= 0);
-  readonly zoomInDisabled = computed(() => this.zoomLevelIndex() >= (this.zoomLevels.length - 1));
+  readonly zoomInDisabled = computed(() => this.zoomLevelIndex() >= this.zoomLevels.length - 1);
 
   constructor() {
     effect(() => {
@@ -180,7 +180,7 @@ export class EditorControls {
   }
 
   handleZoom(delta: -1 | 1) {
-    this.zoomLevelIndex.update(index => {
+    this.zoomLevelIndex.update((index) => {
       const next = index + delta;
       return Math.max(0, Math.min(this.zoomLevels.length - 1, next));
     });

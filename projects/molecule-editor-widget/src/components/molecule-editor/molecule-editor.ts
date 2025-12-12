@@ -17,8 +17,8 @@ import IqbIcons from '../../assets/iqb-icons.svg';
 
 @Component({
   selector: 'app-molecule-editor',
-  templateUrl: './molecule-editor.component.html',
-  styleUrl: './molecule-editor.component.scss',
+  templateUrl: './molecule-editor.html',
+  styleUrl: './molecule-editor.scss',
   providers: [
     MoleculeEditorService,
     MoleculeEditorRenderer,
@@ -49,8 +49,13 @@ export class MoleculeEditor {
   protected readonly debouncedModel = debounceSignal(this.service.model, 1_000);
 
   constructor() {
-    this.registerModelSyncEffect();
     this.customIcons.registerIcons();
+
+    // On (debounced) model update, send state-data to API
+    effect(() => {
+      const model = this.debouncedModel();
+      this.sendStateData(model);
+    });
   }
 
   readonly isLoadingSubmit = this.imageService.isLoading;
@@ -73,18 +78,6 @@ export class MoleculeEditor {
     // Send state and return-request to API
     this.sendStateData(modelWithImage); //TODO: Replace with finalState in return-request, once available
     this.service.widgetService.sendReturn(true);
-  }
-
-  private registerModelSyncEffect() {
-    effect(
-      () => {
-        const model = this.debouncedModel();
-        this.sendStateData(model);
-      },
-      {
-        debugName: 'modelSync',
-      },
-    );
   }
 
   private sendStateData(model: MoleculeEditorModel): void {

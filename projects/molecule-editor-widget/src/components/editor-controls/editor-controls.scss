@@ -69,7 +69,8 @@
     }
   }
 
-  &.right, &.left {
+  &.right,
+  &.left {
     flex-direction: column;
     padding: 1rem 0.25rem;
 

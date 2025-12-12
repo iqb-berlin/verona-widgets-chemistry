@@ -8,7 +8,7 @@ import {
   ShowcaseVeronaWidgetService,
 } from '../service/showcase-verona-widget.service';
 import { ShowcaseVeronaWidgetDirective } from '../service/showcase-verona-widget.directive';
-import { MoleculeEditor } from '../../../molecule-editor-widget/src/components/molecule-editor/molecule-editor.component';
+import { MoleculeEditor } from '../../../molecule-editor-widget/src/components/molecule-editor/molecule-editor';
 import {
   MoleculeEditorBondingType,
   MoleculeEditorParam,

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { VeronaWidget } from 'verona-widget';
-import { MoleculeEditor } from '../components/molecule-editor/molecule-editor.component';
+import { MoleculeEditor } from '../components/molecule-editor/molecule-editor';
 
 @Component({
   selector: 'app-molecule-editor-root',

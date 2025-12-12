@@ -56,9 +56,7 @@ export class TestPsService implements PsService {
     selectedElements: signal<ReadonlySet<PsElementNumber>>(new Set()),
     highlightedElement: signal<undefined | PsElementNumber>(undefined),
     elementClickBlocked: signal(false),
-    clickElement(element: PsElement): void {
-    },
-    highlightElement() {
-    },
+    clickElement(element: PsElement): void {},
+    highlightElement() {},
   };
 }

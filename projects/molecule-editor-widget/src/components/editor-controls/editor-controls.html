@@ -113,9 +113,7 @@
       <button matIconButton type="button" [disabled]="zoomInDisabled()" (click)="handleZoom(+1)">
         <mat-icon>zoom_in</mat-icon>
       </button>
-      <div role="button" (click)="zoomLevelIndex.set(4)">
-        {{ zoomLevels[zoomLevelIndex()] }}%
-      </div>
+      <div role="button" (click)="zoomLevelIndex.set(4)">{{ zoomLevels[zoomLevelIndex()] }}%</div>
       <button matIconButton type="button" [disabled]="zoomOutDisabled()" (click)="handleZoom(-1)">
         <mat-icon>zoom_out</mat-icon>
       </button>

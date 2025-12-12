@@ -10,10 +10,6 @@ describe('EditorCanvas', () => {
   let component: EditorCanvas;
   let fixture: ComponentFixture<EditorCanvas>;
 
-  beforeAll(() => {
-
-  })
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [EditorCanvas],
