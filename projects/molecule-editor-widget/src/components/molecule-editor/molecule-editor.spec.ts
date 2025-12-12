@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MoleculeEditor } from './molecule-editor.component';
+import { MoleculeEditor } from './molecule-editor';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideDummyVeronaWidgetService } from 'verona-widget';
 
