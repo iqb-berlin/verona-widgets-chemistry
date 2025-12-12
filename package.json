@@ -24,7 +24,8 @@
     "inline:project:molecule-editor-widget": "node scripts/pack-html.js dist/molecule-editor-widget/browser",
     "inline:all": "run-p inline:project:*",
     "prettier": "prettier -w projects/*/src/",
-    "clean": "rimraf dist/"
+    "clean": "rimraf dist/",
+    "generate-diagrams": "plantuml -tpng img/diagrams.puml"
   },
   "dependencies": {
     "@angular/cdk": "~20.2.14",

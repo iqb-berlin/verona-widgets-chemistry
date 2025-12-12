@@ -1,0 +1,260 @@
+@startuml iqb-widgets-verona
+skinparam linetype ortho
+skinparam ranksep 100
+
+<style>
+frame {
+  BackGroundColor #dddddd
+}
+</style>
+
+title Verona-Widget Architektur
+
+frame "verona-widget" {
+    rectangle DOCUMENT <<InjectionToken>>
+
+    rectangle VeronaWidgetService <<InjectionToken interface>>
+    rectangle IFrameVeronaWidgetService <<Injectable class>>
+
+    rectangle VeronaWidgetIFrame <<InjectionToken interface>>
+    IFrameVeronaWidgetService --( VeronaWidgetIFrame : inject
+    IFrameVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle provideVeronaWidgetIFrame <<function>>
+    provideVeronaWidgetIFrame --> VeronaWidgetIFrame : provide
+
+    'rectangle DummyVeronaWidgetService <<class>>
+    'DummyVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle VeronaWidget <<Component>>
+    VeronaWidget --> IFrameVeronaWidgetService : provide
+    VeronaWidget -( DOCUMENT : inject
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelectService --( VeronaWidgetService : inject
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> VeronaWidget : import
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+    PsSelectAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "molecule-editor-widget" {
+    rectangle MoleculeEditorService <<Injectable class>>
+
+    rectangle MoleculeEditor <<Component>>
+    MoleculeEditor --> MoleculeEditorService : provide
+    MoleculeEditorService --( VeronaWidgetService : inject
+
+    rectangle MoleculeEditorApp <<Component>>
+    MoleculeEditorApp ..> VeronaWidget : import
+    MoleculeEditorApp ..> MoleculeEditor : import
+
+    rectangle MoleculeEditorAppBootstrap <<app>>
+    MoleculeEditorAppBootstrap --> MoleculeEditorApp : bootstrap
+    MoleculeEditorAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle ShowcaseVeronaWidgetService <<Injectable class>>
+    ShowcaseVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+    PsSelectPage --> ShowcaseVeronaWidgetService : provide
+
+    rectangle MoleculeEditorPage <<Component>>
+    MoleculeEditorPage ..> MoleculeEditor : import
+    MoleculeEditorPage --> ShowcaseVeronaWidgetService : provide
+
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+    ShowcaseApp --> MoleculeEditorPage : router
+}
+
+note bottom of VeronaWidgetService : Service wird für iframe- oder showcase-Umgebung unterschiedlich implementiert
+note top of VeronaWidget : Stellt eine iframe-Umgebung bereit
+note top of ShowcaseApp : Stellt eine showcase-Umgebung bereit
+@enduml
+
+@startuml iqb-widgets-ps
+skinparam linetype ortho
+skinparam ranksep 100
+skinparam nodesep 90
+
+<style>
+frame {
+    BackGroundColor #dddddd
+}
+</style>
+
+title Periodensystem Architektur
+
+frame "periodic-system-common" {
+    rectangle PsService <<InjectionToken interface>>
+
+    rectangle PsTableElement <<Component>>
+    PsTableElement --( PsService : inject
+
+    rectangle PsTable <<Component>>
+    PsTable --( PsService : inject
+    PsTable .> PsTableElement : import
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelect ..> PsTable : import
+    PsSelectService --|> PsService : implement
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+}
+
+frame "molecule-editor-widget" {
+    rectangle MoleculeEditorPickerService <<Injectable class>>
+    MoleculeEditorPickerService --|> PsService : implement
+
+    rectangle MoleculeEditor <<Component>>
+    MoleculeEditor --> MoleculeEditorPickerService : provide
+    MoleculeEditor ..> PsTable : import
+
+    rectangle MoleculeEditorApp <<Component>>
+    MoleculeEditorApp ..> MoleculeEditor : import
+
+    rectangle MoleculeEditorAppBootstrap <<app>>
+    MoleculeEditorAppBootstrap --> MoleculeEditorApp : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+
+    rectangle MoleculeEditorPage <<Component>>
+    MoleculeEditorPage ..> MoleculeEditor : import
+
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+    ShowcaseApp --> MoleculeEditorPage : router
+}
+
+note top of PsTableElement : Delegiert Interaktion an PsService Implementierung
+note bottom of PsService : Kann unterschiedliches Verhalten realisieren
+note bottom of PsSelectService : Implementiert Element-Auswahl Funktionalität
+note bottom of MoleculeEditorPickerService : Implementiert Element-Picker Funktionalität
+@enduml
+
+@startuml iqb-widgets-complete
+skinparam linetype ortho
+skinparam nodesep 100
+skinparam ranksep 100
+
+<style>
+frame {
+    BackGroundColor #dddddd
+}
+</style>
+
+title Vollständige Übersicht
+
+frame "verona-widget" {
+    rectangle DOCUMENT <<InjectionToken>>
+
+    rectangle VeronaWidgetService <<InjectionToken interface>>
+    rectangle IFrameVeronaWidgetService <<Injectable class>>
+
+    rectangle VeronaWidgetIFrame <<InjectionToken interface>>
+    IFrameVeronaWidgetService --( VeronaWidgetIFrame : inject
+    IFrameVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle provideVeronaWidgetIFrame <<function>>
+    provideVeronaWidgetIFrame --> VeronaWidgetIFrame : provide
+
+    'rectangle DummyVeronaWidgetService <<class>>
+    'DummyVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle VeronaWidget <<Component>>
+    VeronaWidget --> IFrameVeronaWidgetService : provide
+    VeronaWidget -( DOCUMENT : inject
+}
+
+frame "periodic-system-common" {
+    rectangle PsService <<InjectionToken interface>>
+
+    rectangle PsTableElement <<Component>>
+    PsTableElement --( PsService : inject
+
+    rectangle PsTable <<Component>>
+    PsTable --( PsService : inject
+    PsTable .> PsTableElement : import
+}
+
+frame "periodic-system-select-widget" {
+    rectangle PsSelectService <<Injectable class>>
+
+    rectangle PsSelect <<Component>>
+    PsSelect --> PsSelectService : provide
+    PsSelect ..> PsTable : import
+    PsSelectService --|> PsService : implement
+    PsSelectService --( VeronaWidgetService : inject
+
+    rectangle PsSelectApp <<Component>>
+    PsSelectApp ..> VeronaWidget : import
+    PsSelectApp ..> PsSelect : import
+
+    rectangle PsSelectAppBootstrap <<app>>
+    PsSelectAppBootstrap --> PsSelectApp : bootstrap
+    PsSelectAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "molecule-editor-widget" {
+    rectangle MoleculeEditorService <<Injectable class>>
+    MoleculeEditorService --( VeronaWidgetService : inject
+
+    rectangle MoleculeEditorPickerService <<Injectable class>>
+    MoleculeEditorPickerService --|> PsService : implement
+
+    rectangle MoleculeEditor <<Component>>
+    MoleculeEditor --> MoleculeEditorService : provide
+    MoleculeEditor --> MoleculeEditorPickerService : provide
+    MoleculeEditor ..> PsTable : import
+
+    rectangle MoleculeEditorApp <<Component>>
+    MoleculeEditorApp ..> VeronaWidget : import
+    MoleculeEditorApp ..> MoleculeEditor : import
+
+    rectangle MoleculeEditorAppBootstrap <<app>>
+    MoleculeEditorAppBootstrap --> MoleculeEditorApp : bootstrap
+    MoleculeEditorAppBootstrap --> provideVeronaWidgetIFrame : bootstrap
+}
+
+frame "showcase-widgets" {
+    rectangle ShowcaseVeronaWidgetService <<Injectable class>>
+    ShowcaseVeronaWidgetService --|> VeronaWidgetService : implement
+
+    rectangle PsSelectPage <<Component>>
+    PsSelectPage ..> PsSelect : import
+    PsSelectPage --> ShowcaseVeronaWidgetService : provide
+
+    rectangle MoleculeEditorPage <<Component>>
+    MoleculeEditorPage ..> MoleculeEditor : import
+    MoleculeEditorPage --> ShowcaseVeronaWidgetService : provide
+
+    rectangle ShowcaseApp <<Component>>
+    ShowcaseApp --> PsSelectPage : router
+    ShowcaseApp --> MoleculeEditorPage : router
+}
+@enduml
