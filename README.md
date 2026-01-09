@@ -32,6 +32,36 @@ Optional in zweitem Terminal, um Library-Module fortlaufend zu bauen:
 $ npm run watch:all
 ```
 
+## Deploy Demo
+
+Um eine Demo der Showcase-App zu bauen:
+
+```
+$ npm run build:demo
+```
+
+Um die Showcase-App auf einem externen Host in einem Unterverzeichnis zu deployen, muss eine `<base href="..."/>` angegeben werden.
+Diese base-href kann im Build mit einer Option spezifiziert werden:
+
+```
+$ npm run build:demo -- --base-href="/verona-widgets-chemistry/"
+```
+
+Build-Dateien:
+
+- Demo Showcase-App build output in `dist/showcase-widgets`
+- Deploy build-assets in `dist/showcase-widgets/browser`
+
+> *Anmerkung*: Für ein korrektes Deployment einer Angular Single-Page Application sollten alle Unterverzeichnisse (z.B. `/verona-widgets-chemistry/molecule-editor`) als Fallback auf die `index.html` Datei der Application verweisen.
+
+Exemplarische Location-Konfiguration für eine Single-Page Application in nginx:
+
+```nginx
+location /verona-widgets-chemistry {
+  try_files $uri $uri/ /verona-widgets-chemistry/index.html;
+}
+```
+
 ## Widget Dummy Host
 
 Um Widgets in `index_packed.html` Dateien zu testen, wird ein Widget-Dummy-Host bereitgestellt.
@@ -139,7 +169,6 @@ Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktiv
   - Provides `MoleculeEditorImageService`
   - Provides `MoleculeEditorPickerService` als `PsSelect` Implementation
   - Rendert den Molekül-Editor mit MatDrawer, PsTable, EditorControls, und EditorCanvas
-
 
 ### Modul `showcase-widgets`
 
