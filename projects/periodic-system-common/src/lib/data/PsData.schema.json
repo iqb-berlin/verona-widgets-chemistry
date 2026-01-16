@@ -39,6 +39,10 @@
           "type": "string",
           "enum": ["s", "p", "d", "f", "g"]
         },
+        "block_override": {
+          "type": "string",
+          "enum": ["s", "p", "d", "f", "g"]
+        },
         "names": {
           "type": "object",
           "patternProperties": {

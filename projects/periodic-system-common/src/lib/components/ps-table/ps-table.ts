@@ -41,7 +41,7 @@ export class PsTable {
       this.groupClassName(element.group),
       this.periodClassName(element.period),
       this.columnClassName(element.column),
-      this.blockClassName(element.block),
+      this.blockClassName(element.block_override ?? element.block),
     ];
   }
 

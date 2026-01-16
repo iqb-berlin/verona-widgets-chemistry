@@ -11,6 +11,7 @@ export interface PsElement {
   readonly group: PsGroupNumber;
   readonly period: PsPeriodNumber;
   readonly block: PsElementBlock;
+  readonly block_override?: PsElementBlock;
   readonly names: ReadonlyRecord<PsLocale, PsElementName>;
   readonly symbol: PsElementSymbol;
   readonly atomic_mass: number;

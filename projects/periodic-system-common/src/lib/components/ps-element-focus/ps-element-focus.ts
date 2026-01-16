@@ -20,6 +20,6 @@ export class PsElementFocusDirective {
   readonly computeBaseColor = computed(() => {
     const element = this.element();
     const { defaultBaseColor, enableBlockColors, blockColors } = this.service.appearance();
-    return enableBlockColors ? blockColors[element.block] : defaultBaseColor;
+    return enableBlockColors ? (element.block_override ? blockColors[element.block_override] : blockColors[element.block]) : defaultBaseColor;
   });
 }

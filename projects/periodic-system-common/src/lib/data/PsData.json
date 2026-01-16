@@ -46,6 +46,7 @@
       "column": 32,
       "group": 18,
       "block": "s",
+      "block_override": "p",
       "negativity": {
         "allred": 5.5,
         "mulliken": 3.49,
@@ -1854,6 +1855,7 @@
       "column": 3,
       "group": 19,
       "block": "f",
+      "block_override": "d",
       "negativity": {
         "pauling": 1.1,
         "allred": 1.08,
@@ -2172,6 +2174,7 @@
       "column": 17,
       "group": 19,
       "block": "d",
+      "block_override": "f",
       "negativity": {
         "pauling": 1.27,
         "allred": 1.14,
@@ -2627,6 +2630,7 @@
       "column": 3,
       "group": 20,
       "block": "f",
+      "block_override": "d",
       "negativity": {
         "pauling": 1.1,
         "allred": 1,
@@ -2905,6 +2909,7 @@
       "column": 17,
       "group": 20,
       "block": "d",
+      "block_override": "f",
       "negativity": {
         "pauling": 1.3
       },
