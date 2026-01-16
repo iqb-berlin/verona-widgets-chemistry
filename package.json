@@ -19,6 +19,7 @@
     "build:project:periodic-system-common": "ng build periodic-system-common",
     "build:project:periodic-system-select-widget": "ng build periodic-system-select-widget",
     "build:project:molecule-editor-widget": "ng build molecule-editor-widget",
+    "build:project:showcase-widgets": "ng build showcase-widgets && mv dist/showcase-widgets/browser/index.html docs/index.html",
     "build:all": "run-s build:project:verona-widget build:project:periodic-system-common build:project:periodic-system-select-widget build:project:molecule-editor-widget",
     "inline:project:periodic-system-select-widget": "node scripts/pack-html.js dist/periodic-system-select-widget/browser",
     "inline:project:molecule-editor-widget": "node scripts/pack-html.js dist/molecule-editor-widget/browser",
