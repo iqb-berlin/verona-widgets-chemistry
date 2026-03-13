@@ -2,16 +2,7 @@ import { computed, effect, inject, Injectable, Signal, signal, untracked } from 
 import { VeronaWidgetService } from 'verona-widget';
 import { PsElement, PsElementNumber } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
-import {
-  AtomId,
-  BondMultiplicity,
-  EditorState,
-  ItemId,
-  MoleculeEditorGraph,
-  MoleculeEditorModel,
-  ToolMode,
-  Vector2,
-} from './molecule-editor.model';
+import { AtomId, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
 import { deferPromise, DeferredPromise } from '../util/defer-promise';
 import { historySignal } from '../util/history-signal';
 import {
@@ -20,6 +11,8 @@ import {
   snapProximityRadius,
   snapRadius,
 } from './molecule-editor.constants';
+import { EditorState } from './molecule-editor.state';
+import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
 
 export const enum MoleculeEditorParam {
   language = 'LANGUAGE',
@@ -32,10 +25,7 @@ export const enum MoleculeEditorSharedParam {
   bondingType = 'BONDING_TYPE',
 }
 
-export const enum MoleculeEditorBondingType {
-  valence = 'VALENCE',
-  electrons = 'ELECTRONS',
-}
+export type MoleculeEditorBondingType = 'VALENCE' | 'ELECTRONS';
 
 export interface MoleculeEditorAppearance {
   readonly bondingType: MoleculeEditorBondingType;
@@ -499,10 +489,10 @@ function parseBondingType(value: string): MoleculeEditorBondingType {
     return defaultBondingType;
   }
   switch (value.toUpperCase()) {
-    case MoleculeEditorBondingType.valence:
-      return MoleculeEditorBondingType.valence;
-    case MoleculeEditorBondingType.electrons:
-      return MoleculeEditorBondingType.electrons;
+    case 'VALENCE':
+      return 'VALENCE';
+    case 'ELECTRONS':
+      return 'ELECTRONS';
     default:
       console.warn(`Received unknown ${MoleculeEditorSharedParam.bondingType} parameter:`, value);
       return defaultBondingType;
@@ -521,7 +511,8 @@ function parseSerializedEditorModel(initialStateData: string): MoleculeEditorMod
     console.log('Parsing JSON editor-model state data:', data);
     const atoms = data.atoms ?? {};
     const bonds = data.bonds ?? {};
-    return { atoms, bonds };
+    const symbols = data.symbols ?? {};
+    return { atoms, bonds, symbols };
   } catch (e) {
     console.warn('Received invalid JSON editor-model state data:', initialStateData);
     return MoleculeEditorModel.empty;

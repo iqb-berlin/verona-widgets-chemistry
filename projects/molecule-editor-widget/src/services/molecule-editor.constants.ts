@@ -1,7 +1,7 @@
-import { MoleculeEditorBondingType } from './molecule-editor.service';
+import type { MoleculeEditorBondingType } from './molecule-editor.service';
 
 export const editorHistoryCapacity = 100;
-export const defaultBondingType = MoleculeEditorBondingType.electrons;
+export const defaultBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
 
 export const snapRadius = 80;
 export const snapProximityRadius = 60;

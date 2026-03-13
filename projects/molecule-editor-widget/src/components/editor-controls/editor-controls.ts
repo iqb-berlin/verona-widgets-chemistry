@@ -1,5 +1,6 @@
-import { Component, computed, contentChild, effect, inject, input, signal, TemplateRef } from '@angular/core';
+import { Component, computed, contentChild, effect, inject, signal, TemplateRef } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import {
@@ -10,8 +11,9 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { PsElement, PsElementNumber, PsElements, PsElementSymbol } from 'periodic-system-common';
-import { MoleculeEditorBondingType, MoleculeEditorService } from '../../services/molecule-editor.service';
-import { AtomModel, BondMultiplicity, MoleculeEditorModel, ToolMode } from '../../services/molecule-editor.model';
+import { MoleculeEditorService } from '../../services/molecule-editor.service';
+import { AtomModel, MoleculeEditorModel, ToolMode } from '../../services/molecule-editor.model';
+import { BondMultiplicity } from '../../services/molecule-editor.shared';
 import { firstValueFrom } from 'rxjs';
 
 const elementBySymbol = new Map(PsElements.map((e) => [e.symbol, e] as const));
@@ -26,7 +28,7 @@ function lookupElement(symbol: string): PsElement {
   selector: 'app-editor-controls',
   templateUrl: './editor-controls.html',
   styleUrl: './editor-controls.scss',
-  imports: [MatIconButton, MatIcon, NgTemplateOutlet],
+  imports: [MatIconButton, MatIcon, NgTemplateOutlet, MatTooltip],
 })
 export class EditorControls {
   readonly service = inject(MoleculeEditorService);
@@ -42,12 +44,7 @@ export class EditorControls {
     lookupElement('P'),
     lookupElement('S'),
   ];
-  readonly quickPickElements2 = [
-    lookupElement('F'),
-    lookupElement('Cl'),
-    lookupElement('Br'),
-    lookupElement('I'),
-  ];
+  readonly quickPickElements2 = [lookupElement('F'), lookupElement('Cl'), lookupElement('Br'), lookupElement('I')];
 
   readonly pointerModeActive = this.computeToolModeActive('pointer');
   readonly duplicateModeActive = this.computeToolModeActive('duplicate');
@@ -146,9 +143,9 @@ export class EditorControls {
     return computed(() => {
       const appearance = this.service.appearance();
       switch (appearance.bondingType) {
-        case MoleculeEditorBondingType.valence:
+        case 'VALENCE':
           return `iqb:bond_line_${multiplicity}`;
-        case MoleculeEditorBondingType.electrons:
+        case 'ELECTRONS':
           return `iqb:bond_dots_${multiplicity}`;
       }
     });

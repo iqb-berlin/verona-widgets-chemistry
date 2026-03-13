@@ -6,13 +6,15 @@
     <button
       matIconButton
       type="button"
+      matTooltip="Valenzelektron entfernen"
       [disabled]="noItemSelected || decrementElectronDisabled()"
       (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)"
     >
-      <mat-icon>remove</mat-icon>
+      <mat-icon>keyboard_arrow_down</mat-icon>
     </button>
 
     <mat-icon
+      [matTooltip]="atom ? (atom.electrons === 1 ? `1 Valenzelektron` : `${atom.electrons} Valenzelektronen`) : 'Valenzelektronen'"
       [style.--mat-icon-color]="atom ? undefined : 'var(--mat-sys-secondary)'"
       [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'"
     />
@@ -20,10 +22,11 @@
     <button
       matIconButton
       type="button"
+      matTooltip="Valenzelektron hinzufügen"
       [disabled]="noItemSelected || incrementElectronDisabled()"
       (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)"
     >
-      <mat-icon>add</mat-icon>
+      <mat-icon>keyboard_arrow_up</mat-icon>
     </button>
 
     <div class="divider"></div>
@@ -32,6 +35,7 @@
       matIconButton
       type="button"
       title="1"
+      matTooltip="Einfachbindung"
       [class.active-tool]="bondingSingleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(1)"
     >
@@ -41,6 +45,7 @@
       matIconButton
       type="button"
       title="2"
+      matTooltip="Doppelbindung"
       [class.active-tool]="bondingDoubleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(2)"
     >
@@ -50,6 +55,7 @@
       matIconButton
       type="button"
       title="3"
+      matTooltip="Dreifachbindung"
       [class.active-tool]="bondingTripleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(3)"
     >
@@ -58,31 +64,73 @@
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" [class.active-tool]="pointerModeActive()" (click)="setPointerMode()">
+    <button
+      matIconButton
+      matTooltip="Auswählen"
+      type="button"
+      [class.active-tool]="pointerModeActive()"
+      (click)="setPointerMode()"
+    >
       <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
     </button>
-    <button matIconButton type="button" [class.active-tool]="duplicateModeActive()" (click)="setDuplicateMode()">
+    <button
+      matIconButton
+      matTooltip="Kopieren"
+      type="button"
+      [class.active-tool]="duplicateModeActive()"
+      (click)="setDuplicateMode()"
+    >
       <mat-icon fontSet="material-symbols">content_copy</mat-icon>
     </button>
-    <button matIconButton type="button" [class.active-tool]="groupMoveModeActive()" (click)="setGroupMoveMode()">
+    <button
+      matIconButton
+      matTooltip="Molekül bewegen"
+      type="button"
+      [class.active-tool]="groupMoveModeActive()"
+      (click)="setGroupMoveMode()"
+    >
       <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
     </button>
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" [disabled]="!service.model.undoAvailable()" (click)="service.model.undo()">
+    <button
+      matIconButton
+      matTooltip="Rückgängig machen"
+      type="button"
+      [disabled]="!service.model.undoAvailable()"
+      (click)="service.model.undo()"
+    >
       <mat-icon>undo</mat-icon>
     </button>
-    <button matIconButton type="button" [disabled]="!service.model.redoAvailable()" (click)="service.model.redo()">
+    <button
+      matIconButton
+      matTooltip="Wiederherstellen"
+      type="button"
+      [disabled]="!service.model.redoAvailable()"
+      (click)="service.model.redo()"
+    >
       <mat-icon>redo</mat-icon>
     </button>
 
     <div class="divider"></div>
 
-    <button matIconButton type="button" [disabled]="!isModelEmpty()" (click)="handleClearAll()">
+    <button
+      matIconButton
+      matTooltip="Alles zurücksetzen"
+      type="button"
+      [disabled]="!isModelEmpty()"
+      (click)="handleClearAll()"
+    >
       <mat-icon>restart_alt</mat-icon>
     </button>
-    <button matIconButton type="button" [disabled]="noItemSelected" (click)="service.deleteSelectedItem()">
+    <button
+      matIconButton
+      matTooltip="Gewähltes Objekt löschen"
+      type="button"
+      [disabled]="noItemSelected"
+      (click)="service.deleteSelectedItem()"
+    >
       <mat-icon>delete</mat-icon>
     </button>
   </div>

@@ -1,6 +1,7 @@
 import { DOCUMENT, inject, Injectable, signal } from '@angular/core';
 import { Nominal } from 'periodic-system-common';
-import { ItemId, MoleculeEditorModel, Vector2 } from './molecule-editor.model';
+import { Vector2 } from './molecule-editor.shared';
+import { ItemId, MoleculeEditorModel } from './molecule-editor.model';
 import { BondView, ElectronView, MoleculeEditorView } from './molecule-editor.view';
 import { MoleculeEditorBondingType, MoleculeEditorService } from './molecule-editor.service';
 import * as C from './molecule-editor.constants';
@@ -68,7 +69,7 @@ export class MoleculeEditorImageService {
     // Draw bonds
     // ------------------------------
     for (const bond of view.bonds) {
-      if (bondingType === MoleculeEditorBondingType.valence) {
+      if (bondingType === 'VALENCE') {
         const lines = BondView.valenceBondLines(bond, C.bondSeparation);
         for (const [a, b] of lines) {
           const [x1, y1] = a;
@@ -82,7 +83,7 @@ export class MoleculeEditorImageService {
           line.setAttribute('stroke-width', String(C.singleElectronRadius));
           root.appendChild(line);
         }
-      } else if (bondingType === MoleculeEditorBondingType.electrons) {
+      } else if (bondingType === 'ELECTRONS') {
         const dots = BondView.electronBondDots(bond, C.bondSeparation);
         for (const pos of dots) {
           const [cx, cy] = pos;

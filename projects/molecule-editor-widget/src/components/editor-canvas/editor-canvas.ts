@@ -36,8 +36,10 @@ export class EditorCanvas {
       case 'addingAtom':
         return 'pointer';
       case 'preMoveAtom':
+      case 'preMoveOther':
         return 'pointer';
       case 'movingAtom':
+      case 'movingOther':
         return 'grabbing';
       case 'movingGroup':
         return 'move';

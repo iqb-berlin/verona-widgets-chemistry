@@ -1,17 +1,11 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
-import type {
-  AtomId,
-  AtomModel,
-  BondMultiplicity,
-  MoleculeEditorGraph,
-  MoleculeEditorModel,
-  ToolMode,
-} from './molecule-editor.model';
-import { EditorState, ItemId, Vector2 } from './molecule-editor.model';
+import { AtomId, AtomModel, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
+import { EditorState } from './molecule-editor.state';
 import { AtomView, BondView, ElectronOrientation, ElectronView, MoleculeEditorView } from './molecule-editor.view';
 import { lookupElement } from './molecule-editor.helper';
+import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
 
 @Injectable()
 export class MoleculeEditorRenderer {
@@ -137,8 +131,9 @@ function visualAtomPositionForBond(state: EditorState, atom: AtomModel): [positi
     return [atom.position, false];
   }
   switch (state.state) {
-    case 'movingAtom':
+    case 'movingAtom': {
       return [state.targetPos, true];
+    }
     case 'movingGroup': {
       const moveDelta = Vector2.sub(state.targetPos, state.startPos);
       const position = Vector2.add(atom.position, moveDelta);
@@ -153,6 +148,8 @@ function renderTemporaryAtoms(model: MoleculeEditorModel, editorState: EditorSta
     case 'selected':
     case 'preMoveAtom':
     case 'addingBond':
+    case 'preMoveOther':
+    case 'movingOther':
       break; // No temporary atoms
     case 'addingAtom': {
       const { elementNr, hoverPos, snap } = editorState;
@@ -202,6 +199,8 @@ function renderTemporaryBonds(model: MoleculeEditorModel, state: EditorState, mo
     case 'idle':
     case 'selected':
     case 'preMoveAtom':
+    case 'preMoveOther':
+    case 'movingOther':
     case 'movingGroup': {
       break; // No temporary bond (Rendered in renderModelItems for better performance)
     }

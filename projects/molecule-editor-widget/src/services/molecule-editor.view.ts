@@ -1,7 +1,6 @@
 import type { PsElement } from 'periodic-system-common';
-import type { AtomId, BondId, BondMultiplicity } from './molecule-editor.model';
-import { Vector2 } from './molecule-editor.model';
-import { AngleMath } from '../util/angle-math';
+import type { AtomId, BondId } from './molecule-editor.model';
+import { AngleMath, BondMultiplicity, Vector2 } from './molecule-editor.shared';
 
 // --- View data-types ---
 

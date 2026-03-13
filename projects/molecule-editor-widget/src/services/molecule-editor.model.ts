@@ -1,13 +1,8 @@
 import { Nominal, PsElementNumber } from 'periodic-system-common';
-import { produce, WritableDraft } from 'immer';
+import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { castDraft, produce, WritableDraft } from 'immer';
 
 // --- Model data-types ---
-
-/** Vector in 2D Euclidean space */
-export type Vector2 = readonly [x: number, y: number];
-
-/** Single, double, or triple bonds */
-export type BondMultiplicity = 1 | 2 | 3;
 
 /** Tools available in the editor */
 export type ToolMode =
@@ -16,51 +11,8 @@ export type ToolMode =
   | { readonly mode: 'groupMove' }
   | { readonly mode: 'bonding'; readonly multiplicity: BondMultiplicity };
 
-/** Possible active states of the editor */
-export type EditorState =
-  | {
-      readonly state: 'idle';
-    }
-  | {
-      readonly state: 'selected';
-      readonly itemId: ItemId;
-    }
-  | {
-      readonly state: 'addingAtom';
-      readonly elementNr: PsElementNumber;
-      readonly hoverPos: Vector2;
-      readonly snap: undefined | AtomSnap;
-    }
-  | {
-      readonly state: 'preMoveAtom';
-      readonly atomId: AtomId;
-    }
-  | {
-      readonly state: 'movingAtom';
-      readonly atomId: AtomId;
-      readonly targetPos: Vector2;
-      readonly snap: undefined | AtomSnap;
-    }
-  | {
-      readonly state: 'addingBond';
-      readonly startId: AtomId;
-      readonly hoverPos: Vector2;
-      readonly multiplicity: BondMultiplicity;
-    }
-  | {
-      readonly state: 'movingGroup';
-      readonly startPos: Vector2;
-      readonly targetPos: Vector2;
-      readonly groupItemIds: ReadonlyArray<ItemId>;
-    };
-
-export interface AtomSnap {
-  readonly targetId: AtomId;
-  readonly snapPos: Vector2;
-}
-
 /** Union literal of known item types */
-export type ItemType = 'Atom' | 'Bond';
+export type ItemType = 'Atom' | 'Bond' | 'FormulaSymbol' | 'PartialCharge';
 
 /** Nominal identifier type of model items */
 export type ItemId = Nominal<string, 'ItemId'>;
@@ -72,6 +24,7 @@ type ItemIdSubtype<T extends ItemType> = ItemId & { [itemType]: T };
 
 export type AtomId = ItemIdSubtype<'Atom'>;
 export type BondId = ItemIdSubtype<'Bond'>;
+export type FormulaSymbolId = ItemIdSubtype<'FormulaSymbol'>;
 
 type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;
 
@@ -79,23 +32,34 @@ type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;
 export interface MoleculeEditorModel {
   readonly atoms: ReadonlyRecord<ItemId, AtomModel>;
   readonly bonds: ReadonlyRecord<ItemId, BondModel>;
+  readonly symbols: ReadonlyRecord<ItemId, FormulaSymbolModel>;
 }
 
+/** Properties shared among all model data-structures */
 interface ModelBase<T extends ItemType> {
   readonly type: T;
   readonly itemId: ItemIdSubtype<T>;
 }
 
+/** Atom model data-structure, representing an instance of a specific element */
 export interface AtomModel extends ModelBase<'Atom'> {
   readonly position: Vector2;
   readonly elementNr: PsElementNumber;
   readonly electrons: number;
+  readonly charge: number;
 }
 
+/** Bond model data-structure, representing a single-, double-, or triple-bond between two atoms */
 export interface BondModel extends ModelBase<'Bond'> {
   readonly leftAtomId: AtomId;
   readonly rightAtomId: AtomId;
   readonly multiplicity: BondMultiplicity;
+}
+
+/** Formula-symbol data-structure, representing a chemical formula symbol placed on the canvas */
+export interface FormulaSymbolModel extends ModelBase<'FormulaSymbol'> {
+  readonly position: Vector2;
+  readonly symbol: FormulaSymbol;
 }
 
 /** Indexed graph of connections within the model, used internally for operations that require item relations */
@@ -131,43 +95,12 @@ export namespace ItemId {
   }
 }
 
-export namespace Vector2 {
-  export function add([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [ax + bx, ay + by] as const;
-  }
-
-  export function sub([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [ax - bx, ay - by] as const;
-  }
-
-  export function middle([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [(ax + bx) / 2, (ay + by) / 2];
-  }
-
-  export function scale(s: number, [x, y]: Vector2): Vector2 {
-    return [x * s, y * s] as const;
-  }
-
-  export function neg([x, y]: Vector2): Vector2 {
-    return [-x, -y] as const;
-  }
-
-  export function magnitude([x, y]: Vector2): number {
-    return Math.sqrt(x * x + y * y);
-  }
-
-  export function distance([ax, ay]: Vector2, [bx, by]: Vector2): number {
-    const dx = ax - bx;
-    const dy = ay - by;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-}
-
 export namespace MoleculeEditorModel {
-  // Helper function to create a temporary mutable copy of a Vector2 tuple, for usage in immer recipes
-  const v2 = ([x, y]: Vector2): [number, number] => [x, y];
-
-  export const empty: MoleculeEditorModel = { atoms: {}, bonds: {} } as const;
+  export const empty: MoleculeEditorModel = {
+    atoms: {},
+    bonds: {},
+    symbols: {},
+  } as const;
 
   export const addAtom = produce<MoleculeEditorModel, [AtomId, PsElementNumber, Vector2]>(
     (model, atomId, elementNr, position) => {
@@ -175,15 +108,16 @@ export namespace MoleculeEditorModel {
         type: 'Atom',
         itemId: atomId,
         elementNr,
-        position: v2(position),
+        position: castDraft(position),
         electrons: 0,
+        charge: 0,
       } satisfies AtomModel;
     },
   );
 
   export const moveAtom = produce<MoleculeEditorModel, [AtomId, Vector2]>((model, atomId, position) => {
     const atom = model.atoms[atomId];
-    if (atom) atom.position = v2(position);
+    if (atom) atom.position = castDraft(position);
   });
 
   export const addBond = produce<MoleculeEditorModel, [BondId, AtomId, AtomId, BondMultiplicity]>(
@@ -274,6 +208,12 @@ export namespace MoleculeEditorModel {
   );
 
   export const ATOM_TOTAL_MAX_ELECTRONS = 8;
+  export const ATOM_TOTAL_MIN_CHARGE = -3;
+  export const ATOM_TOTAL_MAX_CHARGE = +3;
+
+  function clamp(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value));
+  }
 
   // Helper function determining the maximum allowed number of electrons an atom is allowed to have.
   // Outer electrons are limited to `8 - sum(bond.multiplicity for bond where bond.left == atom or bond.right == atom)`
@@ -283,7 +223,7 @@ export namespace MoleculeEditorModel {
       .reduce((sum, bond) => sum + bond.multiplicity, 0);
 
     const maxElectrons = ATOM_TOTAL_MAX_ELECTRONS - occupiedByBonds;
-    return Math.max(0, Math.min(maxElectrons, electrons));
+    return clamp(electrons, 0, maxElectrons);
   }
 
   // Helper function trimming excess electrons from atoms connected by a given bond
@@ -301,117 +241,6 @@ export namespace ToolMode {
 
   export function bonding(multiplicity: BondMultiplicity) {
     return { mode: 'bonding', multiplicity } as const satisfies ToolMode;
-  }
-}
-
-export namespace EditorState {
-  export const idle = { state: 'idle' } as const satisfies EditorState;
-
-  export function select(itemId: ItemId) {
-    return { state: 'selected', itemId } as const satisfies EditorState;
-  }
-
-  export function addAtom(elementNr: PsElementNumber, hoverPos: Vector2) {
-    return { state: 'addingAtom', elementNr, hoverPos, snap: undefined } as const satisfies EditorState;
-  }
-
-  export function prepareMoveAtom(atomId: AtomId) {
-    return { state: 'preMoveAtom', atomId } as const satisfies EditorState;
-  }
-
-  export function moveAtom(atomId: AtomId, targetPos: Vector2) {
-    return { state: 'movingAtom', atomId, targetPos, snap: undefined } as const satisfies EditorState;
-  }
-
-  export function groupMove(startPos: Vector2, groupItemIds: ReadonlyArray<ItemId>) {
-    return { state: 'movingGroup', startPos, targetPos: startPos, groupItemIds } as const satisfies EditorState;
-  }
-
-  export function addBond(startId: AtomId, multiplicity: BondMultiplicity, hoverPos: Vector2) {
-    return {
-      state: 'addingBond',
-      startId,
-      multiplicity,
-      hoverPos,
-    } as const satisfies EditorState;
-  }
-
-  export type Substate<S extends EditorState['state']> = EditorState & { state: S };
-
-  export function isMovingAtom(state: EditorState, atomId: ItemId): state is Substate<'movingAtom' | 'movingGroup'> {
-    return (
-      (state.state === 'movingAtom' && state.atomId === atomId) ||
-      (state.state === 'movingGroup' && state.groupItemIds.includes(atomId))
-    );
-  }
-
-  export function isItemSelected(state: EditorState, atomId: ItemId): state is Substate<'selected'> {
-    return state.state === 'selected' && state.itemId === atomId;
-  }
-
-  export function isItemBondTargeted(state: EditorState, itemId: ItemId): state is Substate<'addingBond'> {
-    return state.state === 'addingBond' && state.startId === itemId;
-  }
-
-  export function isItemSnapTargeted(state: EditorState, itemId: ItemId): boolean {
-    return (state.state === 'addingAtom' || state.state === 'movingAtom') && state.snap?.targetId === itemId;
-  }
-
-  export function searchSnap<S extends Substate<'addingAtom' | 'movingAtom'>>(
-    state: S,
-    snapRadius: number,
-    proximityRadius: number,
-    graph: MoleculeEditorGraph,
-  ): S {
-    const position = state.state === 'addingAtom' ? state.hoverPos : state.targetPos;
-    const excludeId = state.state === 'addingAtom' ? undefined : state.atomId;
-    const snap = findAtomSnapTarget(position, snapRadius, proximityRadius, excludeId, graph);
-    return { ...state, snap };
-  }
-
-  function findAtomSnapTarget(
-    position: Vector2,
-    snapRadius: number,
-    proximityRadius: number,
-    excludeId: AtomId | undefined,
-    graph: MoleculeEditorGraph,
-  ): undefined | AtomSnap {
-    // Find atom with the least distance, within proximity radius
-    let targetAtom: undefined | AtomModel;
-    let minDistance = Number.POSITIVE_INFINITY;
-    for (const [atom, atomBonds] of graph.atomBonds.entries()) {
-      // Exclude target atom, or atoms bonded to target atom
-      if (excludeId) {
-        if (atom.itemId === excludeId) {
-          continue;
-        }
-        if (atomBonds.some((bond) => bond.leftAtomId === excludeId || bond.rightAtomId === excludeId)) {
-          continue;
-        }
-      }
-
-      const distance = Vector2.distance(position, atom.position);
-      if (distance < proximityRadius && distance < minDistance) {
-        minDistance = distance;
-        targetAtom = atom;
-      }
-    }
-    if (!targetAtom) {
-      return undefined;
-    }
-
-    // Find snapping position on horizontal/vertical axis
-    const [deltaX, deltaY] = Vector2.sub(position, targetAtom.position);
-    const horizontal = Math.abs(deltaX) > Math.abs(deltaY);
-    const snapOffset = horizontal
-      ? ([Math.sign(deltaX) * snapRadius, 0] as const)
-      : ([0, Math.sign(deltaY) * snapRadius] as const);
-
-    // Snap to x/y axis
-    return {
-      targetId: targetAtom.itemId,
-      snapPos: Vector2.add(targetAtom.position, snapOffset),
-    };
   }
 }
 
