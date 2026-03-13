@@ -37,5 +37,4 @@ export interface VowReturnRequested {
 
 export type VowParameterCollection =
   | ReadonlyArray<VowParameter>
-  | Readonly<Record<string, undefined | string>>
-  ;
+  | Readonly<Record<string, undefined | string>>;
