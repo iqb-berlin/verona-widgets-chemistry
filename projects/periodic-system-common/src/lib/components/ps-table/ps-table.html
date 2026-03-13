@@ -33,6 +33,17 @@
     </div>
   }
 
+  @if (appearance.enableBlockColors) {
+    <div class="ps-block-color-labels" aria-hidden="true">
+      @for (block of elementBlockLabels(); track block.block) {
+        <div class="color-label">
+          <div class="block-color-square" [style.background-color]="block.color"></div>
+          <div>{{ block.label }}</div>
+        </div>
+      }
+    </div>
+  }
+
   @if (appearance.showLabels) {
     @for (periodNr of periodNumbers; track periodNr) {
       <div class="ps-label" role="presentation" [class]="periodClassName(periodNr)">
