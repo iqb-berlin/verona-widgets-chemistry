@@ -9,6 +9,7 @@ import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer';
 import { MoleculeEditorPickerService } from '../../services/molecule-editor-picker.service';
 import { MoleculeEditorImageService } from '../../services/molecule-editor-image.service';
+import { MoleculeEditorImageRenderer } from '../../services/molecule-editor-image.renderer';
 import { CustomIconsService, registerCustomIcons } from '../../services/custom-icons.service';
 import { EditorCanvas } from '../editor-canvas/editor-canvas';
 import { EditorControls } from '../editor-controls/editor-controls';
@@ -23,6 +24,7 @@ import IqbIcons from '../../assets/iqb-icons.svg';
     MoleculeEditorService,
     MoleculeEditorRenderer,
     MoleculeEditorImageService,
+    MoleculeEditorImageRenderer,
     MoleculeEditorPickerService,
     { provide: PsService, useExisting: MoleculeEditorPickerService },
     registerCustomIcons([{ namespace: 'iqb', svg: IqbIcons }]),

@@ -2,10 +2,10 @@ import { computed, inject, Injectable } from '@angular/core';
 import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
 import { AtomId, AtomModel, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
-import { EditorState } from './molecule-editor.state';
 import { AtomView, BondView, ElectronOrientation, ElectronView, MoleculeEditorView } from './molecule-editor.view';
-import { lookupElement } from './molecule-editor.helper';
+import { EditorState } from './molecule-editor.state';
 import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
+import { lookupElement } from './molecule-editor.helper';
 
 @Injectable()
 export class MoleculeEditorRenderer {
@@ -39,7 +39,7 @@ function renderModelAtoms(graph: MoleculeEditorGraph, state: EditorState, atomVi
 }
 
 function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: EditorState): AtomView {
-  const { itemId, elementNr, position } = atom;
+  const { itemId, elementNr, position, formalCharge } = atom;
 
   const element = lookupElement(elementNr);
   const selected = EditorState.isItemSelected(state, itemId);
@@ -53,6 +53,7 @@ function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: Edito
     position,
     selected,
     targeted,
+    formalCharge,
     temporary: false,
     electrons: electronViews,
   };
@@ -191,6 +192,7 @@ function temporaryAtomView(itemId: AtomId, elementNr: PsElementNumber, position:
     targeted: false,
     temporary: true,
     electrons: [],
+    formalCharge: 0,
   };
 }
 

@@ -46,7 +46,7 @@ export interface AtomModel extends ModelBase<'Atom'> {
   readonly position: Vector2;
   readonly elementNr: PsElementNumber;
   readonly electrons: number;
-  readonly charge: number;
+  readonly formalCharge: number;
 }
 
 /** Bond model data-structure, representing a single-, double-, or triple-bond between two atoms */
@@ -110,7 +110,7 @@ export namespace MoleculeEditorModel {
         elementNr,
         position: castDraft(position),
         electrons: 0,
-        charge: 0,
+        formalCharge: 0,
       } satisfies AtomModel;
     },
   );
@@ -178,10 +178,20 @@ export namespace MoleculeEditorModel {
     },
   );
 
+  export const changeAtomCharge = produce<MoleculeEditorModel, [atomId: ItemId, delta: number]>(
+    (model, atomId, delta) => {
+      const atom = model.atoms[atomId];
+      if (atom) {
+        atom.formalCharge = limitFormalCharge(atom.formalCharge + delta);
+      }
+    },
+  );
+
   export const deleteItem = produce<MoleculeEditorModel, [ItemId]>((model, itemId) => {
     const atom = model.atoms[itemId];
     delete model.atoms[itemId];
     delete model.bonds[itemId];
+    delete model.symbols[itemId];
 
     if (atom) {
       // Delete all bonds connected to atom
@@ -208,8 +218,8 @@ export namespace MoleculeEditorModel {
   );
 
   export const ATOM_TOTAL_MAX_ELECTRONS = 8;
-  export const ATOM_TOTAL_MIN_CHARGE = -3;
-  export const ATOM_TOTAL_MAX_CHARGE = +3;
+  export const ATOM_TOTAL_MIN_FORMAL_CHARGE = -3;
+  export const ATOM_TOTAL_MAX_FORMAL_CHARGE = +3;
 
   function clamp(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
@@ -231,6 +241,10 @@ export namespace MoleculeEditorModel {
     const { [bond.leftAtomId]: leftAtom, [bond.rightAtomId]: rightAtom } = model.atoms;
     if (leftAtom) leftAtom.electrons = limitAtomElectrons(model, leftAtom, leftAtom.electrons);
     if (rightAtom) rightAtom.electrons = limitAtomElectrons(model, rightAtom, rightAtom.electrons);
+  }
+
+  function limitFormalCharge(formalCharge: number): number {
+    return clamp(formalCharge, ATOM_TOTAL_MIN_FORMAL_CHARGE, ATOM_TOTAL_MAX_FORMAL_CHARGE);
   }
 }
 

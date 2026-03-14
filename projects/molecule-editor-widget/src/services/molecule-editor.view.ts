@@ -14,6 +14,7 @@ export interface AtomView {
   readonly position: Vector2;
   readonly element: PsElement;
   readonly electrons: ReadonlyArray<ElectronView>;
+  readonly formalCharge: number;
   readonly selected: boolean;
   readonly temporary: boolean;
   readonly targeted: boolean;

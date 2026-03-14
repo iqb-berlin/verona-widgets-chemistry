@@ -5,12 +5,7 @@ import { MoleculeCanvasTransform } from './molecule-editor.event';
 import { AtomId, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
 import { deferPromise, DeferredPromise } from '../util/defer-promise';
 import { historySignal } from '../util/history-signal';
-import {
-  defaultBondingType,
-  editorHistoryCapacity,
-  snapProximityRadius,
-  snapRadius,
-} from './molecule-editor.constants';
+import { defaultBondingType, editorHistoryCapacity } from './molecule-editor.constants';
 import { EditorState } from './molecule-editor.state';
 import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
 
@@ -53,15 +48,15 @@ export class MoleculeEditorService {
     const initialStateData = this.widgetService.stateData();
     this.model.set(parseSerializedEditorModel(initialStateData), false);
 
+    // Effect: PsTable closed without picking an element
     effect(() => {
-      // PsTable closed without picking an element
       if (!this.openPicker()) {
         this._currentPickElementPromise?.reject();
       }
     });
 
+    // Effect: Reset editor-state when tool-mode changes
     effect(() => {
-      // Reset editor-state when tool-mode changes
       const toolMode = this.toolMode(); // reset editor-state when tool-mode changes
       const editorState = untracked(this.editorState); // do NOT trigger on editor-state change!
 
@@ -139,6 +134,13 @@ export class MoleculeEditorService {
     const state = this.editorState();
     if (state.state === 'selected') {
       this.model.update((model) => MoleculeEditorModel.changeAtomElectrons(model, state.itemId, delta), true);
+    }
+  }
+
+  changeSelectedElementCharge(delta: -1 | 1) {
+    const state = this.editorState();
+    if (state.state === 'selected') {
+      this.model.update((model) => MoleculeEditorModel.changeAtomCharge(model, state.itemId, delta), true);
     }
   }
 
@@ -468,7 +470,7 @@ export class MoleculeEditorService {
 
   private searchSnap<S extends EditorState.Substate<'addingAtom' | 'movingAtom'>>(state: S): S {
     const graph = this.graph();
-    return EditorState.searchSnap(state, snapRadius, snapProximityRadius, graph);
+    return EditorState.searchSnap(state, graph);
   }
 }
 

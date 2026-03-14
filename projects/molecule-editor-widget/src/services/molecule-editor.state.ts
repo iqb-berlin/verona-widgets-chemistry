@@ -1,6 +1,7 @@
 import type { PsElementNumber } from 'periodic-system-common';
 import type { AtomId, AtomModel, FormulaSymbolId, ItemId, MoleculeEditorGraph } from './molecule-editor.model';
 import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
+import { snapProximityRadius, snapRadius } from './molecule-editor.constants';
 
 /** Possible active states of the molecule editor */
 export type EditorState =
@@ -140,22 +141,15 @@ export namespace EditorState {
     return (state.state === 'addingAtom' || state.state === 'movingAtom') && state.snap?.targetId === itemId;
   }
 
-  export function searchSnap<S extends Substate<'addingAtom' | 'movingAtom'>>(
-    state: S,
-    snapRadius: number,
-    proximityRadius: number,
-    graph: MoleculeEditorGraph,
-  ): S {
+  export function searchSnap<S extends Substate<'addingAtom' | 'movingAtom'>>(state: S, graph: MoleculeEditorGraph): S {
     const position = state.state === 'addingAtom' ? state.hoverPos : state.targetPos;
     const excludeId = state.state === 'addingAtom' ? undefined : state.atomId;
-    const snap = findAtomSnapTarget(position, snapRadius, proximityRadius, excludeId, graph);
+    const snap = findAtomSnapTarget(position, excludeId, graph);
     return { ...state, snap };
   }
 
   function findAtomSnapTarget(
     position: Vector2,
-    snapRadius: number,
-    proximityRadius: number,
     excludeId: AtomId | undefined,
     graph: MoleculeEditorGraph,
   ): undefined | AtomSnap {
@@ -174,7 +168,7 @@ export namespace EditorState {
       }
 
       const distance = Vector2.distance(position, atom.position);
-      if (distance < proximityRadius && distance < minDistance) {
+      if (distance < snapProximityRadius && distance < minDistance) {
         minDistance = distance;
         targetAtom = atom;
       }
