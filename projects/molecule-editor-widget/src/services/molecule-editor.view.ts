@@ -14,7 +14,7 @@ export interface AtomView {
   readonly position: Vector2;
   readonly element: PsElement;
   readonly electrons: ReadonlyArray<ElectronView>;
-  readonly formalCharge: number;
+  readonly formalCharge: FormalChargeView | null;
   readonly selected: boolean;
   readonly temporary: boolean;
   readonly targeted: boolean;
@@ -32,6 +32,13 @@ export interface BondView {
 export interface ElectronView {
   readonly type: 1 | 2; // single or double
   readonly orientation: ElectronOrientation; // north, east, south, or west
+}
+
+export interface FormalChargeView {
+  readonly position: Vector2;
+  readonly color: string;
+  readonly label: string;
+  readonly labelLarge: boolean;
 }
 
 export const enum ElectronOrientation {
@@ -185,5 +192,20 @@ export namespace ElectronView {
       items.splice(index, 1);
       items.push(item);
     }
+  }
+}
+
+export namespace FormalChargeView {
+  export function formalChargeLabel(formalCharge: number): string {
+    const n = Math.abs(formalCharge);
+    if (formalCharge === -1) return '–';
+    else if (formalCharge === +1) return '+';
+    else if (formalCharge < -1) return `${n}–`;
+    else if (formalCharge > +1) return `${n}+`;
+    else return '';
+  }
+
+  export function formalChargeLabelLarge(formalCharge: number): boolean {
+    return formalCharge <= 1 && -1 <= formalCharge;
   }
 }

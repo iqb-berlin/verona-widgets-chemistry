@@ -1,6 +1,6 @@
 import { DOCUMENT, inject, Injectable, untracked } from '@angular/core';
 import { MoleculeEditorBondingType, MoleculeEditorService } from './molecule-editor.service';
-import { AtomView, BondView, ElectronView, MoleculeEditorView } from './molecule-editor.view';
+import { AtomView, BondView, ElectronView, FormalChargeView, MoleculeEditorView } from './molecule-editor.view';
 import { Vector2 } from './molecule-editor.shared';
 import { ItemId } from './molecule-editor.model';
 import * as C from './molecule-editor.constants';
@@ -122,6 +122,13 @@ export class MoleculeEditorImageRenderer {
       group.appendChild(this.drawAtomElectron(e, atom));
     }
 
+    // Atom formal charge
+    if (atom.formalCharge) {
+      for (const item of this.drawAtomFormalCharge(atom.formalCharge)) {
+        group.appendChild(item);
+      }
+    }
+
     return group;
   }
 
@@ -159,6 +166,33 @@ export class MoleculeEditorImageRenderer {
     tick.setAttribute('stroke-width', String(C.doubleElectronRadius));
     tick.setAttribute('stroke-linecap', 'round');
     return tick;
+  }
+
+  private drawAtomFormalCharge({ position, color, label, labelLarge }: FormalChargeView): ReadonlyArray<SVGElement> {
+    // Charge handle circle
+    const [x, y] = position;
+    const circle = this.createSvgElement('circle');
+    circle.setAttribute('cx', String(x));
+    circle.setAttribute('cy', String(y));
+    circle.setAttribute('r', String(C.formalChargeHandleRadius));
+    circle.setAttribute('fill', '#ffffff'); // background color covering bonds
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', '2');
+
+    // Charge label text
+    const fontSize = labelLarge ? '16px' : '12px';
+    const text = this.createSvgElement('text');
+    text.textContent = label;
+    text.setAttribute('x', String(x));
+    text.setAttribute('y', String(y));
+    text.setAttribute('font-size', fontSize);
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('font-family', 'sans-serif');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('fill', color);
+
+    return [circle, text];
   }
 }
 

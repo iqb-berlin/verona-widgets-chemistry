@@ -66,6 +66,28 @@
 
     <button
       matIconButton
+      matTooltip="Formalladung Positiv"
+      type="button"
+      [disabled]="formalChargePositiveDisabled()"
+      (click)="$event.stopPropagation(); service.changeSelectedElementFormalCharge(+1)"
+    >
+      <mat-icon svgIcon="iqb:formal_charge_plus"></mat-icon>
+    </button>
+
+    <button
+      matIconButton
+      matTooltip="Formalladung Negativ"
+      type="button"
+      [disabled]="formalChargeNegativeDisabled()"
+      (click)="$event.stopPropagation(); service.changeSelectedElementFormalCharge(-1)"
+    >
+      <mat-icon svgIcon="iqb:formal_charge_minus"></mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <button
+      matIconButton
       matTooltip="Auswählen"
       type="button"
       [class.active-tool]="pointerModeActive()"

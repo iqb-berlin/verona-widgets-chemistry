@@ -24,6 +24,8 @@ export class SvgAtomView {
   protected readonly doubleElectronWidth = C.doubleElectronWidth;
   protected readonly doubleElectronRadius = C.doubleElectronRadius;
 
+  protected readonly formalChargeHandleRadius = C.formalChargeHandleRadius;
+
   singleElectronCoordinates(electron: ElectronView, d: number) {
     const { position } = this.atomView();
     return ElectronView.singleCoordinates(electron, position, d);

@@ -2,10 +2,18 @@ import { computed, inject, Injectable } from '@angular/core';
 import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
 import { AtomId, AtomModel, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
-import { AtomView, BondView, ElectronOrientation, ElectronView, MoleculeEditorView } from './molecule-editor.view';
+import {
+  AtomView,
+  BondView,
+  ElectronOrientation,
+  ElectronView,
+  FormalChargeView,
+  MoleculeEditorView,
+} from './molecule-editor.view';
 import { EditorState } from './molecule-editor.state';
 import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
 import { lookupElement } from './molecule-editor.helper';
+import * as C from './molecule-editor.constants';
 
 @Injectable()
 export class MoleculeEditorRenderer {
@@ -46,6 +54,7 @@ function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: Edito
   const targeted = EditorState.isItemBondTargeted(state, itemId) || EditorState.isItemSnapTargeted(state, itemId);
 
   const electronViews = renderAtomElectronViews(atom, graph);
+  const formalChargeView = formalCharge === 0 ? null : renderFormalChargeView(atom, formalCharge);
 
   return {
     itemId,
@@ -53,9 +62,9 @@ function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: Edito
     position,
     selected,
     targeted,
-    formalCharge,
     temporary: false,
     electrons: electronViews,
+    formalCharge: formalChargeView,
   };
 }
 
@@ -102,6 +111,15 @@ function renderAtomElectronViews(atom: AtomModel, graph: MoleculeEditorGraph): A
     result.push({ type: 1, orientation });
   }
   return result;
+}
+
+function renderFormalChargeView(atom: AtomModel, formalCharge: number): FormalChargeView {
+  return {
+    position: Vector2.add(atom.position, C.formalChargePositionOffset),
+    color: formalCharge > 0 ? C.formalChargePositiveColor : C.formalChargeNegativeColor,
+    label: FormalChargeView.formalChargeLabel(formalCharge),
+    labelLarge: FormalChargeView.formalChargeLabelLarge(formalCharge),
+  };
 }
 
 function renderModelBonds(model: MoleculeEditorModel, state: EditorState, bondViews: Array<BondView>) {
@@ -192,7 +210,7 @@ function temporaryAtomView(itemId: AtomId, elementNr: PsElementNumber, position:
     targeted: false,
     temporary: true,
     electrons: [],
-    formalCharge: 0,
+    formalCharge: null,
   };
 }
 

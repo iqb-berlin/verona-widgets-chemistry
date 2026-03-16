@@ -137,7 +137,7 @@ export class MoleculeEditorService {
     }
   }
 
-  changeSelectedElementCharge(delta: -1 | 1) {
+  changeSelectedElementFormalCharge(delta: -1 | 1) {
     const state = this.editorState();
     if (state.state === 'selected') {
       this.model.update((model) => MoleculeEditorModel.changeAtomCharge(model, state.itemId, delta), true);

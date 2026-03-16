@@ -51,4 +51,26 @@
       }
     }
   }
+
+  @if (!atom.temporary && atom.formalCharge) {
+    @let chargeX = atom.formalCharge.position[0];
+    @let chargeY = atom.formalCharge.position[1];
+    @let fontSize = atom.formalCharge.labelLarge ? 16 : 12;
+    <svg:circle
+      class="formal-charge-handle"
+      [attr.cx]="chargeX"
+      [attr.cy]="chargeY"
+      [attr.r]="formalChargeHandleRadius"
+      [attr.stroke]="atom.formalCharge.color"
+    ></svg:circle>
+    <svg:text
+      class="formal-charge-label"
+      [attr.x]="chargeX"
+      [attr.y]="chargeY"
+      [attr.fill]="atom.formalCharge.color"
+      [style.font-size.px]="fontSize"
+    >
+      {{ atom.formalCharge.label }}
+    </svg:text>
+  }
 </ng-container>

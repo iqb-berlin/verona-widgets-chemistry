@@ -10,11 +10,11 @@ import {
   MatDialogContent,
   MatDialogTitle,
 } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 import { PsElement, PsElementNumber, PsElements, PsElementSymbol } from 'periodic-system-common';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { AtomModel, MoleculeEditorModel, ToolMode } from '../../services/molecule-editor.model';
 import { BondMultiplicity } from '../../services/molecule-editor.shared';
-import { firstValueFrom } from 'rxjs';
 
 const elementBySymbol = new Map(PsElements.map((e) => [e.symbol, e] as const));
 
@@ -92,10 +92,18 @@ export class EditorControls {
     const maxElectrons = this.selectedAtomMaxElectrons();
     return !atom || atom.electrons >= maxElectrons;
   });
-
   readonly decrementElectronDisabled = computed(() => {
     const atom = this.selectedAtom();
     return !atom || atom.electrons <= 0;
+  });
+
+  readonly formalChargePositiveDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.formalCharge >= MoleculeEditorModel.ATOM_TOTAL_MAX_FORMAL_CHARGE;
+  });
+  readonly formalChargeNegativeDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.formalCharge <= MoleculeEditorModel.ATOM_TOTAL_MIN_FORMAL_CHARGE;
   });
 
   readonly zoomOutDisabled = computed(() => this.zoomLevelIndex() <= 0);
