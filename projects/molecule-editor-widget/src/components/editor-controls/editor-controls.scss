@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 :host {
   // Position to fill out parent component
   position: absolute;
@@ -127,4 +129,9 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+}
+
+.formula-button {
+  /* Make formula-buttons square-ish to differentiate from other controls */
+  @include mat.icon-button-overrides((container-shape: 15%));
 }

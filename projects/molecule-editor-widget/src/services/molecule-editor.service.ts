@@ -2,12 +2,13 @@ import { computed, effect, inject, Injectable, Signal, signal, untracked } from 
 import { VeronaWidgetService } from 'verona-widget';
 import { PsElement, PsElementNumber } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
-import { AtomId, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
+import { AtomId, FormulaSymbolId, ItemId, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
 import { deferPromise, DeferredPromise } from '../util/defer-promise';
 import { historySignal } from '../util/history-signal';
 import { defaultBondingType, editorHistoryCapacity } from './molecule-editor.constants';
 import { EditorState } from './molecule-editor.state';
-import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
+import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { MoleculeEditorGraph } from './molecule-editor.graph';
 
 export const enum MoleculeEditorParam {
   language = 'LANGUAGE',
@@ -69,7 +70,7 @@ export class MoleculeEditorService {
       else if (toolMode.mode === 'bonding' && editorState.state === 'selected') {
         this.model.update((model) => {
           const bond = model.bonds[editorState.itemId];
-          return bond ? MoleculeEditorModel.setBondMultiplicity(model, bond.itemId, toolMode.multiplicity) : model;
+          return bond ? MoleculeEditorModel.setBondMultiplicity(model, bond.id, toolMode.multiplicity) : model;
         });
       }
       // special case: selecting duplicate/bonding while adding an atom, keep state
@@ -84,8 +85,8 @@ export class MoleculeEditorService {
 
     // Uncomment for debugging: Log state/mode/model changes
     //effect(() => console.log('tool mode =', this.toolMode()));
-    //effect(() => console.log('editor state =', this.editorState()));
-    //effect(() => console.log('editor model =', this.model()));
+    effect(() => console.log('editor state =', this.editorState()));
+    effect(() => console.log('editor model =', this.model()));
   }
 
   registerCanvasTransform(transform: MoleculeCanvasTransform) {
@@ -183,40 +184,59 @@ export class MoleculeEditorService {
     const state = this.editorState();
 
     switch (state.state) {
+      case 'idle':
+      case 'preMoveAtom':
+      case 'movingAtom':
+      case 'movingGroup':
+      case 'preMoveOther':
+      case 'movingOther':
+        break; // Do nothing
       case 'selected': {
         this.editorState.set(EditorState.idle);
         break;
       }
       case 'addingAtom': {
-        const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
-
-        const atomId = ItemId.generate<'Atom'>();
-        if (snap) {
-          const bondId = ItemId.generate<'Bond'>();
-          const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
-          this.model.update((model) => {
-            const model2 = MoleculeEditorModel.addAtom(model, atomId, elementNr, snap.snapPos);
-            return MoleculeEditorModel.addBond(model2, bondId, atomId, snap.targetId, multiplicity);
-          }, true);
-        } else {
-          this.model.update((model) => {
-            return MoleculeEditorModel.addAtom(model, atomId, elementNr, position);
-          }, true);
-        }
-
+        const { atomId, elementNr, nextPosition } = this.finishAddAtom(state, position, mode);
         this.editorState.set(EditorState.idle);
-
-        setTimeout(() => {
-          const nextPosition = snap ? snap.snapPos : position;
-          this.afterAtomAdded(atomId, elementNr, nextPosition);
-        }, 0);
+        setTimeout(() => this.afterAtomAdded(atomId, elementNr, nextPosition), 0);
         break;
       }
       case 'addingBond': {
         this.editorState.set(EditorState.idle);
         break;
       }
+      case 'addingFormulaSymbol': {
+        const { symbolId, symbol } = this.finishAddFormulaSymbol(state, position);
+        this.editorState.set(EditorState.select(symbolId));
+        setTimeout(() => this.afterFormulaSymbolAdded(symbolId, symbol, position), 0);
+        break;
+      }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas click unknown state:', unknownState);
+      }
     }
+  }
+
+  private finishAddAtom(state: EditorState.AddingAtom, position: Vector2, mode: ToolMode) {
+    const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
+
+    const atomId = ItemId.generate<'Atom'>();
+    if (snap) {
+      const bondId = ItemId.generate<'Bond'>();
+      const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
+      this.model.update((modelBefore) => {
+        const modelAfter = MoleculeEditorModel.addAtom(modelBefore, atomId, elementNr, snap.snapPos);
+        return MoleculeEditorModel.addBond(modelAfter, bondId, atomId, snap.targetId, multiplicity);
+      }, true);
+    } else {
+      this.model.update((model) => {
+        return MoleculeEditorModel.addAtom(model, atomId, elementNr, position);
+      }, true);
+    }
+
+    const nextPosition = snap ? snap.snapPos : position;
+    return { atomId, elementNr, nextPosition } as const;
   }
 
   private afterAtomAdded(id: AtomId, elementNr: PsElementNumber, position: Vector2) {
@@ -236,6 +256,26 @@ export class MoleculeEditorService {
     }
   }
 
+  private finishAddFormulaSymbol(state: EditorState.AddingFormulaSymbol, position: Vector2) {
+    const symbolId = ItemId.generate<'FormulaSymbol'>();
+    this.model.update((model) => MoleculeEditorModel.addFormulaSymbol(model, symbolId, state.symbol, position));
+    return { symbolId, symbol: state.symbol } as const;
+  }
+
+  private afterFormulaSymbolAdded(symbolId: FormulaSymbolId, symbol: FormulaSymbol, position: Vector2) {
+    const toolMode = this.toolMode();
+    switch (toolMode.mode) {
+      case 'pointer': {
+        this.editorState.set(EditorState.select(symbolId));
+        break;
+      }
+      case 'duplicate': {
+        this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+        break;
+      }
+    }
+  }
+
   private handleCanvasMove(position: Vector2) {
     const state = this.editorState();
 
@@ -244,9 +284,18 @@ export class MoleculeEditorService {
         this.editorState.set(this.searchSnap(EditorState.addAtom(state.elementNr, position)));
         break;
       }
+      case 'addingFormulaSymbol': {
+        this.editorState.set({ ...state, hoverPos: position });
+        break;
+      }
       case 'preMoveAtom':
       case 'movingAtom': {
         this.editorState.set(this.searchSnap(EditorState.moveAtom(state.atomId, position)));
+        break;
+      }
+      case 'preMoveOther':
+      case 'movingOther': {
+        this.editorState.set(EditorState.moveOther(state, position));
         break;
       }
       case 'addingBond': {
@@ -263,7 +312,15 @@ export class MoleculeEditorService {
   private handleCanvasUp(position: Vector2) {
     const state = this.editorState();
     switch (state.state) {
-      case 'preMoveAtom': {
+      case 'idle':
+      case 'selected':
+      case 'addingAtom':
+      case 'addingFormulaSymbol':
+      case 'addingBond':
+        break; // Do nothing
+      case 'preMoveAtom':
+      case 'preMoveOther': {
+        // Cancel pre-movement if up-event occurred before move started
         this.editorState.set(EditorState.idle);
         break;
       }
@@ -272,13 +329,19 @@ export class MoleculeEditorService {
         const finalPosition = snap ? snap.snapPos : position;
         if (snap) {
           const bondId = ItemId.generate<'Bond'>();
-          this.model.update((model) => {
-            const m2 = MoleculeEditorModel.moveAtom(model, atomId, finalPosition);
-            return MoleculeEditorModel.addBond(m2, bondId, atomId, snap.targetId, 1);
+          this.model.update((modelBefore) => {
+            const modelAfter = MoleculeEditorModel.moveItem(modelBefore, atomId, finalPosition);
+            return MoleculeEditorModel.addBond(modelAfter, bondId, atomId, snap.targetId, 1);
           });
         } else {
-          this.model.update((model) => MoleculeEditorModel.moveAtom(model, atomId, position), true);
+          this.model.update((model) => MoleculeEditorModel.moveItem(model, atomId, position), true);
         }
+        this.editorState.set(EditorState.idle);
+        break;
+      }
+      case 'movingOther': {
+        const { itemId } = state;
+        this.model.update((model) => MoleculeEditorModel.moveItem(model, itemId, position));
         this.editorState.set(EditorState.idle);
         break;
       }
@@ -287,6 +350,10 @@ export class MoleculeEditorService {
         this.model.update((model) => MoleculeEditorModel.moveGroup(model, moveDelta, state.groupItemIds), true);
         this.editorState.set(EditorState.idle);
         break;
+      }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas up unknown state:', unknownState);
       }
     }
   }
@@ -462,10 +529,79 @@ export class MoleculeEditorService {
   }
 
   //endregion
+  //region Formula-symbol events
+
+  addFormulaSymbolToCanvas(symbol: FormulaSymbol, pointerEvent: PointerEvent) {
+    const { position } = this._canvasTransform(pointerEvent);
+    this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+  }
+
+  handleFormulaSymbolEvent(symbolId: FormulaSymbolId, pointerEvent: PointerEvent) {
+    // stop implicit bubbling
+    pointerEvent.stopPropagation();
+
+    // immediately bubble up to canvas for temporary atoms (itemId is not present in model)
+    if (this.isTemporaryItem(symbolId)) {
+      this.handleCanvasEvent(pointerEvent);
+      return;
+    }
+
+    // transform and handle event
+    const toolMode = this.toolMode();
+    const { event, position } = this._canvasTransform(pointerEvent);
+    switch (event) {
+      case 'move':
+        this.handleCanvasMove(position); // bubble up to canvas for movement
+        break;
+      case 'up': {
+        this.handleCanvasUp(position); // bubble up to canvas for mouse-up
+        break;
+      }
+      case 'down': {
+        switch (toolMode.mode) {
+          case 'pointer':
+            this.editorState.set(EditorState.prepareMoveFormulaSymbol(symbolId));
+            break;
+          case 'duplicate':
+            break; // duplication handled in click
+          case 'groupMove':
+            this.beginGroupMove(symbolId, position);
+            break;
+          case 'bonding':
+            break; // do nothing
+        }
+        break;
+      }
+      case 'click': {
+        switch (toolMode.mode) {
+          case 'pointer': {
+            this.editorState.set(EditorState.select(symbolId));
+            break;
+          }
+          case 'duplicate': {
+            const model = this.model();
+            const symbol = model.symbols[symbolId]?.symbol ?? FormulaSymbol.ReactionPlus;
+            this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+            break;
+          }
+          case 'groupMove':
+          case 'bonding':
+            break; // not applicable
+        }
+        break;
+      }
+      default:
+        console.warn(`Unknown formula-symbol "${symbolId}" event:`, event satisfies never);
+    }
+  }
+
+  //endregion
 
   private isTemporaryItem(itemId: ItemId) {
     const model = this.model();
-    return !(itemId in model.atoms) && !(itemId in model.bonds);
+    return (
+      !(itemId in model.atoms) && !(itemId in model.bonds) && !(itemId in model.symbols) && !(itemId in model.partials)
+    );
   }
 
   private searchSnap<S extends EditorState.Substate<'addingAtom' | 'movingAtom'>>(state: S): S {
@@ -513,8 +649,9 @@ function parseSerializedEditorModel(initialStateData: string): MoleculeEditorMod
     console.log('Parsing JSON editor-model state data:', data);
     const atoms = data.atoms ?? {};
     const bonds = data.bonds ?? {};
+    const partials = data.partials ?? {};
     const symbols = data.symbols ?? {};
-    return { atoms, bonds, symbols };
+    return { atoms, bonds, symbols, partials };
   } catch (e) {
     console.warn('Received invalid JSON editor-model state data:', initialStateData);
     return MoleculeEditorModel.empty;

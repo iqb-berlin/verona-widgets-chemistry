@@ -11,14 +11,16 @@ import {
   PsPeriodNumber,
 } from 'periodic-system-common';
 
-const elementByNumber: ReadonlyMap<PsElementNumber, PsElement> = new Map(
-  PsElements.map((e) => {
-    return [e.number, e] as const;
-  }),
-);
+const indexElements = <T>(by: (e: PsElement) => T) => new Map(PsElements.map((e) => [by(e), e] as const));
+const elementByNumber: ReadonlyMap<PsElementNumber, PsElement> = indexElements((e) => e.number);
+const elementBySymbol: ReadonlyMap<PsElementSymbol, PsElement> = indexElements((e) => e.symbol);
 
-export function lookupElement(elementNr: PsElementNumber): PsElement {
+export function lookupElementNr(elementNr: PsElementNumber): PsElement {
   return elementByNumber.get(elementNr) ?? unknownElement;
+}
+
+export function lookupElementSymbol(elementSymbol: string | PsElementSymbol): PsElement {
+  return elementBySymbol.get(elementSymbol as PsElementSymbol) ?? unknownElement;
 }
 
 // Used when an unknown element is referenced - this should never happen

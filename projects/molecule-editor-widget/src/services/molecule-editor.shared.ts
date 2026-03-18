@@ -3,15 +3,23 @@ export type BondMultiplicity = 1 | 2 | 3;
 
 /** Available formula symbols */
 export const enum FormulaSymbol {
-  PlusOperator = '+',
-  NetForwardArrow = '→',
+  ReactionPlus = '+',
+  ReactionArrow = '→',
   EquilibriumArrow = '⇌',
+}
+
+/** Polarity of a partial charge */
+export const enum PartialCharge {
+  Positive = '+',
+  Negative = '-',
 }
 
 /** Vector in 2D Euclidean space */
 export type Vector2 = readonly [x: number, y: number];
 
 export namespace Vector2 {
+  export const zero = [0, 0] as const satisfies Vector2;
+
   export function add([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
     return [ax + bx, ay + by] as const;
   }
@@ -49,29 +57,6 @@ export namespace AngleMath {
 
   export function deg(degrees: number): number {
     return degrees * (Math.PI / 180);
-  }
-
-  export function normalize(angle: number): number {
-    const normalized = angle % rad;
-    return normalized < 0 ? normalized + rad : normalized;
-  }
-
-  export function angleDiff(a: number, b: number): number {
-    let diff = (a - b) % rad;
-    if (diff > Math.PI) diff -= Math.PI;
-    if (diff < -Math.PI) diff += Math.PI;
-    return diff;
-  }
-
-  export function distributeAngles(count: number, jitter?: number): Array<number> {
-    const angles: Array<number> = [];
-    const sliceAngle = rad / count;
-    for (let i = 0; i < count; i++) {
-      const angle = i * sliceAngle;
-      const deviation = jitter ? jitter * Math.random() : 0;
-      angles.push(angle + deviation);
-    }
-    return angles;
   }
 
   export function anglePosition(angle: number): Vector2 {

@@ -1,0 +1,33 @@
+.symbol-handle {
+  fill: transparent;
+  stroke: var(--mat-sys-on-surface);
+  stroke-opacity: 50%;
+  stroke-width: 0;
+
+  pointer-events: auto;
+  cursor: var(--formula-symbol-handle-cursor);
+
+  &:not(.temporary):hover {
+    stroke-width: 1;
+  }
+
+  &.selected {
+    stroke: var(--mat-sys-primary);
+    stroke-width: 2;
+    stroke-opacity: 100%;
+  }
+}
+
+.symbol-glyph {
+  pointer-events: none;
+
+  &.temporary {
+    opacity: 50%;
+    stroke-opacity: 50%;
+  }
+
+  &.selected {
+    color: var(--mat-sys-primary);
+    stroke: var(--mat-sys-primary);
+  }
+}

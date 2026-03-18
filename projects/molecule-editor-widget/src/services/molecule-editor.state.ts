@@ -1,13 +1,16 @@
 import type { PsElementNumber } from 'periodic-system-common';
-import type { AtomId, AtomModel, FormulaSymbolId, ItemId, MoleculeEditorGraph } from './molecule-editor.model';
-import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
+import type { AtomId, AtomModel, FormulaSymbolId, ItemId } from './molecule-editor.model';
+import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
 import { snapProximityRadius, snapRadius } from './molecule-editor.constants';
+import { MoleculeEditorGraph } from './molecule-editor.graph';
+import matching from '../util/matching';
 
 /** Possible active states of the molecule editor */
 export type EditorState =
   | EditorState.Idle
   | EditorState.ItemSelected
   | EditorState.AddingAtom
+  | EditorState.AddingFormulaSymbol
   | EditorState.PreMoveAtom
   | EditorState.MovingAtom
   | EditorState.AddingBond
@@ -35,6 +38,11 @@ export namespace EditorState {
     readonly elementNr: PsElementNumber;
     readonly hoverPos: Vector2;
     readonly snap: undefined | AtomSnap;
+  }
+
+  export interface AddingFormulaSymbol extends StateBase<'addingFormulaSymbol'> {
+    readonly symbol: FormulaSymbol;
+    readonly hoverPos: Vector2;
   }
 
   /** Data structure representing an atom being available to snap to a target position */
@@ -73,38 +81,64 @@ export namespace EditorState {
   }
 
   /** An object other than an atom is either about to be moved, or clicked on for selection */
-  // NOTE: Currently, only Formula Symbols can be moved; other objects might be added here in the future
   export interface PreMoveOther extends StateBase<'preMoveOther'> {
-    readonly moveType: 'FormulaSymbol';
-    readonly itemId: FormulaSymbolId;
+    readonly itemId: ItemId;
+    readonly moveType: 'PartialCharge' | 'FormulaSymbol';
   }
 
   export interface MovingOther extends StateBase<'movingOther'> {
-    readonly moveType: 'FormulaSymbol';
-    readonly itemId: FormulaSymbolId;
+    readonly itemId: ItemId;
+    readonly moveType: 'PartialCharge' | 'FormulaSymbol';
     readonly targetPos: Vector2;
   }
-}
 
-// --- EditorState values and functions ---
+  // --- EditorState values and functions ---
 
-export namespace EditorState {
   export const idle = { state: 'idle' } as const satisfies EditorState;
 
   export function select(itemId: ItemId) {
-    return { state: 'selected', itemId } as const satisfies EditorState;
+    return { state: 'selected', itemId } as const satisfies EditorState.ItemSelected;
   }
 
   export function addAtom(elementNr: PsElementNumber, hoverPos: Vector2) {
-    return { state: 'addingAtom', elementNr, hoverPos, snap: undefined } as const satisfies EditorState;
+    return { state: 'addingAtom', elementNr, hoverPos, snap: undefined } as const satisfies EditorState.AddingAtom;
+  }
+
+  export function addFormulaSymbol(symbol: FormulaSymbol, hoverPos: Vector2) {
+    return { state: 'addingFormulaSymbol', symbol, hoverPos } as const satisfies EditorState.AddingFormulaSymbol;
   }
 
   export function prepareMoveAtom(atomId: AtomId) {
-    return { state: 'preMoveAtom', atomId } as const satisfies EditorState;
+    return { state: 'preMoveAtom', atomId } as const satisfies EditorState.PreMoveAtom;
   }
 
   export function moveAtom(atomId: AtomId, targetPos: Vector2) {
-    return { state: 'movingAtom', atomId, targetPos, snap: undefined } as const satisfies EditorState;
+    return { state: 'movingAtom', atomId, targetPos, snap: undefined } as const satisfies EditorState.MovingAtom;
+  }
+
+  export function prepareMoveFormulaSymbol(symbolId: FormulaSymbolId) {
+    return {
+      state: 'preMoveOther',
+      moveType: 'FormulaSymbol',
+      itemId: symbolId,
+    } as const satisfies EditorState.PreMoveOther;
+  }
+
+  export function prepareMovePartialCharge(partialChargeId: AtomId) {
+    return {
+      state: 'preMoveOther',
+      moveType: 'PartialCharge',
+      itemId: partialChargeId,
+    } as const satisfies EditorState.PreMoveOther;
+  }
+
+  export function moveOther(state: EditorState.PreMoveOther | EditorState.MovingOther, targetPos: Vector2) {
+    return {
+      state: 'movingOther',
+      moveType: state.moveType,
+      itemId: state.itemId,
+      targetPos,
+    } as const satisfies EditorState.MovingOther;
   }
 
   export function groupMove(startPos: Vector2, groupItemIds: ReadonlyArray<ItemId>) {
@@ -112,12 +146,7 @@ export namespace EditorState {
   }
 
   export function addBond(startId: AtomId, multiplicity: BondMultiplicity, hoverPos: Vector2) {
-    return {
-      state: 'addingBond',
-      startId,
-      multiplicity,
-      hoverPos,
-    } as const satisfies EditorState;
+    return { state: 'addingBond', startId, multiplicity, hoverPos } as const satisfies EditorState;
   }
 
   export type Substate<S extends EditorState['state']> = EditorState & { state: S };
@@ -129,8 +158,12 @@ export namespace EditorState {
     );
   }
 
-  export function isItemSelected(state: EditorState, atomId: ItemId): state is Substate<'selected'> {
-    return state.state === 'selected' && state.itemId === atomId;
+  export function isMovingOtherItem(state: EditorState, itemId: ItemId): state is Substate<'movingOther'> {
+    return state.state === 'movingOther' && state.itemId === itemId;
+  }
+
+  export function isItemSelected(state: EditorState, itemId: ItemId): state is Substate<'selected'> {
+    return state.state === 'selected' && state.itemId === itemId;
   }
 
   export function isItemBondTargeted(state: EditorState, itemId: ItemId): state is Substate<'addingBond'> {
@@ -156,10 +189,10 @@ export namespace EditorState {
     // Find atom with the least distance, within proximity radius
     let targetAtom: undefined | AtomModel;
     let minDistance = Number.POSITIVE_INFINITY;
-    for (const [atom, atomBonds] of graph.atomBonds.entries()) {
+    for (const [atomId, atomBonds] of graph.atomBonds.entries()) {
       // Exclude target atom, or atoms bonded to target atom
       if (excludeId) {
-        if (atom.itemId === excludeId) {
+        if (atomId === excludeId) {
           continue;
         }
         if (atomBonds.some((bond) => bond.leftAtomId === excludeId || bond.rightAtomId === excludeId)) {
@@ -167,6 +200,7 @@ export namespace EditorState {
         }
       }
 
+      const atom = graph.model.atoms[atomId];
       const distance = Vector2.distance(position, atom.position);
       if (distance < snapProximityRadius && distance < minDistance) {
         minDistance = distance;
@@ -186,7 +220,7 @@ export namespace EditorState {
 
     // Snap to x/y axis
     return {
-      targetId: targetAtom.itemId,
+      targetId: targetAtom.id,
       snapPos: Vector2.add(targetAtom.position, snapOffset),
     };
   }

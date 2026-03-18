@@ -1,19 +1,30 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
-import { AtomId, AtomModel, ItemId, MoleculeEditorGraph, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
+import {
+  AtomId,
+  AtomModel,
+  FormulaSymbolId,
+  FormulaSymbolModel,
+  ItemId,
+  MoleculeEditorModel,
+  ToolMode,
+} from './molecule-editor.model';
 import {
   AtomView,
   BondView,
   ElectronOrientation,
   ElectronView,
   FormalChargeView,
+  FormulaSymbolView,
   MoleculeEditorView,
 } from './molecule-editor.view';
 import { EditorState } from './molecule-editor.state';
-import { BondMultiplicity, Vector2 } from './molecule-editor.shared';
-import { lookupElement } from './molecule-editor.helper';
+import { MoleculeEditorGraph } from './molecule-editor.graph';
+import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { lookupElementNr } from './molecule-editor.helper';
 import * as C from './molecule-editor.constants';
+import tmpMoveFormulaSymbol = ItemId.tmpMoveFormulaSymbol;
 
 @Injectable()
 export class MoleculeEditorRenderer {
@@ -27,19 +38,21 @@ export class MoleculeEditorRenderer {
 
     const atoms: Array<AtomView> = [];
     const bonds: Array<BondView> = [];
+    const symbols: Array<FormulaSymbolView> = [];
     renderModelAtoms(graph, editorState, atoms);
     renderModelBonds(model, editorState, bonds);
     renderTemporaryAtoms(model, editorState, atoms);
     renderTemporaryBonds(model, editorState, toolMode, bonds);
+    renderFormulaSymbols(model, editorState, symbols);
 
-    return { atoms, bonds };
+    return { atoms, bonds, symbols };
   });
 }
 
 function renderModelAtoms(graph: MoleculeEditorGraph, state: EditorState, atomViews: Array<AtomView>) {
   // Render atoms
   for (const atom of Object.values(graph.model.atoms)) {
-    if (EditorState.isMovingAtom(state, atom.itemId)) {
+    if (EditorState.isMovingAtom(state, atom.id)) {
       continue; // Skip rendering atom that is currently being moved
     }
     atomViews.push(modelAtomView(atom, graph, state));
@@ -47,17 +60,17 @@ function renderModelAtoms(graph: MoleculeEditorGraph, state: EditorState, atomVi
 }
 
 function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: EditorState): AtomView {
-  const { itemId, elementNr, position, formalCharge } = atom;
+  const { id, elementNr, position, formalCharge } = atom;
 
-  const element = lookupElement(elementNr);
-  const selected = EditorState.isItemSelected(state, itemId);
-  const targeted = EditorState.isItemBondTargeted(state, itemId) || EditorState.isItemSnapTargeted(state, itemId);
+  const element = lookupElementNr(elementNr);
+  const selected = EditorState.isItemSelected(state, id);
+  const targeted = EditorState.isItemBondTargeted(state, id) || EditorState.isItemSnapTargeted(state, id);
 
   const electronViews = renderAtomElectronViews(atom, graph);
   const formalChargeView = formalCharge === 0 ? null : renderFormalChargeView(atom, formalCharge);
 
   return {
-    itemId,
+    itemId: id,
     element,
     position,
     selected,
@@ -79,8 +92,8 @@ function renderAtomElectronViews(atom: AtomModel, graph: MoleculeEditorGraph): A
   // To orient the required electron symbols, the orientation of existing bonds is taken into account
   // to avoid (if possible) displaying both a bond and an electron on the same orientation of the atom.
   const bondOrientations = new Set<ElectronOrientation>();
-  for (const atomBond of graph.atomBonds.get(atom) ?? []) {
-    const bondAtoms = graph.bondAtoms.get(atomBond);
+  for (const atomBond of graph.atomBonds.get(atom.id) ?? []) {
+    const bondAtoms = graph.bondAtoms.get(atomBond.id);
     if (bondAtoms === undefined) continue;
 
     const [leftAtom, rightAtom] = bondAtoms;
@@ -124,18 +137,18 @@ function renderFormalChargeView(atom: AtomModel, formalCharge: number): FormalCh
 
 function renderModelBonds(model: MoleculeEditorModel, state: EditorState, bondViews: Array<BondView>) {
   const bondList = Object.values(model.bonds);
-  for (const { itemId, leftAtomId, rightAtomId, multiplicity } of bondList) {
+  for (const { id, leftAtomId, rightAtomId, multiplicity } of bondList) {
     const { [leftAtomId]: leftAtom, [rightAtomId]: rightAtom } = model.atoms;
     if (!leftAtom || !rightAtom) continue; // Skip bonds referencing missing atoms
 
     const [leftPosition, leftTemporary] = visualAtomPositionForBond(state, leftAtom);
     const [rightPosition, rightTemporary] = visualAtomPositionForBond(state, rightAtom);
 
-    const selected = EditorState.isItemSelected(state, itemId);
+    const selected = EditorState.isItemSelected(state, id);
     const temporary = leftTemporary || rightTemporary;
 
     bondViews.push({
-      itemId,
+      itemId: id,
       multiplicity,
       leftPosition,
       rightPosition,
@@ -146,7 +159,7 @@ function renderModelBonds(model: MoleculeEditorModel, state: EditorState, bondVi
 }
 
 function visualAtomPositionForBond(state: EditorState, atom: AtomModel): [position: Vector2, temporary: boolean] {
-  if (!EditorState.isMovingAtom(state, atom.itemId)) {
+  if (!EditorState.isMovingAtom(state, atom.id)) {
     return [atom.position, false];
   }
   switch (state.state) {
@@ -165,6 +178,7 @@ function renderTemporaryAtoms(model: MoleculeEditorModel, editorState: EditorSta
   switch (editorState.state) {
     case 'idle':
     case 'selected':
+    case 'addingFormulaSymbol':
     case 'preMoveAtom':
     case 'addingBond':
     case 'preMoveOther':
@@ -189,8 +203,9 @@ function renderTemporaryAtoms(model: MoleculeEditorModel, editorState: EditorSta
       for (const groupItemId of editorState.groupItemIds) {
         const groupAtom = model.atoms[groupItemId];
         if (groupAtom) {
+          const tmpAtomId = ItemId.tmpMoveAtom(groupAtom.id);
           const position = Vector2.add(groupAtom.position, moveDelta);
-          atomViews.push(temporaryAtomView(ItemId.tmpMoveAtom(groupAtom.itemId), groupAtom.elementNr, position));
+          atomViews.push(temporaryAtomView(tmpAtomId, groupAtom.elementNr, position));
         }
       }
       break;
@@ -201,7 +216,7 @@ function renderTemporaryAtoms(model: MoleculeEditorModel, editorState: EditorSta
 }
 
 function temporaryAtomView(itemId: AtomId, elementNr: PsElementNumber, position: Vector2): AtomView {
-  const element = lookupElement(elementNr);
+  const element = lookupElementNr(elementNr);
   return {
     itemId,
     element,
@@ -218,6 +233,7 @@ function renderTemporaryBonds(model: MoleculeEditorModel, state: EditorState, mo
   switch (state.state) {
     case 'idle':
     case 'selected':
+    case 'addingFormulaSymbol':
     case 'preMoveAtom':
     case 'preMoveOther':
     case 'movingOther':
@@ -257,4 +273,52 @@ function temporaryBondView(leftPosition: Vector2, rightPosition: Vector2, multip
     selected: false,
     temporary: true,
   };
+}
+
+function renderFormulaSymbols(model: MoleculeEditorModel, editorState: EditorState, symbols: Array<FormulaSymbolView>) {
+  let groupDelta: Vector2 = Vector2.zero;
+  let groupMoveItemIds: undefined | ReadonlySet<ItemId>;
+  if (editorState.state === 'movingGroup') {
+    groupDelta = Vector2.sub(editorState.targetPos, editorState.startPos);
+    groupMoveItemIds = new Set(editorState.groupItemIds);
+  }
+
+  const symbolList = Object.values(model.symbols);
+  for (const symbol of symbolList) {
+    if (editorState.state === 'movingOther' && editorState.itemId === symbol.id) {
+      const tmpId = tmpMoveFormulaSymbol(symbol.id);
+      symbols.push(temporaryFormulaSymbol(tmpId, editorState.targetPos, symbol.symbol));
+    } else if (editorState.state === 'movingGroup' && groupMoveItemIds?.has(symbol.id)) {
+      const tmpId = tmpMoveFormulaSymbol(symbol.id);
+      const tmpPos = Vector2.add(symbol.position, groupDelta);
+      symbols.push(temporaryFormulaSymbol(tmpId, tmpPos, symbol.symbol));
+    } else {
+      const selected = EditorState.isItemSelected(editorState, symbol.id);
+      symbols.push(modelFormulaSymbol(symbol, selected));
+    }
+  }
+
+  if (editorState.state === 'addingFormulaSymbol') {
+    symbols.push(temporaryFormulaSymbol(ItemId.tmpAddFormulaSymbol, editorState.hoverPos, editorState.symbol));
+  }
+}
+
+function temporaryFormulaSymbol(tmpId: FormulaSymbolId, position: Vector2, symbol: FormulaSymbol): FormulaSymbolView {
+  return {
+    itemId: tmpId,
+    position,
+    symbol,
+    selected: false,
+    temporary: true,
+  } as const;
+}
+
+function modelFormulaSymbol(model: FormulaSymbolModel, selected: boolean): FormulaSymbolView {
+  return {
+    itemId: model.id,
+    position: model.position,
+    symbol: model.symbol,
+    selected,
+    temporary: false,
+  } as const;
 }

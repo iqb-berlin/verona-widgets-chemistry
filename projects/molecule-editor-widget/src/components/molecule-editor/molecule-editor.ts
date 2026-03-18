@@ -51,6 +51,7 @@ export class MoleculeEditor {
   protected readonly debouncedModel = debounceSignal(this.service.model, 1_000);
 
   constructor() {
+    // Register custom icons as editor is instantiated
     this.customIcons.registerIcons();
 
     // On (debounced) model update, send state-data to API

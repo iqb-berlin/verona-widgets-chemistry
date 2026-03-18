@@ -1,12 +1,13 @@
 import type { PsElement } from 'periodic-system-common';
-import type { AtomId, BondId } from './molecule-editor.model';
-import { AngleMath, BondMultiplicity, Vector2 } from './molecule-editor.shared';
+import type { AtomId, BondId, FormulaSymbolId } from './molecule-editor.model';
+import { AngleMath, BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
 
 // --- View data-types ---
 
 export interface MoleculeEditorView {
   readonly atoms: ReadonlyArray<AtomView>;
   readonly bonds: ReadonlyArray<BondView>;
+  readonly symbols: ReadonlyArray<FormulaSymbolView>;
 }
 
 export interface AtomView {
@@ -39,6 +40,14 @@ export interface FormalChargeView {
   readonly color: string;
   readonly label: string;
   readonly labelLarge: boolean;
+}
+
+export interface FormulaSymbolView {
+  readonly itemId: FormulaSymbolId;
+  readonly position: Vector2;
+  readonly symbol: FormulaSymbol;
+  readonly selected: boolean;
+  readonly temporary: boolean;
 }
 
 export const enum ElectronOrientation {

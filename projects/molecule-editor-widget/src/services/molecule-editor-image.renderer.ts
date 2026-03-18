@@ -1,18 +1,41 @@
 import { DOCUMENT, inject, Injectable, untracked } from '@angular/core';
+import { MatIconRegistry } from '@angular/material/icon';
 import { MoleculeEditorBondingType, MoleculeEditorService } from './molecule-editor.service';
-import { AtomView, BondView, ElectronView, FormalChargeView, MoleculeEditorView } from './molecule-editor.view';
-import { Vector2 } from './molecule-editor.shared';
+import {
+  AtomView,
+  BondView,
+  ElectronView,
+  FormalChargeView,
+  FormulaSymbolView,
+  MoleculeEditorView,
+} from './molecule-editor.view';
+import { FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { ItemId } from './molecule-editor.model';
 import * as C from './molecule-editor.constants';
+import { firstValueFrom } from 'rxjs';
+import { copySvgIconToSymbol } from '../util/svg-icon-symbol';
+
+const formulaSymbolIcons = {
+  [FormulaSymbol.ReactionPlus]: 'reaction_plus',
+  [FormulaSymbol.ReactionArrow]: 'reaction_arrow',
+  [FormulaSymbol.EquilibriumArrow]: 'equilibrium_arrow',
+} as const satisfies Record<FormulaSymbol, string>;
+
+const partialChargeIcons = {
+  [PartialCharge.Positive]: 'delta_plus',
+  [PartialCharge.Negative]: 'delta_minus',
+} as const satisfies Record<PartialCharge, string>;
 
 @Injectable()
 export class MoleculeEditorImageRenderer {
   private readonly document = inject(DOCUMENT);
   private readonly service = inject(MoleculeEditorService);
+  private readonly iconRegistry = inject(MatIconRegistry);
 
-  renderSvgTree(view: MoleculeEditorView): SVGSVGElement {
+  async renderSvgTree(view: MoleculeEditorView): Promise<SVGSVGElement> {
     const svg = this.createViewRoot(view);
-    svg.appendChild(this.drawView(view));
+    svg.append(...(await this.drawIconSymbols()));
+    svg.append(this.drawView(view));
     return svg;
   }
 
@@ -32,6 +55,23 @@ export class MoleculeEditorImageRenderer {
     return svg;
   }
 
+  private async drawIconSymbols(): Promise<ReadonlyArray<SVGSymbolElement>> {
+    const iconNames = [...Object.values(formulaSymbolIcons), ...Object.values(partialChargeIcons)] as const;
+    const iconsEntries = await Promise.all(iconNames.map((iconName) => this.retrieveIcon(iconName)));
+    return iconsEntries.map(([iconName, iconSvg]) => {
+      const symbol = this.createSvgElement('symbol');
+      copySvgIconToSymbol(iconSvg, symbol);
+      symbol.setAttribute('id', iconName);
+      return symbol;
+    });
+  }
+
+  private async retrieveIcon(name: string, namespace = 'iqb') {
+    const icon$ = this.iconRegistry.getNamedSvgIcon(name, namespace);
+    const icon = await firstValueFrom(icon$);
+    return [name, icon] as const;
+  }
+
   private drawView(view: MoleculeEditorView): SVGElement {
     // Create group containing view elements
     const group = this.createSvgElement('g');
@@ -41,16 +81,21 @@ export class MoleculeEditorImageRenderer {
     const { bondingType } = untracked(this.service.appearance);
     for (const bond of view.bonds) {
       if (!ItemId.isTemporaryId(bond.itemId)) {
-        for (const item of this.drawBond(bond, bondingType)) {
-          group.appendChild(item);
-        }
+        group.append(...this.drawBond(bond, bondingType));
       }
     }
 
     // Draw atoms and local electrons
     for (const atom of view.atoms) {
       if (!ItemId.isTemporaryId(atom.itemId)) {
-        group.appendChild(this.drawAtom(atom));
+        group.append(this.drawAtom(atom));
+      }
+    }
+
+    // Draw formula symbols
+    for (const symbol of view.symbols) {
+      if (!ItemId.isTemporaryId(symbol.itemId)) {
+        group.append(this.drawFormulaSymbol(symbol));
       }
     }
 
@@ -103,7 +148,7 @@ export class MoleculeEditorImageRenderer {
     circle.setAttribute('stroke', '#000000');
     circle.setAttribute('stroke-width', '1');
     circle.setAttribute('stroke-opacity', '50%');
-    group.appendChild(circle);
+    group.append(circle);
 
     // Atom element text
     const text = this.createSvgElement('text');
@@ -115,18 +160,16 @@ export class MoleculeEditorImageRenderer {
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'central');
     text.setAttribute('fill', '#000000');
-    group.appendChild(text);
+    group.append(text);
 
     // Atom electrons
     for (const e of atom.electrons) {
-      group.appendChild(this.drawAtomElectron(e, atom));
+      group.append(this.drawAtomElectron(e, atom));
     }
 
     // Atom formal charge
     if (atom.formalCharge) {
-      for (const item of this.drawAtomFormalCharge(atom.formalCharge)) {
-        group.appendChild(item);
-      }
+      group.append(...this.drawAtomFormalCharge(atom.formalCharge));
     }
 
     return group;
@@ -194,6 +237,19 @@ export class MoleculeEditorImageRenderer {
 
     return [circle, text];
   }
+
+  private drawFormulaSymbol(symbol: FormulaSymbolView): SVGElement {
+    const [x, y] = symbol.position;
+    const symbolIconName = formulaSymbolIcons[symbol.symbol];
+
+    const use = this.createSvgElement('use');
+    use.setAttribute('href', '#' + symbolIconName);
+    use.setAttribute('x', String(x - 25));
+    use.setAttribute('y', String(y - 25));
+    use.setAttribute('width', '50');
+    use.setAttribute('height', '50');
+    return use;
+  }
 }
 
 function calculateViewBox(view: MoleculeEditorView, padding: Vector2): [min: Vector2, max: Vector2] {
@@ -202,9 +258,10 @@ function calculateViewBox(view: MoleculeEditorView, padding: Vector2): [min: Vec
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
 
-  for (const atom of view.atoms) {
-    if (ItemId.isTemporaryId(atom.itemId)) continue;
-    const [x, y] = atom.position;
+  const items = [...view.atoms, ...view.symbols] as const;
+  for (const item of items) {
+    if (ItemId.isTemporaryId(item.itemId)) continue;
+    const [x, y] = item.position;
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x);

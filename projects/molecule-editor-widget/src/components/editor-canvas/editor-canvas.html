@@ -5,16 +5,31 @@
   [style.cursor]="canvasCursor()"
   [style.--atom-handle-cursor]="atomHandleCursor()"
   [style.--bond-handle-cursor]="bondHandleCursor()"
+  [style.--formula-symbol-handle-cursor]="formulaSymbolCursor()"
   (pointermove)="service.handleCanvasEvent($event)"
   (pointerdown)="service.handleCanvasEvent($event)"
   (pointerup)="service.handleCanvasEvent($event)"
   (click)="service.handleCanvasEvent($event)"
 >
+  <!-- Define reusable symbols, referenced by canvas elements -->
+  <symbol id="DELTA_PLUS" appCustomSvgIcon="delta_plus" iconNamespace="iqb"></symbol>
+  <symbol id="DELTA_MINUS" appCustomSvgIcon="delta_minus" iconNamespace="iqb"></symbol>
+
+  <symbol id="REACT_PLUS" appCustomSvgIcon="reaction_plus" iconNamespace="iqb"></symbol>
+  <symbol id="REACT_ARROW" appCustomSvgIcon="reaction_arrow" iconNamespace="iqb"></symbol>
+  <symbol id="EQUI_ARROW" appCustomSvgIcon="equilibrium_arrow" iconNamespace="iqb"></symbol>
+
   @let view = renderer.view();
   @for (bond of view.bonds; track bond.itemId) {
     <g [bondView]="bond"></g>
   }
   @for (atom of view.atoms; track atom.itemId) {
     <g [atomView]="atom"></g>
+  }
+  <!--@for (partial of view.partialCharges; track partial.itemId) {
+    <g ></g>
+  }-->
+  @for (symbol of view.symbols; track symbol.itemId) {
+    <g [formulaSymbol]="symbol"></g>
   }
 </svg>

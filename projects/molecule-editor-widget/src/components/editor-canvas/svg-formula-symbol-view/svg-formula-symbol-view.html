@@ -1,0 +1,31 @@
+@let formulaSymbol = formulaSymbolView();
+@let positionX = formulaSymbol.position[0];
+@let positionY = formulaSymbol.position[1];
+<ng-container xmlns:svg="http://www.w3.org/2000/svg">
+  <svg:rect
+    class="symbol-handle"
+    [class.selected]="formulaSymbol.selected"
+    [class.temporary]="formulaSymbol.temporary"
+    [attr.x]="positionX - (symbolSize / 2)"
+    [attr.y]="positionY - (symbolSize / 2)"
+    [attr.width]="symbolSize"
+    [attr.height]="symbolSize"
+    [attr.rx]="3"
+    [attr.ry]="3"
+    (pointermove)="service.handleFormulaSymbolEvent(formulaSymbol.itemId, $event)"
+    (pointerdown)="service.handleFormulaSymbolEvent(formulaSymbol.itemId, $event)"
+    (pointerup)="service.handleFormulaSymbolEvent(formulaSymbol.itemId, $event)"
+    (click)="service.handleFormulaSymbolEvent(formulaSymbol.itemId, $event)"
+  ></svg:rect>
+
+  <svg:use
+    class="symbol-glyph"
+    [class.selected]="formulaSymbol.selected"
+    [class.temporary]="formulaSymbol.temporary"
+    [attr.width]="symbolSize"
+    [attr.height]="symbolSize"
+    [attr.x]="positionX - (symbolSize / 2)"
+    [attr.y]="positionY - (symbolSize / 2)"
+    [attr.href]="symbolHref()"
+  ></svg:use>
+</ng-container>

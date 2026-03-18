@@ -1,5 +1,5 @@
 import { Nominal, PsElementNumber } from 'periodic-system-common';
-import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { castDraft, produce, WritableDraft } from 'immer';
 
 // --- Model data-types ---
@@ -12,7 +12,7 @@ export type ToolMode =
   | { readonly mode: 'bonding'; readonly multiplicity: BondMultiplicity };
 
 /** Union literal of known item types */
-export type ItemType = 'Atom' | 'Bond' | 'FormulaSymbol' | 'PartialCharge';
+export type ItemType = 'Atom' | 'Bond' | 'PartialCharge' | 'FormulaSymbol';
 
 /** Nominal identifier type of model items */
 export type ItemId = Nominal<string, 'ItemId'>;
@@ -32,13 +32,14 @@ type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;
 export interface MoleculeEditorModel {
   readonly atoms: ReadonlyRecord<ItemId, AtomModel>;
   readonly bonds: ReadonlyRecord<ItemId, BondModel>;
+  readonly partials: ReadonlyRecord<ItemId, PartialChargeModel>;
   readonly symbols: ReadonlyRecord<ItemId, FormulaSymbolModel>;
 }
 
 /** Properties shared among all model data-structures */
-interface ModelBase<T extends ItemType> {
+interface ModelBase<T extends ItemType, ID extends ItemId = ItemIdSubtype<T>> {
+  readonly id: ID;
   readonly type: T;
-  readonly itemId: ItemIdSubtype<T>;
 }
 
 /** Atom model data-structure, representing an instance of a specific element */
@@ -56,18 +57,17 @@ export interface BondModel extends ModelBase<'Bond'> {
   readonly multiplicity: BondMultiplicity;
 }
 
+/** Partial-charge model data-structure, representing a partial charge attached to one specific atom */
+// NOTE: Uses AtomId for 1:1 relation
+export interface PartialChargeModel extends ModelBase<'PartialCharge', AtomId> {
+  readonly position: Vector2;
+  readonly charge: PartialCharge;
+}
+
 /** Formula-symbol data-structure, representing a chemical formula symbol placed on the canvas */
 export interface FormulaSymbolModel extends ModelBase<'FormulaSymbol'> {
   readonly position: Vector2;
   readonly symbol: FormulaSymbol;
-}
-
-/** Indexed graph of connections within the model, used internally for operations that require item relations */
-export interface MoleculeEditorGraph {
-  readonly model: MoleculeEditorModel;
-  readonly itemIndex: ReadonlyMap<ItemId, AtomModel | BondModel>;
-  readonly atomBonds: ReadonlyMap<AtomModel, ReadonlyArray<BondModel>>;
-  readonly bondAtoms: ReadonlyMap<BondModel, readonly [left: AtomModel, right: AtomModel]>;
 }
 
 // --- Model functions ---
@@ -76,7 +76,7 @@ export namespace ItemId {
   const ITEM_PREFIX = 'item:';
   const TEMP_PREFIX = 'tmp:';
 
-  /** Item IDs ""item:..." are generated from random numbers */
+  /** Item IDs "item:..." are generated from random numbers */
   export function generate<T extends ItemType>(): ItemIdSubtype<T> {
     const randomValue = Math.random().toString(36);
     const randomItemId = randomValue.replace('0.', ITEM_PREFIX);
@@ -85,13 +85,19 @@ export namespace ItemId {
 
   export const tmpAddAtom = (TEMP_PREFIX + 'addAtom') as AtomId;
   export const tmpAddBond = (TEMP_PREFIX + 'addBond') as BondId;
+  export const tmpAddPartialCharge = (TEMP_PREFIX + 'partialCharge') as AtomId;
+  export const tmpAddFormulaSymbol = (TEMP_PREFIX + 'formulaSymbol') as FormulaSymbolId;
 
   export function tmpMoveAtom(atomId: AtomId): AtomId {
     return (TEMP_PREFIX + 'moveAtom:' + atomId) as AtomId;
   }
 
+  export function tmpMoveFormulaSymbol(symbolId: FormulaSymbolId): FormulaSymbolId {
+    return (TEMP_PREFIX + 'moveSymbol:' + symbolId) as FormulaSymbolId;
+  }
+
   export function isTemporaryId(id: ItemId): boolean {
-    return id.startsWith('tmp:');
+    return id.startsWith(TEMP_PREFIX);
   }
 }
 
@@ -99,6 +105,7 @@ export namespace MoleculeEditorModel {
   export const empty: MoleculeEditorModel = {
     atoms: {},
     bonds: {},
+    partials: {},
     symbols: {},
   } as const;
 
@@ -106,7 +113,7 @@ export namespace MoleculeEditorModel {
     (model, atomId, elementNr, position) => {
       model.atoms[atomId] = {
         type: 'Atom',
-        itemId: atomId,
+        id: atomId,
         elementNr,
         position: castDraft(position),
         electrons: 0,
@@ -115,9 +122,22 @@ export namespace MoleculeEditorModel {
     },
   );
 
-  export const moveAtom = produce<MoleculeEditorModel, [AtomId, Vector2]>((model, atomId, position) => {
-    const atom = model.atoms[atomId];
-    if (atom) atom.position = castDraft(position);
+  export const addFormulaSymbol = produce<MoleculeEditorModel, [FormulaSymbolId, FormulaSymbol, Vector2]>(
+    (model, symbolId, symbol, position) => {
+      model.symbols[symbolId] = {
+        type: 'FormulaSymbol',
+        id: symbolId,
+        symbol,
+        position: castDraft(position),
+      };
+    },
+  );
+
+  export const moveItem = produce<MoleculeEditorModel, [ItemId, Vector2]>((model, itemId, position) => {
+    const item = model.atoms[itemId] ?? model.partials[itemId] ?? model.symbols[itemId];
+    if (item) {
+      item.position = castDraft(position);
+    }
   });
 
   export const addBond = produce<MoleculeEditorModel, [BondId, AtomId, AtomId, BondMultiplicity]>(
@@ -125,16 +145,16 @@ export namespace MoleculeEditorModel {
       // Remove existing bonds, if any already exists for the given atoms
       for (const bond of Object.values(model.bonds)) {
         if (bond.leftAtomId === leftAtomId && bond.rightAtomId === rightAtomId) {
-          delete model.bonds[bond.itemId];
+          delete model.bonds[bond.id];
         }
         if (bond.leftAtomId === rightAtomId && bond.rightAtomId === leftAtomId) {
-          delete model.bonds[bond.itemId];
+          delete model.bonds[bond.id];
         }
       }
 
       const bond = {
         type: 'Bond',
-        itemId: bondId,
+        id: bondId,
         leftAtomId,
         rightAtomId,
         multiplicity,
@@ -208,10 +228,10 @@ export namespace MoleculeEditorModel {
   export const moveGroup = produce<MoleculeEditorModel, [Vector2, ReadonlyArray<ItemId>]>(
     (model, moveDelta, groupItemIds) => {
       for (const itemId of groupItemIds) {
-        const atom = model.atoms[itemId];
-        if (atom) {
-          atom.position[0] += moveDelta[0];
-          atom.position[1] += moveDelta[1];
+        const item = model.atoms[itemId] ?? model.partials[itemId] ?? model.symbols[itemId];
+        if (item) {
+          item.position[0] += moveDelta[0];
+          item.position[1] += moveDelta[1];
         }
       }
     },
@@ -229,7 +249,7 @@ export namespace MoleculeEditorModel {
   // Outer electrons are limited to `8 - sum(bond.multiplicity for bond where bond.left == atom or bond.right == atom)`
   function limitAtomElectrons(model: MoleculeEditorModel, atom: AtomModel, electrons: number): number {
     const occupiedByBonds = Object.values(model.bonds)
-      .filter((bond) => bond.leftAtomId === atom.itemId || bond.rightAtomId === atom.itemId)
+      .filter((bond) => bond.leftAtomId === atom.id || bond.rightAtomId === atom.id)
       .reduce((sum, bond) => sum + bond.multiplicity, 0);
 
     const maxElectrons = ATOM_TOTAL_MAX_ELECTRONS - occupiedByBonds;
@@ -255,78 +275,5 @@ export namespace ToolMode {
 
   export function bonding(multiplicity: BondMultiplicity) {
     return { mode: 'bonding', multiplicity } as const satisfies ToolMode;
-  }
-}
-
-export namespace MoleculeEditorGraph {
-  export function createFrom(model: MoleculeEditorModel): MoleculeEditorGraph {
-    const itemIndex = new Map<ItemId, AtomModel | BondModel>();
-    const atomBonds = new Map<AtomModel, Array<BondModel>>();
-    const bondAtoms = new Map<BondModel, [AtomModel, AtomModel]>();
-
-    for (const atomKey in model.atoms) {
-      const atomId = atomKey as AtomId;
-      const atomModel = model.atoms[atomId];
-      itemIndex.set(atomId, atomModel);
-      atomBonds.set(atomModel, []);
-    }
-
-    for (const bondKey in model.bonds) {
-      const bondId = bondKey as BondId;
-      const bondModel = model.bonds[bondId];
-      const { leftAtomId, rightAtomId } = bondModel;
-      const { [leftAtomId]: leftAtomModel, [rightAtomId]: rightAtomModel } = model.atoms;
-
-      itemIndex.set(bondId, bondModel);
-      atomBonds.get(leftAtomModel)?.push(bondModel);
-      atomBonds.get(rightAtomModel)?.push(bondModel);
-      bondAtoms.set(bondModel, [leftAtomModel, rightAtomModel]);
-    }
-
-    return { model, itemIndex, atomBonds, bondAtoms } as const;
-  }
-
-  export function findGroup(graph: MoleculeEditorGraph, pivotItemId: ItemId): Array<ItemId> {
-    const pivotItem = graph.itemIndex.get(pivotItemId);
-    if (pivotItem === undefined) {
-      return [];
-    } else
-      switch (pivotItem.type) {
-        case 'Atom':
-          return findAtomRelationsRecursive(graph, pivotItem, new Set());
-        case 'Bond':
-          return findBondRelationsRecursive(graph, pivotItem, new Set());
-        default:
-          console.error('Unknown pivot item: ', pivotItem satisfies never);
-          return [];
-      }
-  }
-
-  function findAtomRelationsRecursive(
-    graph: MoleculeEditorGraph,
-    atom: AtomModel,
-    visited: Set<ItemId>,
-  ): Array<ItemId> {
-    if (visited.has(atom.itemId)) return [];
-    else visited.add(atom.itemId);
-
-    const bonds = graph.atomBonds.get(atom) ?? [];
-    const relations = bonds.flatMap((bond) => findBondRelationsRecursive(graph, bond, visited));
-    relations.push(atom.itemId);
-    return relations;
-  }
-
-  function findBondRelationsRecursive(
-    graph: MoleculeEditorGraph,
-    bond: BondModel,
-    visited: Set<ItemId>,
-  ): Array<ItemId> {
-    if (visited.has(bond.itemId)) return [];
-    else visited.add(bond.itemId);
-
-    const atoms = graph.bondAtoms.get(bond) ?? [];
-    const relations = atoms.flatMap((atom) => findAtomRelationsRecursive(graph, atom, visited));
-    relations.push(bond.itemId);
-    return relations;
   }
 }
