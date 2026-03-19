@@ -89,7 +89,7 @@ export class MoleculeEditorImageRenderer {
     // Draw atoms and local electrons
     for (const atom of view.atoms) {
       if (!ItemId.isTemporaryId(atom.itemId)) {
-        group.append(this.drawAtom(atom));
+        group.append(this.drawAtom(atom, bondingType));
       }
     }
 
@@ -143,7 +143,7 @@ export class MoleculeEditorImageRenderer {
     return dot;
   }
 
-  private drawAtom(atom: AtomView): SVGElement {
+  private drawAtom(atom: AtomView, bondingType: MoleculeEditorBondingType): SVGElement {
     const group = this.createSvgElement('g');
 
     // Atom circle covering nearby bonds
@@ -172,7 +172,7 @@ export class MoleculeEditorImageRenderer {
 
     // Atom electrons
     for (const e of atom.electrons) {
-      group.append(this.drawAtomElectron(e, atom));
+      group.append(...this.drawAtomElectron(e, atom, bondingType));
     }
 
     // Atom formal charge
@@ -183,17 +183,30 @@ export class MoleculeEditorImageRenderer {
     return group;
   }
 
-  private drawAtomElectron(electron: ElectronView, atom: AtomView): SVGElement {
+  private drawAtomElectron(
+    electron: ElectronView,
+    atom: AtomView,
+    bondingType: MoleculeEditorBondingType,
+  ): ReadonlyArray<SVGElement> {
     switch (electron.type) {
       case 1: {
         const { singleElectronDist: d } = C;
         const coords = ElectronView.singleCoordinates(electron, atom.position, d);
-        return this.drawElectronDot(coords);
+        return [this.drawElectronDot(coords)];
       }
       case 2: {
-        const { doubleElectronDist: d, doubleElectronWidth: w } = C;
-        const coords = ElectronView.doubleCoordinates(electron, atom.position, d, w);
-        return this.drawElectronTick(coords);
+        switch (bondingType) {
+          case 'VALENCE': {
+            const { doubleElectronDist: d, doubleElectronWidth: w } = C;
+            const coords = ElectronView.doubleCoordinates(electron, atom.position, d, w);
+            return [this.drawElectronTick(coords)];
+          }
+          case 'ELECTRONS': {
+            const { doubleElectronDist: d, bondSeparation: w } = C;
+            const coords = ElectronView.doubleCoordinates(electron, atom.position, d, w);
+            return this.drawElectronDoubleDots(coords);
+          }
+        }
       }
     }
   }
@@ -217,6 +230,12 @@ export class MoleculeEditorImageRenderer {
     tick.setAttribute('stroke-width', String(C.doubleElectronRadius));
     tick.setAttribute('stroke-linecap', 'round');
     return tick;
+  }
+
+  private drawElectronDoubleDots(coords: { x1: number; y1: number; x2: number; y2: number }) {
+    const d1 = this.drawElectronDot({ x: coords.x1, y: coords.y1 });
+    const d2 = this.drawElectronDot({ x: coords.x2, y: coords.y2 });
+    return [d1, d2];
   }
 
   private drawAtomFormalCharge({ position, color, label, labelLarge }: FormalChargeView): ReadonlyArray<SVGElement> {

@@ -19,8 +19,8 @@ export class SvgBondView {
     return bondingType;
   });
 
-  protected readonly ValenceBondingType = 'VALENCE' satisfies MoleculeEditorBondingType;
-  protected readonly ElectronsBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
+  protected readonly valenceBondingType = 'VALENCE' satisfies MoleculeEditorBondingType;
+  protected readonly electronsBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
   protected readonly electronBondRadius = C.electronBondRadius;
   protected readonly valenceBondRadius = C.valenceBondRadius;
 
