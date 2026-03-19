@@ -2,13 +2,20 @@ import { computed, effect, inject, Injectable, Signal, signal, untracked } from 
 import { VeronaWidgetService } from 'verona-widget';
 import { PsElement, PsElementNumber } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
-import { AtomId, FormulaSymbolId, ItemId, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
-import { deferPromise, DeferredPromise } from '../util/defer-promise';
-import { historySignal } from '../util/history-signal';
+import {
+  AtomId,
+  FormulaSymbolId,
+  ItemId,
+  MoleculeEditorModel,
+  PartialChargeId,
+  ToolMode,
+} from './molecule-editor.model';
 import { defaultBondingType, editorHistoryCapacity } from './molecule-editor.constants';
 import { EditorState } from './molecule-editor.state';
-import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { MoleculeEditorGraph } from './molecule-editor.graph';
+import { deferPromise, DeferredPromise } from '../util/defer-promise';
+import { historySignal } from '../util/history-signal';
 
 export const enum MoleculeEditorParam {
   language = 'LANGUAGE',
@@ -84,7 +91,7 @@ export class MoleculeEditorService {
     });
 
     // Uncomment for debugging: Log state/mode/model changes
-    //effect(() => console.log('tool mode =', this.toolMode()));
+    effect(() => console.log('tool mode =', this.toolMode()));
     effect(() => console.log('editor state =', this.editorState()));
     effect(() => console.log('editor model =', this.model()));
   }
@@ -146,7 +153,7 @@ export class MoleculeEditorService {
   }
 
   //endregion
-  //region Delete atom/bond
+  //region Delete atom/bond/partialCharge
 
   deleteSelectedItem() {
     const state = this.editorState();
@@ -188,8 +195,9 @@ export class MoleculeEditorService {
       case 'preMoveAtom':
       case 'movingAtom':
       case 'movingGroup':
-      case 'preMoveOther':
-      case 'movingOther':
+      case 'preMoveFormulaSymbol':
+      case 'movingFormulaSymbol':
+      case 'movingPartialCharge':
         break; // Do nothing
       case 'selected': {
         this.editorState.set(EditorState.idle);
@@ -199,6 +207,17 @@ export class MoleculeEditorService {
         const { atomId, elementNr, nextPosition } = this.finishAddAtom(state, position, mode);
         this.editorState.set(EditorState.idle);
         setTimeout(() => this.afterAtomAdded(atomId, elementNr, nextPosition), 0);
+        break;
+      }
+      case 'addingPartialCharge': {
+        const result = this.finishAddPartialCharge(state, position);
+        if (result) {
+          const { id, charge, hoverPos } = result;
+          this.editorState.set(EditorState.select(id));
+          setTimeout(() => this.afterPartialChargeAdded(charge, hoverPos), 0);
+        } else {
+          this.editorState.set(EditorState.idle);
+        }
         break;
       }
       case 'addingBond': {
@@ -256,6 +275,32 @@ export class MoleculeEditorService {
     }
   }
 
+  private finishAddPartialCharge(state: EditorState.AddingPartialCharge, position: Vector2) {
+    const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+    if (!targetAtomId) return null;
+
+    const { atoms } = this.model();
+    const targetAtom = atoms[targetAtomId];
+    if (!targetAtom) return null;
+
+    const id = ItemId.generate<'PartialCharge'>();
+    const { charge, hoverPos } = state;
+    const relativePos = Vector2.sub(hoverPos, targetAtom.position);
+    this.model.update((model) => MoleculeEditorModel.addPartialCharge(model, id, targetAtomId, charge, relativePos));
+
+    return { id, charge, hoverPos } as const;
+  }
+
+  private afterPartialChargeAdded(charge: PartialCharge, position: Vector2) {
+    const toolMode = this.toolMode();
+    if (toolMode.mode === 'duplicate') {
+      const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+      if (targetAtomId) {
+        this.editorState.set(EditorState.addPartialCharge(charge, position, targetAtomId));
+      }
+    }
+  }
+
   private finishAddFormulaSymbol(state: EditorState.AddingFormulaSymbol, position: Vector2) {
     const symbolId = ItemId.generate<'FormulaSymbol'>();
     this.model.update((model) => MoleculeEditorModel.addFormulaSymbol(model, symbolId, state.symbol, position));
@@ -280,6 +325,10 @@ export class MoleculeEditorService {
     const state = this.editorState();
 
     switch (state.state) {
+      case 'idle':
+      case 'selected': {
+        break; // Do nothing
+      }
       case 'addingAtom': {
         this.editorState.set(this.searchSnap(EditorState.addAtom(state.elementNr, position)));
         break;
@@ -288,14 +337,25 @@ export class MoleculeEditorService {
         this.editorState.set({ ...state, hoverPos: position });
         break;
       }
+      case 'addingPartialCharge': {
+        const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+        this.editorState.set({ ...state, hoverPos: position, targetAtomId });
+        break;
+      }
       case 'preMoveAtom':
       case 'movingAtom': {
         this.editorState.set(this.searchSnap(EditorState.moveAtom(state.atomId, position)));
         break;
       }
-      case 'preMoveOther':
-      case 'movingOther': {
-        this.editorState.set(EditorState.moveOther(state, position));
+      case 'preMoveFormulaSymbol':
+      case 'movingFormulaSymbol': {
+        this.editorState.set(EditorState.moveFormulaSymbol(state, position));
+        break;
+      }
+      case 'movingPartialCharge': {
+        const { partialId, targetAtomId: prevTargetAtomId } = state;
+        const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
+        this.editorState.set(EditorState.movePartialCharge(partialId, position, targetAtomId));
         break;
       }
       case 'addingBond': {
@@ -306,6 +366,10 @@ export class MoleculeEditorService {
         this.editorState.set({ ...state, targetPos: position });
         break;
       }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas move unknown state:', unknownState);
+      }
     }
   }
 
@@ -315,11 +379,12 @@ export class MoleculeEditorService {
       case 'idle':
       case 'selected':
       case 'addingAtom':
+      case 'addingPartialCharge':
       case 'addingFormulaSymbol':
       case 'addingBond':
         break; // Do nothing
       case 'preMoveAtom':
-      case 'preMoveOther': {
+      case 'preMoveFormulaSymbol': {
         // Cancel pre-movement if up-event occurred before move started
         this.editorState.set(EditorState.idle);
         break;
@@ -339,10 +404,19 @@ export class MoleculeEditorService {
         this.editorState.set(EditorState.idle);
         break;
       }
-      case 'movingOther': {
-        const { itemId } = state;
-        this.model.update((model) => MoleculeEditorModel.moveItem(model, itemId, position));
+      case 'movingFormulaSymbol': {
+        const { symbolId } = state;
+        this.model.update((model) => MoleculeEditorModel.moveItem(model, symbolId, position));
         this.editorState.set(EditorState.idle);
+        break;
+      }
+      case 'movingPartialCharge': {
+        const { partialId, targetAtomId: prevTargetAtomId, moved } = state;
+        this.editorState.set(EditorState.select(partialId));
+        if (moved) {
+          const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
+          this.model.update((model) => MoleculeEditorModel.movePartialCharge(model, partialId, position, targetAtomId));
+        }
         break;
       }
       case 'movingGroup': {
@@ -593,6 +667,101 @@ export class MoleculeEditorService {
       default:
         console.warn(`Unknown formula-symbol "${symbolId}" event:`, event satisfies never);
     }
+  }
+
+  //endregion
+  //region Partial-charge events
+
+  addPartialCharge(charge: PartialCharge, pointerEvent: PointerEvent) {
+    const { position } = this._canvasTransform(pointerEvent);
+    const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+    this.editorState.set(EditorState.addPartialCharge(charge, position, targetAtomId));
+  }
+
+  handlePartialChargeEvent(partialId: PartialChargeId, pointerEvent: PointerEvent) {
+    // stop implicit bubbling
+    pointerEvent.stopPropagation();
+
+    // immediately bubble up to canvas for temporary partial-charges (itemId is not present in model)
+    if (this.isTemporaryItem(partialId)) {
+      this.handleCanvasEvent(pointerEvent);
+      return;
+    }
+
+    const model = this.model();
+    const toolMode = this.toolMode();
+    const { event, position } = this._canvasTransform(pointerEvent);
+    switch (event) {
+      case 'move': {
+        this.handleCanvasMove(position);
+        break;
+      }
+      case 'up': {
+        this.handleCanvasUp(position);
+        break;
+      }
+      case 'down': {
+        switch (toolMode.mode) {
+          case 'pointer': {
+            const partial = model.partials[partialId];
+            if (partial) {
+              const atom = model.atoms[partial.targetAtomId];
+              if (atom) {
+                const startPos = Vector2.add(atom.position, partial.relativePosition);
+                this.editorState.set(EditorState.preMovePartialCharge(partialId, startPos));
+              }
+            }
+            break;
+          }
+          case 'duplicate': {
+            const partial = model.partials[partialId];
+            if (partial) {
+              const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+              this.editorState.set(EditorState.addPartialCharge(partial.charge, position, targetAtomId));
+            }
+            break;
+          }
+          case 'groupMove': {
+            this.beginGroupMove(partialId, position);
+            break;
+          }
+          case 'bonding':
+            break; // not applicable
+        }
+        break;
+      }
+      case 'click': {
+        this.editorState.set(EditorState.select(partialId));
+        break;
+      }
+    }
+  }
+
+  private searchNearestAtomForPartialCharge(
+    searchPosition: Vector2,
+    existingId: undefined | PartialChargeId,
+  ): undefined | AtomId {
+    const { atomIdsWithoutPartialCharge } = this.graph();
+    const { atoms, partials } = this.model();
+
+    const existing = existingId ? partials[existingId] : undefined;
+    const prevTargetAtomId = existing?.targetAtomId;
+
+    let minDist = Number.POSITIVE_INFINITY;
+    let nearestAtomId: undefined | AtomId;
+    for (const atomKey in atoms) {
+      const atomId = atomKey as AtomId;
+      if (atomId === prevTargetAtomId || atomIdsWithoutPartialCharge.has(atomId)) {
+        const atom = atoms[atomId];
+        const dist = Vector2.distance(atom.position, searchPosition);
+        if (dist > 100) continue;
+        if (dist < minDist) {
+          minDist = dist;
+          nearestAtomId = atomId;
+        }
+      }
+    }
+    return nearestAtomId;
   }
 
   //endregion

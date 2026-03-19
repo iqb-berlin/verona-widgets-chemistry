@@ -1,0 +1,42 @@
+.partial-charge-handle {
+  fill: transparent;
+  stroke: var(--mat-sys-on-surface);
+  stroke-width: 0;
+
+  cursor: var(--atom-handle-cursor);
+
+  &.temporary {
+    pointer-events: none;
+  }
+
+  &:not(.temporary):hover {
+    fill: var(--mat-sys-surface-dim);
+    stroke-width: 1;
+  }
+
+  &.selected {
+    stroke-width: 2;
+    stroke: var(--mat-sys-primary) !important;
+  }
+}
+
+.partial-charge-glyph {
+  pointer-events: none;
+
+  &.temporary {
+    opacity: 50%;
+  }
+
+  &.selected {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.partial-charge-connection {
+  pointer-events: none;
+
+  stroke: var(--mat-sys-primary);
+  stroke-opacity: 50%;
+  stroke-width: 2;
+  stroke-dasharray: 4;
+}

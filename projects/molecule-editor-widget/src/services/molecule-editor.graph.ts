@@ -7,6 +7,7 @@ import type {
   FormulaSymbolModel,
   ItemId,
   MoleculeEditorModel,
+  PartialChargeId,
   PartialChargeModel,
 } from './molecule-editor.model';
 
@@ -18,6 +19,7 @@ export interface MoleculeEditorGraph {
   readonly itemIndex: ReadonlyMap<ItemId, AtomModel | BondModel | PartialChargeModel | FormulaSymbolModel>;
   readonly atomBonds: ReadonlyMap<AtomId, ReadonlyArray<BondModel>>;
   readonly bondAtoms: ReadonlyMap<BondId, BondedAtomPair>;
+  readonly atomIdsWithoutPartialCharge: ReadonlySet<AtomId>;
 }
 
 export namespace MoleculeEditorGraph {
@@ -25,12 +27,21 @@ export namespace MoleculeEditorGraph {
     const itemIndex = new Map<ItemId, AtomModel | BondModel | PartialChargeModel | FormulaSymbolModel>();
     const atomBonds = new Map<AtomId, Array<BondModel>>();
     const bondAtoms = new Map<BondId, [AtomModel, AtomModel]>();
+    const atomIdsWithoutPartialCharge = new Set<AtomId>();
 
     for (const atomKey in model.atoms) {
       const atomId = atomKey as AtomId;
       const atomModel = model.atoms[atomId];
       itemIndex.set(atomId, atomModel);
       atomBonds.set(atomId, []);
+      atomIdsWithoutPartialCharge.add(atomId);
+    }
+
+    for (const partialKey in model.partials) {
+      const partialId = partialKey as PartialChargeId;
+      const partial = model.partials[partialId];
+      itemIndex.set(partialId, partial);
+      atomIdsWithoutPartialCharge.delete(partial.targetAtomId);
     }
 
     for (const bondKey in model.bonds) {
@@ -44,39 +55,33 @@ export namespace MoleculeEditorGraph {
       bondAtoms.set(bondModel.id, [leftAtomModel, rightAtomModel]);
     }
 
-    for (const partialKey in model.partials) {
-      const partialId = partialKey as AtomId;
-      const partialModel = model.partials[partialId];
-      itemIndex.set(partialId, partialModel);
-    }
-
     for (const symbolKey in model.symbols) {
       const symbolId = symbolKey as FormulaSymbolId;
       const symbolModel = model.symbols[symbolId];
       itemIndex.set(symbolId, symbolModel);
     }
 
-    return { model, itemIndex, atomBonds, bondAtoms } as const;
+    return { model, itemIndex, atomBonds, bondAtoms, atomIdsWithoutPartialCharge } as const;
   }
 
   export function findGroup(graph: MoleculeEditorGraph, pivotItemId: ItemId): Array<ItemId> {
     const pivotItem = graph.itemIndex.get(pivotItemId);
-    if (pivotItem === undefined) {
+    if (!pivotItem) {
       return [];
-    } else
-      switch (pivotItem.type) {
-        case 'Atom':
-          return findAtomRelationsRecursive(graph, pivotItem, new Set());
-        case 'Bond':
-          return findBondRelationsRecursive(graph, pivotItem, new Set());
-        case 'PartialCharge':
-          return findPartialChargeRelationsRecursive(graph, pivotItem, new Set());
-        case 'FormulaSymbol':
-          return findAllFormulaSymbolIds(graph);
-        default:
-          console.error('Unknown pivot item: ', pivotItem satisfies never);
-          return [];
-      }
+    }
+    switch (pivotItem.type) {
+      case 'Atom':
+        return findAtomRelationsRecursive(graph, pivotItem, new Set());
+      case 'Bond':
+        return findBondRelationsRecursive(graph, pivotItem, new Set());
+      case 'PartialCharge':
+        return findPartialChargeRelationsRecursive(graph, pivotItem, new Set());
+      case 'FormulaSymbol':
+        return findAllFormulaSymbolIds(graph);
+      default:
+        console.error('Unknown pivot item: ', pivotItem satisfies never);
+        return [];
+    }
   }
 
   function findAtomRelationsRecursive(
@@ -119,7 +124,7 @@ export namespace MoleculeEditorGraph {
     if (visited.has(partial.id)) return [];
     else visited.add(partial.id);
 
-    const atom = graph.model.atoms[partial.id];
+    const atom = graph.model.atoms[partial.targetAtomId];
     const relations = atom && atom.type === 'Atom' ? findAtomRelationsRecursive(graph, atom, visited) : [];
     relations.push(partial.id);
     return relations;

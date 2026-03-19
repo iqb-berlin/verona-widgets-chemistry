@@ -1,5 +1,6 @@
 import { DOCUMENT, inject, Injectable, untracked } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
+import { firstValueFrom } from 'rxjs';
 import { MoleculeEditorBondingType, MoleculeEditorService } from './molecule-editor.service';
 import {
   AtomView,
@@ -8,11 +9,11 @@ import {
   FormalChargeView,
   FormulaSymbolView,
   MoleculeEditorView,
+  PartialChargeView,
 } from './molecule-editor.view';
 import { FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { ItemId } from './molecule-editor.model';
 import * as C from './molecule-editor.constants';
-import { firstValueFrom } from 'rxjs';
 import { copySvgIconToSymbol } from '../util/svg-icon-symbol';
 
 const formulaSymbolIcons = {
@@ -89,6 +90,13 @@ export class MoleculeEditorImageRenderer {
     for (const atom of view.atoms) {
       if (!ItemId.isTemporaryId(atom.itemId)) {
         group.append(this.drawAtom(atom));
+      }
+    }
+
+    // Draw partial charges
+    for (const partial of view.partials) {
+      if (!ItemId.isTemporaryId(partial.itemId)) {
+        group.append(this.drawPartialCharge(partial));
       }
     }
 
@@ -238,6 +246,20 @@ export class MoleculeEditorImageRenderer {
     return [circle, text];
   }
 
+  private drawPartialCharge(partial: PartialChargeView): SVGElement {
+    const { absolutePosition, charge } = partial;
+    const chargeIconName = partialChargeIcons[charge];
+    const [x, y] = absolutePosition;
+
+    const use = this.createSvgElement('use');
+    use.setAttribute('href', '#' + chargeIconName);
+    use.setAttribute('x', String(x - 15));
+    use.setAttribute('y', String(y - 15));
+    use.setAttribute('width', '30');
+    use.setAttribute('height', '30');
+    return use;
+  }
+
   private drawFormulaSymbol(symbol: FormulaSymbolView): SVGElement {
     const [x, y] = symbol.position;
     const symbolIconName = formulaSymbolIcons[symbol.symbol];
@@ -258,10 +280,10 @@ function calculateViewBox(view: MoleculeEditorView, padding: Vector2): [min: Vec
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
 
-  const items = [...view.atoms, ...view.symbols] as const;
+  const items = [...view.atoms, ...view.symbols, ...view.partials] as const;
   for (const item of items) {
     if (ItemId.isTemporaryId(item.itemId)) continue;
-    const [x, y] = item.position;
+    const [x, y] = 'position' in item ? item.position : item.absolutePosition;
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x);

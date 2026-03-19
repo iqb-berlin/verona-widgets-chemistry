@@ -1,6 +1,5 @@
 @let atom = selectedAtom();
 @let noItemSelected = !isItemSelected();
-@let totalAtoms = atomCount();
 
 <!-- Top Toolbar -->
 <div class="top-container">
@@ -65,8 +64,9 @@
       type="button"
       matIconButton
       matTooltip="Partialladung Negativ"
-      [disabled]="totalAtoms < 1"
+      [disabled]="partialChargeDisabled()"
       disabledInteractive
+      (click)="$event.stopPropagation(); handleAddPartialCharge(partialChargeNegative, $event)"
     >
       <mat-icon svgIcon="iqb:delta_minus"></mat-icon>
     </button>
@@ -74,8 +74,9 @@
       type="button"
       matIconButton
       matTooltip="Partialladung Positiv"
-      [disabled]="totalAtoms < 1"
+      [disabled]="partialChargeDisabled()"
       disabledInteractive
+      (click)="$event.stopPropagation(); handleAddPartialCharge(partialChargePositive, $event)"
     >
       <mat-icon svgIcon="iqb:delta_plus"></mat-icon>
     </button>

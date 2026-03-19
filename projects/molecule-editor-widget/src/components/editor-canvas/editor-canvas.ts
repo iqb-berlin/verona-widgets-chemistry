@@ -6,12 +6,20 @@ import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer'
 import { SvgAtomView } from './svg-atom-view/svg-atom-view';
 import { SvgBondView } from './svg-bond-view/svg-bond-view';
 import { SvgFormulaSymbolView } from './svg-formula-symbol-view/svg-formula-symbol-view';
+import { SvgPartialChargeView } from './svg-partial-charge-view/svg-partial-charge-view';
 
 @Component({
   selector: 'app-editor-canvas',
   templateUrl: './editor-canvas.html',
   styleUrl: './editor-canvas.scss',
-  imports: [SvgCanvasDirective, SvgCustomIconDirective, SvgAtomView, SvgBondView, SvgFormulaSymbolView],
+  imports: [
+    SvgCanvasDirective,
+    SvgCustomIconDirective,
+    SvgAtomView,
+    SvgBondView,
+    SvgFormulaSymbolView,
+    SvgPartialChargeView,
+  ],
 })
 export class EditorCanvas {
   readonly service = inject(MoleculeEditorService);
@@ -41,13 +49,15 @@ export class EditorCanvas {
     // state cursors
     switch (state.state) {
       case 'addingAtom':
+      case 'addingPartialCharge':
       case 'addingFormulaSymbol':
         return 'pointer';
       case 'preMoveAtom':
-      case 'preMoveOther':
+      case 'preMoveFormulaSymbol':
         return 'pointer';
       case 'movingAtom':
-      case 'movingOther':
+      case 'movingFormulaSymbol':
+      case 'movingPartialCharge':
         return 'grabbing';
       case 'movingGroup':
         return 'move';

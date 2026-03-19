@@ -1,0 +1,40 @@
+@let partial = partialView();
+@let positionX = partial.absolutePosition[0];
+@let positionY = partial.absolutePosition[1];
+<ng-container xmlns:svg="http://www.w3.org/2000/svg">
+  @if (partial.showConnection && partial.targetAtomPosition) {
+    @let targetAtomX = partial.targetAtomPosition[0];
+    @let targetAtomY = partial.targetAtomPosition[1];
+    <svg:line
+      class="partial-charge-connection"
+      [attr.x1]="positionX"
+      [attr.y1]="positionY"
+      [attr.x2]="targetAtomX"
+      [attr.y2]="targetAtomY"
+    ></svg:line>
+  }
+
+  <svg:circle
+    class="partial-charge-handle"
+    [class.temporary]="partial.temporary"
+    [class.selected]="partial.selected"
+    [attr.cx]="positionX"
+    [attr.cy]="positionY"
+    [attr.r]="atomHandleRadius"
+    (pointermove)="service.handlePartialChargeEvent(partial.itemId, $event)"
+    (pointerdown)="service.handlePartialChargeEvent(partial.itemId, $event)"
+    (pointerup)="service.handlePartialChargeEvent(partial.itemId, $event)"
+    (click)="service.handlePartialChargeEvent(partial.itemId, $event)"
+  ></svg:circle>
+
+  <svg:use
+    class="partial-charge-glyph"
+    [class.temporary]="partial.temporary"
+    [class.selected]="partial.selected"
+    [attr.width]="30"
+    [attr.height]="30"
+    [attr.x]="positionX - 15"
+    [attr.y]="positionY - 15"
+    [attr.href]="partialChargeHref()"
+  ></svg:use>
+</ng-container>

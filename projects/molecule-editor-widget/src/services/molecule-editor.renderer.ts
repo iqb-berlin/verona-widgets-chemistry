@@ -8,6 +8,8 @@ import {
   FormulaSymbolModel,
   ItemId,
   MoleculeEditorModel,
+  PartialChargeId,
+  PartialChargeModel,
   ToolMode,
 } from './molecule-editor.model';
 import {
@@ -18,13 +20,13 @@ import {
   FormalChargeView,
   FormulaSymbolView,
   MoleculeEditorView,
+  PartialChargeView,
 } from './molecule-editor.view';
 import { EditorState } from './molecule-editor.state';
 import { MoleculeEditorGraph } from './molecule-editor.graph';
-import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { lookupElementNr } from './molecule-editor.helper';
 import * as C from './molecule-editor.constants';
-import tmpMoveFormulaSymbol = ItemId.tmpMoveFormulaSymbol;
 
 @Injectable()
 export class MoleculeEditorRenderer {
@@ -38,14 +40,16 @@ export class MoleculeEditorRenderer {
 
     const atoms: Array<AtomView> = [];
     const bonds: Array<BondView> = [];
+    const partials: Array<PartialChargeView> = [];
     const symbols: Array<FormulaSymbolView> = [];
     renderModelAtoms(graph, editorState, atoms);
     renderModelBonds(model, editorState, bonds);
     renderTemporaryAtoms(model, editorState, atoms);
     renderTemporaryBonds(model, editorState, toolMode, bonds);
+    renderPartialCharges(model, editorState, toolMode, partials);
     renderFormulaSymbols(model, editorState, symbols);
 
-    return { atoms, bonds, symbols };
+    return { atoms, bonds, partials, symbols };
   });
 }
 
@@ -64,7 +68,10 @@ function modelAtomView(atom: AtomModel, graph: MoleculeEditorGraph, state: Edito
 
   const element = lookupElementNr(elementNr);
   const selected = EditorState.isItemSelected(state, id);
-  const targeted = EditorState.isItemBondTargeted(state, id) || EditorState.isItemSnapTargeted(state, id);
+  const targeted =
+    EditorState.isItemBondTargeted(state, id) ||
+    EditorState.isItemSnapTargeted(state, id) ||
+    EditorState.isAtomPartialChargeTargeted(state, id);
 
   const electronViews = renderAtomElectronViews(atom, graph);
   const formalChargeView = formalCharge === 0 ? null : renderFormalChargeView(atom, formalCharge);
@@ -178,11 +185,13 @@ function renderTemporaryAtoms(model: MoleculeEditorModel, editorState: EditorSta
   switch (editorState.state) {
     case 'idle':
     case 'selected':
+    case 'addingPartialCharge':
     case 'addingFormulaSymbol':
     case 'preMoveAtom':
     case 'addingBond':
-    case 'preMoveOther':
-    case 'movingOther':
+    case 'preMoveFormulaSymbol':
+    case 'movingFormulaSymbol':
+    case 'movingPartialCharge':
       break; // No temporary atoms
     case 'addingAtom': {
       const { elementNr, hoverPos, snap } = editorState;
@@ -233,10 +242,12 @@ function renderTemporaryBonds(model: MoleculeEditorModel, state: EditorState, mo
   switch (state.state) {
     case 'idle':
     case 'selected':
+    case 'addingPartialCharge':
     case 'addingFormulaSymbol':
     case 'preMoveAtom':
-    case 'preMoveOther':
-    case 'movingOther':
+    case 'preMoveFormulaSymbol':
+    case 'movingFormulaSymbol':
+    case 'movingPartialCharge':
     case 'movingGroup': {
       break; // No temporary bond (Rendered in renderModelItems for better performance)
     }
@@ -285,11 +296,11 @@ function renderFormulaSymbols(model: MoleculeEditorModel, editorState: EditorSta
 
   const symbolList = Object.values(model.symbols);
   for (const symbol of symbolList) {
-    if (editorState.state === 'movingOther' && editorState.itemId === symbol.id) {
-      const tmpId = tmpMoveFormulaSymbol(symbol.id);
+    if (editorState.state === 'movingFormulaSymbol' && editorState.symbolId === symbol.id) {
+      const tmpId = ItemId.tmpMoveFormulaSymbol(symbol.id);
       symbols.push(temporaryFormulaSymbol(tmpId, editorState.targetPos, symbol.symbol));
     } else if (editorState.state === 'movingGroup' && groupMoveItemIds?.has(symbol.id)) {
-      const tmpId = tmpMoveFormulaSymbol(symbol.id);
+      const tmpId = ItemId.tmpMoveFormulaSymbol(symbol.id);
       const tmpPos = Vector2.add(symbol.position, groupDelta);
       symbols.push(temporaryFormulaSymbol(tmpId, tmpPos, symbol.symbol));
     } else {
@@ -320,5 +331,76 @@ function modelFormulaSymbol(model: FormulaSymbolModel, selected: boolean): Formu
     symbol: model.symbol,
     selected,
     temporary: false,
+  } as const;
+}
+
+function renderPartialCharges(
+  model: MoleculeEditorModel,
+  editorState: EditorState,
+  toolMode: ToolMode,
+  partials: Array<PartialChargeView>,
+) {
+  let groupMoveItemIds: undefined | ReadonlySet<ItemId>;
+  if (editorState.state === 'movingGroup') {
+    groupMoveItemIds = new Set(editorState.groupItemIds);
+  }
+
+  const partialChargeList = Object.values(model.partials);
+  for (const partial of partialChargeList) {
+    const targetAtom = model.atoms[partial.targetAtomId];
+    if (editorState.state === 'movingAtom' && targetAtom.id === editorState.atomId) continue; // skip drawing on moving atom
+    if (editorState.state === 'movingGroup' && groupMoveItemIds?.has(targetAtom.id)) continue; // skip drawing on group move
+    if (editorState.state === 'movingPartialCharge' && editorState.partialId === partial.id) {
+      const tmpId = ItemId.tmpMovePartialCharge(partial.id);
+      const tmpTargetAtom = model.atoms[editorState.targetAtomId ?? partial.targetAtomId];
+      partials.push(temporaryPartialCharge(tmpId, editorState.targetPos, partial.charge, tmpTargetAtom));
+    } else if (targetAtom) {
+      const selected = editorState.state === 'selected' && editorState.itemId === partial.id;
+      partials.push(modelPartialCharge(partial, targetAtom, toolMode, selected));
+    }
+  }
+
+  if (editorState.state === 'addingPartialCharge') {
+    const targetAtom = editorState.targetAtomId ? model.atoms[editorState.targetAtomId] : undefined;
+    partials.push(
+      temporaryPartialCharge(ItemId.tmpAddPartialCharge, editorState.hoverPos, editorState.charge, targetAtom),
+    );
+  }
+}
+
+function temporaryPartialCharge(
+  tmpId: PartialChargeId,
+  position: Vector2,
+  charge: PartialCharge,
+  targetAtom: null | undefined | AtomModel,
+): PartialChargeView {
+  return {
+    itemId: tmpId,
+    absolutePosition: position,
+    targetAtomId: targetAtom?.id ?? null,
+    targetAtomPosition: targetAtom?.position ?? null,
+    charge,
+    selected: false,
+    temporary: true,
+    showConnection: true,
+  } as const;
+}
+
+function modelPartialCharge(
+  partial: PartialChargeModel,
+  targetAtom: AtomModel,
+  toolMode: ToolMode,
+  selected: boolean,
+): PartialChargeView {
+  const position = Vector2.add(partial.relativePosition, targetAtom.position);
+  return {
+    itemId: partial.id,
+    charge: partial.charge,
+    absolutePosition: position,
+    targetAtomId: targetAtom.id,
+    targetAtomPosition: targetAtom.position,
+    selected,
+    temporary: false,
+    showConnection: selected || toolMode.mode === 'groupMove',
   } as const;
 }

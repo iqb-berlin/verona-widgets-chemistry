@@ -1,9 +1,8 @@
 import type { PsElementNumber } from 'periodic-system-common';
-import type { AtomId, AtomModel, FormulaSymbolId, ItemId } from './molecule-editor.model';
-import { BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import type { AtomId, AtomModel, FormulaSymbolId, ItemId, PartialChargeId } from './molecule-editor.model';
+import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { snapProximityRadius, snapRadius } from './molecule-editor.constants';
 import { MoleculeEditorGraph } from './molecule-editor.graph';
-import matching from '../util/matching';
 
 /** Possible active states of the molecule editor */
 export type EditorState =
@@ -11,12 +10,14 @@ export type EditorState =
   | EditorState.ItemSelected
   | EditorState.AddingAtom
   | EditorState.AddingFormulaSymbol
+  | EditorState.AddingPartialCharge
   | EditorState.PreMoveAtom
   | EditorState.MovingAtom
   | EditorState.AddingBond
   | EditorState.MovingGroup
-  | EditorState.PreMoveOther
-  | EditorState.MovingOther;
+  | EditorState.PreMoveFormulaSymbol
+  | EditorState.MovingFormulaSymbol
+  | EditorState.MovingPartialCharge;
 
 // --- EditorState types and variants ---
 
@@ -40,9 +41,17 @@ export namespace EditorState {
     readonly snap: undefined | AtomSnap;
   }
 
+  /** A new formula-symbol is hovering, ready to be added to the canvas */
   export interface AddingFormulaSymbol extends StateBase<'addingFormulaSymbol'> {
     readonly symbol: FormulaSymbol;
     readonly hoverPos: Vector2;
+  }
+
+  /** A new partial-charge is hovering, ready to be associated with an existing atom */
+  export interface AddingPartialCharge extends StateBase<'addingPartialCharge'> {
+    readonly charge: PartialCharge;
+    readonly hoverPos: Vector2;
+    readonly targetAtomId: undefined | AtomId;
   }
 
   /** Data structure representing an atom being available to snap to a target position */
@@ -81,15 +90,20 @@ export namespace EditorState {
   }
 
   /** An object other than an atom is either about to be moved, or clicked on for selection */
-  export interface PreMoveOther extends StateBase<'preMoveOther'> {
-    readonly itemId: ItemId;
-    readonly moveType: 'PartialCharge' | 'FormulaSymbol';
+  export interface PreMoveFormulaSymbol extends StateBase<'preMoveFormulaSymbol'> {
+    readonly symbolId: FormulaSymbolId;
   }
 
-  export interface MovingOther extends StateBase<'movingOther'> {
-    readonly itemId: ItemId;
-    readonly moveType: 'PartialCharge' | 'FormulaSymbol';
+  export interface MovingFormulaSymbol extends StateBase<'movingFormulaSymbol'> {
+    readonly symbolId: FormulaSymbolId;
     readonly targetPos: Vector2;
+  }
+
+  export interface MovingPartialCharge extends StateBase<'movingPartialCharge'> {
+    readonly partialId: PartialChargeId;
+    readonly targetPos: Vector2;
+    readonly targetAtomId: undefined | AtomId;
+    readonly moved: boolean;
   }
 
   // --- EditorState values and functions ---
@@ -102,6 +116,15 @@ export namespace EditorState {
 
   export function addAtom(elementNr: PsElementNumber, hoverPos: Vector2) {
     return { state: 'addingAtom', elementNr, hoverPos, snap: undefined } as const satisfies EditorState.AddingAtom;
+  }
+
+  export function addPartialCharge(charge: PartialCharge, hoverPos: Vector2, targetAtomId: undefined | AtomId) {
+    return {
+      state: 'addingPartialCharge',
+      charge,
+      hoverPos,
+      targetAtomId,
+    } as const satisfies EditorState.AddingPartialCharge;
   }
 
   export function addFormulaSymbol(symbol: FormulaSymbol, hoverPos: Vector2) {
@@ -118,27 +141,40 @@ export namespace EditorState {
 
   export function prepareMoveFormulaSymbol(symbolId: FormulaSymbolId) {
     return {
-      state: 'preMoveOther',
-      moveType: 'FormulaSymbol',
-      itemId: symbolId,
-    } as const satisfies EditorState.PreMoveOther;
+      state: 'preMoveFormulaSymbol',
+      symbolId: symbolId,
+    } as const satisfies EditorState.PreMoveFormulaSymbol;
   }
 
-  export function prepareMovePartialCharge(partialChargeId: AtomId) {
+  export function moveFormulaSymbol(
+    state: EditorState.PreMoveFormulaSymbol | EditorState.MovingFormulaSymbol,
+    targetPos: Vector2,
+  ) {
     return {
-      state: 'preMoveOther',
-      moveType: 'PartialCharge',
-      itemId: partialChargeId,
-    } as const satisfies EditorState.PreMoveOther;
-  }
-
-  export function moveOther(state: EditorState.PreMoveOther | EditorState.MovingOther, targetPos: Vector2) {
-    return {
-      state: 'movingOther',
-      moveType: state.moveType,
-      itemId: state.itemId,
+      state: 'movingFormulaSymbol',
+      symbolId: state.symbolId,
       targetPos,
-    } as const satisfies EditorState.MovingOther;
+    } as const satisfies EditorState.MovingFormulaSymbol;
+  }
+
+  export function preMovePartialCharge(id: PartialChargeId, targetPos: Vector2) {
+    return {
+      state: 'movingPartialCharge',
+      partialId: id,
+      targetPos,
+      targetAtomId: undefined,
+      moved: false,
+    } as const satisfies EditorState.MovingPartialCharge;
+  }
+
+  export function movePartialCharge(id: PartialChargeId, targetPos: Vector2, targetAtomId: undefined | AtomId) {
+    return {
+      state: 'movingPartialCharge',
+      partialId: id,
+      targetPos,
+      targetAtomId,
+      moved: true,
+    } as const satisfies EditorState.MovingPartialCharge;
   }
 
   export function groupMove(startPos: Vector2, groupItemIds: ReadonlyArray<ItemId>) {
@@ -158,8 +194,8 @@ export namespace EditorState {
     );
   }
 
-  export function isMovingOtherItem(state: EditorState, itemId: ItemId): state is Substate<'movingOther'> {
-    return state.state === 'movingOther' && state.itemId === itemId;
+  export function isMovingOtherItem(state: EditorState, itemId: ItemId): state is Substate<'movingFormulaSymbol'> {
+    return state.state === 'movingFormulaSymbol' && state.symbolId === itemId;
   }
 
   export function isItemSelected(state: EditorState, itemId: ItemId): state is Substate<'selected'> {
@@ -172,6 +208,10 @@ export namespace EditorState {
 
   export function isItemSnapTargeted(state: EditorState, itemId: ItemId): boolean {
     return (state.state === 'addingAtom' || state.state === 'movingAtom') && state.snap?.targetId === itemId;
+  }
+
+  export function isAtomPartialChargeTargeted(state: EditorState, id: AtomId) {
+    return state.state === 'addingPartialCharge' && state.targetAtomId === id;
   }
 
   export function searchSnap<S extends Substate<'addingAtom' | 'movingAtom'>>(state: S, graph: MoleculeEditorGraph): S {

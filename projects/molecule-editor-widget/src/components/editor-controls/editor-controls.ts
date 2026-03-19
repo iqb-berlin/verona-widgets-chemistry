@@ -116,6 +116,11 @@ export class EditorControls {
     return !atom || atom.formalCharge <= MoleculeEditorModel.ATOM_TOTAL_MIN_FORMAL_CHARGE;
   });
 
+  readonly partialChargeDisabled = computed(() => {
+    const { atomIdsWithoutPartialCharge } = this.service.graph();
+    return atomIdsWithoutPartialCharge.size < 1;
+  });
+
   readonly zoomOutDisabled = computed(() => this.zoomLevelIndex() <= 0);
   readonly zoomInDisabled = computed(() => this.zoomLevelIndex() >= this.zoomLevels.length - 1);
 
@@ -182,6 +187,10 @@ export class EditorControls {
 
   handleAddFormulaSymbol(symbol: FormulaSymbol, event: PointerEvent) {
     this.service.addFormulaSymbolToCanvas(symbol, event);
+  }
+
+  handleAddPartialCharge(partialCharge: PartialCharge, pointerEvent: PointerEvent) {
+    this.service.addPartialCharge(partialCharge, pointerEvent);
   }
 
   async handleClearAll() {

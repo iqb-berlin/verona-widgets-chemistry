@@ -1,12 +1,13 @@
 import type { PsElement } from 'periodic-system-common';
-import type { AtomId, BondId, FormulaSymbolId } from './molecule-editor.model';
-import { AngleMath, BondMultiplicity, FormulaSymbol, Vector2 } from './molecule-editor.shared';
+import type { AtomId, BondId, FormulaSymbolId, PartialChargeId } from './molecule-editor.model';
+import { AngleMath, BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 
 // --- View data-types ---
 
 export interface MoleculeEditorView {
   readonly atoms: ReadonlyArray<AtomView>;
   readonly bonds: ReadonlyArray<BondView>;
+  readonly partials: ReadonlyArray<PartialChargeView>;
   readonly symbols: ReadonlyArray<FormulaSymbolView>;
 }
 
@@ -15,7 +16,7 @@ export interface AtomView {
   readonly position: Vector2;
   readonly element: PsElement;
   readonly electrons: ReadonlyArray<ElectronView>;
-  readonly formalCharge: FormalChargeView | null;
+  readonly formalCharge: null | FormalChargeView;
   readonly selected: boolean;
   readonly temporary: boolean;
   readonly targeted: boolean;
@@ -40,6 +41,17 @@ export interface FormalChargeView {
   readonly color: string;
   readonly label: string;
   readonly labelLarge: boolean;
+}
+
+export interface PartialChargeView {
+  readonly itemId: PartialChargeId;
+  readonly absolutePosition: Vector2;
+  readonly targetAtomId: null | AtomId;
+  readonly targetAtomPosition: null | Vector2;
+  readonly charge: PartialCharge;
+  readonly selected: boolean;
+  readonly temporary: boolean;
+  readonly showConnection: boolean;
 }
 
 export interface FormulaSymbolView {

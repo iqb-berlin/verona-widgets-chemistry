@@ -26,9 +26,9 @@
   @for (atom of view.atoms; track atom.itemId) {
     <g [atomView]="atom"></g>
   }
-  <!--@for (partial of view.partialCharges; track partial.itemId) {
-    <g ></g>
-  }-->
+  @for (partial of view.partials; track partial.itemId) {
+    <g [partialCharge]="partial"></g>
+  }
   @for (symbol of view.symbols; track symbol.itemId) {
     <g [formulaSymbol]="symbol"></g>
   }

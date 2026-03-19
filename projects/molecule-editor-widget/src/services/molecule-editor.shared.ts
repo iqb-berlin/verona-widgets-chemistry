@@ -20,34 +20,30 @@ export type Vector2 = readonly [x: number, y: number];
 export namespace Vector2 {
   export const zero = [0, 0] as const satisfies Vector2;
 
-  export function add([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [ax + bx, ay + by] as const;
+  function binaryOp(componentFn: (a: number, b: number) => number) {
+    return ([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 => {
+      const rx = componentFn(ax, bx);
+      const ry = componentFn(ay, by);
+      return [rx, ry] as const;
+    };
   }
 
-  export function sub([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [ax - bx, ay - by] as const;
+  export const add = binaryOp((a, b) => a + b);
+  export const sub = binaryOp((a, b) => a - b);
+  export const middle = binaryOp((a, b) => (a + b) / 2);
+
+  export const neg = ([x, y]: Vector2): Vector2 => [-x, -y] as const;
+  export const scale = (s: number, [x, y]: Vector2): Vector2 => [x * s, y * s] as const;
+  export const magnitude = ([x, y]: Vector2): number => Math.sqrt(x * x + y * y);
+
+  export function distance(a: Vector2, b: Vector2): number {
+    return Math.sqrt(sqrDistance(a, b));
   }
 
-  export function middle([ax, ay]: Vector2, [bx, by]: Vector2): Vector2 {
-    return [(ax + bx) / 2, (ay + by) / 2];
-  }
-
-  export function scale(s: number, [x, y]: Vector2): Vector2 {
-    return [x * s, y * s] as const;
-  }
-
-  export function neg([x, y]: Vector2): Vector2 {
-    return [-x, -y] as const;
-  }
-
-  export function magnitude([x, y]: Vector2): number {
-    return Math.sqrt(x * x + y * y);
-  }
-
-  export function distance([ax, ay]: Vector2, [bx, by]: Vector2): number {
+  export function sqrDistance([ax, ay]: Vector2, [bx, by]: Vector2): number {
     const dx = ax - bx;
     const dy = ay - by;
-    return Math.sqrt(dx * dx + dy * dy);
+    return dx * dx + dy * dy;
   }
 }
 

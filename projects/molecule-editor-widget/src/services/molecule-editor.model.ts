@@ -24,6 +24,7 @@ type ItemIdSubtype<T extends ItemType> = ItemId & { [itemType]: T };
 
 export type AtomId = ItemIdSubtype<'Atom'>;
 export type BondId = ItemIdSubtype<'Bond'>;
+export type PartialChargeId = ItemIdSubtype<'PartialCharge'>;
 export type FormulaSymbolId = ItemIdSubtype<'FormulaSymbol'>;
 
 type ReadonlyRecord<K extends PropertyKey, T> = Readonly<Record<K, T>>;
@@ -37,9 +38,9 @@ export interface MoleculeEditorModel {
 }
 
 /** Properties shared among all model data-structures */
-interface ModelBase<T extends ItemType, ID extends ItemId = ItemIdSubtype<T>> {
-  readonly id: ID;
+interface ModelBase<T extends ItemType> {
   readonly type: T;
+  readonly id: ItemIdSubtype<T>;
 }
 
 /** Atom model data-structure, representing an instance of a specific element */
@@ -58,9 +59,9 @@ export interface BondModel extends ModelBase<'Bond'> {
 }
 
 /** Partial-charge model data-structure, representing a partial charge attached to one specific atom */
-// NOTE: Uses AtomId for 1:1 relation
-export interface PartialChargeModel extends ModelBase<'PartialCharge', AtomId> {
-  readonly position: Vector2;
+export interface PartialChargeModel extends ModelBase<'PartialCharge'> {
+  readonly relativePosition: Vector2; // Always positioned relative to its corresponding atom
+  readonly targetAtomId: AtomId; // References a target atom it is attached to
   readonly charge: PartialCharge;
 }
 
@@ -85,11 +86,15 @@ export namespace ItemId {
 
   export const tmpAddAtom = (TEMP_PREFIX + 'addAtom') as AtomId;
   export const tmpAddBond = (TEMP_PREFIX + 'addBond') as BondId;
-  export const tmpAddPartialCharge = (TEMP_PREFIX + 'partialCharge') as AtomId;
+  export const tmpAddPartialCharge = (TEMP_PREFIX + 'partialCharge') as PartialChargeId;
   export const tmpAddFormulaSymbol = (TEMP_PREFIX + 'formulaSymbol') as FormulaSymbolId;
 
   export function tmpMoveAtom(atomId: AtomId): AtomId {
     return (TEMP_PREFIX + 'moveAtom:' + atomId) as AtomId;
+  }
+
+  export function tmpMovePartialCharge(partialId: PartialChargeId): PartialChargeId {
+    return (TEMP_PREFIX + 'movePartialCharge:' + partialId) as PartialChargeId;
   }
 
   export function tmpMoveFormulaSymbol(symbolId: FormulaSymbolId): FormulaSymbolId {
@@ -122,6 +127,18 @@ export namespace MoleculeEditorModel {
     },
   );
 
+  export const addPartialCharge = produce<MoleculeEditorModel, [PartialChargeId, AtomId, PartialCharge, Vector2]>(
+    (model, chargeId, targetAtomId, charge, relativePosition) => {
+      model.partials[chargeId] = {
+        type: 'PartialCharge',
+        id: chargeId,
+        relativePosition: castDraft(relativePosition),
+        targetAtomId,
+        charge,
+      };
+    },
+  );
+
   export const addFormulaSymbol = produce<MoleculeEditorModel, [FormulaSymbolId, FormulaSymbol, Vector2]>(
     (model, symbolId, symbol, position) => {
       model.symbols[symbolId] = {
@@ -133,12 +150,29 @@ export namespace MoleculeEditorModel {
     },
   );
 
-  export const moveItem = produce<MoleculeEditorModel, [ItemId, Vector2]>((model, itemId, position) => {
-    const item = model.atoms[itemId] ?? model.partials[itemId] ?? model.symbols[itemId];
-    if (item) {
-      item.position = castDraft(position);
-    }
-  });
+  export const moveItem = produce<MoleculeEditorModel, [AtomId | FormulaSymbolId, Vector2]>(
+    (model, itemId, position) => {
+      const item = model.atoms[itemId] ?? model.symbols[itemId];
+      if (item) {
+        item.position = castDraft(position);
+      }
+    },
+  );
+
+  export const movePartialCharge = produce<MoleculeEditorModel, [PartialChargeId, Vector2, AtomId | undefined]>(
+    (model, partialId, targetPosition, updateAtomId) => {
+      const partial = model.partials[partialId];
+      if (partial) {
+        const targetAtomId = updateAtomId ?? partial.targetAtomId;
+        partial.targetAtomId = targetAtomId;
+        const targetAtom = model.atoms[targetAtomId];
+        if (targetAtom) {
+          const relativePosition = Vector2.sub(targetPosition, targetAtom.position);
+          partial.relativePosition = castDraft(relativePosition);
+        }
+      }
+    },
+  );
 
   export const addBond = produce<MoleculeEditorModel, [BondId, AtomId, AtomId, BondMultiplicity]>(
     (model, bondId, leftAtomId, rightAtomId, multiplicity) => {
@@ -211,6 +245,7 @@ export namespace MoleculeEditorModel {
     const atom = model.atoms[itemId];
     delete model.atoms[itemId];
     delete model.bonds[itemId];
+    delete model.partials[itemId];
     delete model.symbols[itemId];
 
     if (atom) {
@@ -222,13 +257,21 @@ export namespace MoleculeEditorModel {
           delete model.bonds[bondId];
         }
       }
+      // Delete all partials connected to atom
+      for (const partialKey in model.partials) {
+        const partialId = partialKey as PartialChargeId;
+        const { targetAtomId } = model.partials[partialId];
+        if (targetAtomId === itemId) {
+          delete model.partials[partialId];
+        }
+      }
     }
   });
 
   export const moveGroup = produce<MoleculeEditorModel, [Vector2, ReadonlyArray<ItemId>]>(
     (model, moveDelta, groupItemIds) => {
       for (const itemId of groupItemIds) {
-        const item = model.atoms[itemId] ?? model.partials[itemId] ?? model.symbols[itemId];
+        const item = model.atoms[itemId] ?? model.symbols[itemId];
         if (item) {
           item.position[0] += moveDelta[0];
           item.position[1] += moveDelta[1];
