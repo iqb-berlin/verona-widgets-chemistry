@@ -19,5 +19,10 @@ export const valenceBondRadius = 4.0;
 
 export const formalChargeHandleRadius = 10;
 export const formalChargePositionOffset = [+22.0, -22.0] as const;
-export const formalChargePositiveColor = '#c00'
-export const formalChargeNegativeColor = '#22f'
+export const formalChargePositiveColor = '#c00';
+export const formalChargeNegativeColor = '#22f';
+
+export const partialChargeSize = 30;
+export const partialChargeMaxAtomDistance = 60;
+
+export const formulaSymbolSize = 50;

@@ -15,6 +15,7 @@ export class SvgPartialChargeView {
   readonly service = inject(MoleculeEditorService);
 
   protected readonly atomHandleRadius = C.atomHandleRadius;
+  protected readonly partialChargeSize = C.partialChargeSize;
 
   protected readonly partialChargeHref = computed(() => {
     const { charge } = this.partialView();

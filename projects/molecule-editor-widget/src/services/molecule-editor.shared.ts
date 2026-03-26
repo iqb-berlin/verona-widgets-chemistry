@@ -36,6 +36,8 @@ export namespace Vector2 {
   export const scale = (s: number, [x, y]: Vector2): Vector2 => [x * s, y * s] as const;
   export const magnitude = ([x, y]: Vector2): number => Math.sqrt(x * x + y * y);
 
+  export const normalize = (v: Vector2) => scale(1 / magnitude(v), v);
+
   export function distance(a: Vector2, b: Vector2): number {
     return Math.sqrt(sqrDistance(a, b));
   }
@@ -44,6 +46,11 @@ export namespace Vector2 {
     const dx = ax - bx;
     const dy = ay - by;
     return dx * dx + dy * dy;
+  }
+
+  export function clampMagnitude(v: Vector2, maxLength: number): Vector2 {
+    const length = magnitude(v);
+    return length > maxLength ? scale(maxLength, normalize(v)) : v;
   }
 }
 

@@ -10,7 +10,7 @@ import {
   PartialChargeId,
   ToolMode,
 } from './molecule-editor.model';
-import { defaultBondingType, editorHistoryCapacity } from './molecule-editor.constants';
+import { defaultBondingType, editorHistoryCapacity, partialChargeMaxAtomDistance } from './molecule-editor.constants';
 import { EditorState } from './molecule-editor.state';
 import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { MoleculeEditorGraph } from './molecule-editor.graph';
@@ -91,9 +91,9 @@ export class MoleculeEditorService {
     });
 
     // Uncomment for debugging: Log state/mode/model changes
-    effect(() => console.log('tool mode =', this.toolMode()));
-    effect(() => console.log('editor state =', this.editorState()));
-    effect(() => console.log('editor model =', this.model()));
+    //effect(() => console.log('tool mode =', this.toolMode()));
+    //effect(() => console.log('editor state =', this.editorState()));
+    //effect(() => console.log('editor model =', this.model()));
   }
 
   registerCanvasTransform(transform: MoleculeCanvasTransform) {
@@ -355,7 +355,10 @@ export class MoleculeEditorService {
       case 'movingPartialCharge': {
         const { partialId, targetAtomId: prevTargetAtomId } = state;
         const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
-        this.editorState.set(EditorState.movePartialCharge(partialId, position, targetAtomId));
+        if (targetAtomId) {
+          const clampedPosition = this.clampPositionForPartialCharge(targetAtomId, position);
+          this.editorState.set(EditorState.movePartialCharge(partialId, clampedPosition, targetAtomId));
+        }
         break;
       }
       case 'addingBond': {
@@ -415,7 +418,12 @@ export class MoleculeEditorService {
         this.editorState.set(EditorState.select(partialId));
         if (moved) {
           const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
-          this.model.update((model) => MoleculeEditorModel.movePartialCharge(model, partialId, position, targetAtomId));
+          if (targetAtomId) {
+            const clampedPosition = this.clampPositionForPartialCharge(targetAtomId, position);
+            this.model.update((model) => {
+              return MoleculeEditorModel.movePartialCharge(model, partialId, clampedPosition, targetAtomId);
+            });
+          }
         }
         break;
       }
@@ -754,7 +762,7 @@ export class MoleculeEditorService {
       if (atomId === prevTargetAtomId || atomIdsWithoutPartialCharge.has(atomId)) {
         const atom = atoms[atomId];
         const dist = Vector2.distance(atom.position, searchPosition);
-        if (dist > 100) continue;
+        if (dist > partialChargeMaxAtomDistance) continue;
         if (dist < minDist) {
           minDist = dist;
           nearestAtomId = atomId;
@@ -762,6 +770,16 @@ export class MoleculeEditorService {
       }
     }
     return nearestAtomId;
+  }
+
+  private clampPositionForPartialCharge(targetAtomId: AtomId, position: Vector2): Vector2 {
+    const { atoms } = this.model();
+    const targetAtom = atoms[targetAtomId];
+    if (!targetAtomId) return position;
+
+    const givenRelativePosition = Vector2.sub(position, targetAtom.position);
+    const clampedRelativePosition = Vector2.clampMagnitude(givenRelativePosition, partialChargeMaxAtomDistance);
+    return Vector2.add(targetAtom.position, clampedRelativePosition);
   }
 
   //endregion

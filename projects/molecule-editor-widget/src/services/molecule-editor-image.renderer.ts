@@ -35,7 +35,8 @@ export class MoleculeEditorImageRenderer {
 
   async renderSvgTree(view: MoleculeEditorView): Promise<SVGSVGElement> {
     const svg = this.createViewRoot(view);
-    svg.append(...(await this.drawIconSymbols()));
+    const iconSymbols = await this.drawIconSymbols();
+    svg.append(...iconSymbols);
     svg.append(this.drawView(view));
     return svg;
   }
@@ -45,14 +46,16 @@ export class MoleculeEditorImageRenderer {
   }
 
   private createViewRoot(view: MoleculeEditorView): SVGSVGElement {
+    // Compute viewBox from positioning range of items
+    const [viewMin, viewMax] = calculateViewBox(view, [40, 40]);
+    const viewSize = Vector2.sub(viewMax, viewMin);
+
     // Create SVG root element
+    const [minX, minY]: Vector2 = viewMin;
+    const [sizeX, sizeY]: Vector2 = viewSize;
+    const viewBox = [minX, minY, sizeX, sizeY].join(' ');
     const svg = this.createSvgElement('svg');
-
-    // Compute viewBox from positioning range of atoms
-    const [viewBoxMin, viewBoxMax] = calculateViewBox(view, [40, 40]);
-    const viewBoxSize = Vector2.sub(viewBoxMax, viewBoxMin);
-    svg.setAttribute('viewBox', viewBoxAttributeValue(viewBoxMin, viewBoxSize));
-
+    svg.setAttribute('viewBox', viewBox);
     return svg;
   }
 
@@ -61,8 +64,8 @@ export class MoleculeEditorImageRenderer {
     const iconsEntries = await Promise.all(iconNames.map((iconName) => this.retrieveIcon(iconName)));
     return iconsEntries.map(([iconName, iconSvg]) => {
       const symbol = this.createSvgElement('symbol');
-      copySvgIconToSymbol(iconSvg, symbol);
       symbol.setAttribute('id', iconName);
+      copySvgIconToSymbol(iconSvg, symbol);
       return symbol;
     });
   }
@@ -148,9 +151,9 @@ export class MoleculeEditorImageRenderer {
 
     // Atom circle covering nearby bonds
     const circle = this.createSvgElement('circle');
-    const [centerX, centerY] = atom.position;
-    circle.setAttribute('cx', String(centerX));
-    circle.setAttribute('cy', String(centerY));
+    const [cx, cy] = atom.position;
+    circle.setAttribute('cx', String(cx));
+    circle.setAttribute('cy', String(cy));
     circle.setAttribute('r', String(C.atomHandleRadius));
     circle.setAttribute('fill', '#ffffff'); // background color covering bonds
     circle.setAttribute('stroke', '#000000');
@@ -161,8 +164,8 @@ export class MoleculeEditorImageRenderer {
     // Atom element text
     const text = this.createSvgElement('text');
     text.textContent = atom.element.symbol;
-    text.setAttribute('x', String(centerX));
-    text.setAttribute('y', String(centerY));
+    text.setAttribute('x', String(cx));
+    text.setAttribute('y', String(cy));
     text.setAttribute('font-size', '24px');
     text.setAttribute('font-family', 'sans-serif');
     text.setAttribute('text-anchor', 'middle');
@@ -272,23 +275,22 @@ export class MoleculeEditorImageRenderer {
 
     const use = this.createSvgElement('use');
     use.setAttribute('href', '#' + chargeIconName);
-    use.setAttribute('x', String(x - 15));
-    use.setAttribute('y', String(y - 15));
-    use.setAttribute('width', '30');
-    use.setAttribute('height', '30');
+    use.setAttribute('x', String(x - C.partialChargeSize / 2));
+    use.setAttribute('y', String(y - C.partialChargeSize / 2));
+    use.setAttribute('width', String(C.partialChargeSize));
+    use.setAttribute('height', String(C.partialChargeSize));
     return use;
   }
 
   private drawFormulaSymbol(symbol: FormulaSymbolView): SVGElement {
     const [x, y] = symbol.position;
     const symbolIconName = formulaSymbolIcons[symbol.symbol];
-
     const use = this.createSvgElement('use');
+    use.setAttribute('x', String(x - C.formulaSymbolSize / 2));
+    use.setAttribute('y', String(y - C.formulaSymbolSize / 2));
+    use.setAttribute('width', String(C.formulaSymbolSize));
+    use.setAttribute('height', String(C.formulaSymbolSize));
     use.setAttribute('href', '#' + symbolIconName);
-    use.setAttribute('x', String(x - 25));
-    use.setAttribute('y', String(y - 25));
-    use.setAttribute('width', '50');
-    use.setAttribute('height', '50');
     return use;
   }
 }
@@ -312,8 +314,4 @@ function calculateViewBox(view: MoleculeEditorView, padding: Vector2): [min: Vec
   const min = Vector2.sub([minX, minY], padding);
   const max = Vector2.add([maxX, maxY], padding);
   return [min, max] as const;
-}
-
-function viewBoxAttributeValue([minX, minY]: Vector2, [sizeX, sizeY]: Vector2): string {
-  return [minX, minY, sizeX, sizeY].join(' ');
 }

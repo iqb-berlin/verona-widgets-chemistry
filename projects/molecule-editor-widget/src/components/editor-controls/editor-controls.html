@@ -142,85 +142,6 @@
     >
       <mat-icon [svgIcon]="bondingTripleToolIcon()" />
     </button>
-
-    <!-- Tool Modes -->
-    <div class="divider"></div>
-
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Auswählen"
-      [class.active-tool]="pointerModeActive()"
-      (click)="setPointerMode()"
-    >
-      <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
-    </button>
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Kopieren"
-      [class.active-tool]="duplicateModeActive()"
-      (click)="setDuplicateMode()"
-    >
-      <mat-icon fontSet="material-symbols">content_copy</mat-icon>
-    </button>
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Molekül bewegen"
-      [class.active-tool]="groupMoveModeActive()"
-      (click)="setGroupMoveMode()"
-    >
-      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
-    </button>
-
-    <!-- Undo, Redo -->
-    <div class="divider"></div>
-
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Rückgängig machen"
-      [disabled]="!service.model.undoAvailable()"
-      disabledInteractive
-      (click)="service.model.undo()"
-    >
-      <mat-icon>undo</mat-icon>
-    </button>
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Wiederherstellen"
-      [disabled]="!service.model.redoAvailable()"
-      disabledInteractive
-      (click)="service.model.redo()"
-    >
-      <mat-icon>redo</mat-icon>
-    </button>
-
-    <!-- Deletion -->
-    <div class="divider"></div>
-
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Alles zurücksetzen"
-      [disabled]="!isModelEmpty()"
-      disabledInteractive
-      (click)="handleClearAll()"
-    >
-      <mat-icon>restart_alt</mat-icon>
-    </button>
-    <button
-      type="button"
-      matIconButton
-      matTooltip="Gewähltes Objekt löschen"
-      [disabled]="noItemSelected"
-      disabledInteractive
-      (click)="service.deleteSelectedItem()"
-    >
-      <mat-icon>delete</mat-icon>
-    </button>
   </div>
 </div>
 
@@ -255,10 +176,89 @@
 </div>
 
 <!-- Left Toolbar -->
-<!-- DISABLED, currently not required -->
-@if (false) {
-  <div class="left-container">
-    <div class="toolbar left">
+<div class="left-container">
+  <div class="toolbar left">
+    <!-- Tool Modes -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Auswählen"
+      [class.active-tool]="pointerModeActive()"
+      (click)="setPointerMode()"
+    >
+      <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Kopieren"
+      [class.active-tool]="duplicateModeActive()"
+      (click)="setDuplicateMode()"
+    >
+      <mat-icon fontSet="material-symbols">content_copy</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Molekül bewegen"
+      [class.active-tool]="groupMoveModeActive()"
+      (click)="setGroupMoveMode()"
+    >
+      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Undo, Redo -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Rückgängig machen"
+      [disabled]="!service.model.undoAvailable()"
+      disabledInteractive
+      (click)="service.model.undo()"
+    >
+      <mat-icon>undo</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Wiederherstellen"
+      [disabled]="!service.model.redoAvailable()"
+      disabledInteractive
+      (click)="service.model.redo()"
+    >
+      <mat-icon>redo</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Deletion -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Alles zurücksetzen"
+      [disabled]="!isModelEmpty()"
+      disabledInteractive
+      (click)="handleClearAll()"
+    >
+      <mat-icon>restart_alt</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Gewähltes Objekt löschen"
+      [disabled]="noItemSelected"
+      disabledInteractive
+      (click)="service.deleteSelectedItem()"
+    >
+      <mat-icon>delete</mat-icon>
+    </button>
+
+    <!-- Zoom controls DISABLED, currently not required -->
+    @if (false) {
+      <div class="divider"></div>
+
       <button matIconButton type="button" [disabled]="zoomInDisabled()" (click)="handleZoom(+1)">
         <mat-icon>zoom_in</mat-icon>
       </button>
@@ -266,9 +266,9 @@
       <button matIconButton type="button" [disabled]="zoomOutDisabled()" (click)="handleZoom(-1)">
         <mat-icon>zoom_out</mat-icon>
       </button>
-    </div>
+    }
   </div>
-}
+</div>
 
 <!-- Save button -->
 @let saveTemplate = saveTemplateRef();

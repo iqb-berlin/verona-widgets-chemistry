@@ -2,6 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { FormulaSymbolView } from '../../../services/molecule-editor.view';
 import { FormulaSymbol } from '../../../services/molecule-editor.shared';
 import { MoleculeEditorService } from '../../../services/molecule-editor.service';
+import * as C from '../../../services/molecule-editor.constants'
 
 @Component({
   selector: 'g[formulaSymbol]',
@@ -13,7 +14,7 @@ export class SvgFormulaSymbolView {
 
   protected readonly service = inject(MoleculeEditorService);
 
-  protected readonly symbolSize = 50;
+  protected readonly symbolSize = C.formulaSymbolSize;
 
   protected readonly symbolHref = computed(() => {
     const { symbol } = this.formulaSymbolView();

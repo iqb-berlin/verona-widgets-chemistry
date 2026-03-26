@@ -31,10 +31,10 @@
     class="partial-charge-glyph"
     [class.temporary]="partial.temporary"
     [class.selected]="partial.selected"
-    [attr.width]="30"
-    [attr.height]="30"
-    [attr.x]="positionX - 15"
-    [attr.y]="positionY - 15"
+    [attr.width]="partialChargeSize"
+    [attr.height]="partialChargeSize"
+    [attr.x]="positionX - (partialChargeSize / 2)"
+    [attr.y]="positionY - (partialChargeSize / 2)"
     [attr.href]="partialChargeHref()"
   ></svg:use>
 </ng-container>
