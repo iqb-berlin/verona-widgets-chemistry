@@ -240,22 +240,21 @@ export class MoleculeEditorService {
   private finishAddAtom(state: EditorState.AddingAtom, position: Vector2, mode: ToolMode) {
     const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
 
-    const atomId = ItemId.generate<'Atom'>();
     if (snap) {
+      let atomId!: AtomId;
       const bondId = ItemId.generate<'Bond'>();
       const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
-      this.model.update((modelBefore) => {
-        const modelAfter = MoleculeEditorModel.addAtom(modelBefore, atomId, elementNr, snap.snapPos);
-        return MoleculeEditorModel.addBond(modelAfter, bondId, atomId, snap.targetId, multiplicity);
+      this.model.update((model1) => {
+        const [model2, targetAtomId] = MoleculeEditorModel.createOrMergeAtom(model1, elementNr, snap.snapPos);
+        atomId = targetAtomId;
+        return MoleculeEditorModel.addBond(model2, bondId, targetAtomId, snap.targetId, multiplicity);
       }, true);
+      return { atomId, elementNr, nextPosition: snap.snapPos } as const;
     } else {
-      this.model.update((model) => {
-        return MoleculeEditorModel.addAtom(model, atomId, elementNr, position);
-      }, true);
+      const atomId = ItemId.generate<'Atom'>();
+      this.model.update((model) => MoleculeEditorModel.addAtom(model, atomId, elementNr, position), true);
+      return { atomId, elementNr, nextPosition: position };
     }
-
-    const nextPosition = snap ? snap.snapPos : position;
-    return { atomId, elementNr, nextPosition } as const;
   }
 
   private afterAtomAdded(id: AtomId, elementNr: PsElementNumber, position: Vector2) {

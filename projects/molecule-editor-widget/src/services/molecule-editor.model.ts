@@ -114,6 +114,28 @@ export namespace MoleculeEditorModel {
     symbols: {},
   } as const;
 
+  function matchPosition([x1, y1]: Vector2, [x2, y2]: Vector2) {
+    // Crude similarity check for almost-equal positions
+    return Math.abs(x1 - x2) < 1e-6 && Math.abs(y1 - y2) < 1e-6;
+  }
+
+  export function createOrMergeAtom(
+    model: MoleculeEditorModel,
+    elementNr: PsElementNumber,
+    position: Vector2,
+  ): readonly [MoleculeEditorModel, AtomId] {
+    const existingAtom = Object.values(model.atoms).find((atom) => {
+      return matchPosition(position, atom.position);
+    });
+    if (existingAtom) {
+      return [model, existingAtom.id] as const;
+    } else {
+      const newAtomId = ItemId.generate<'Atom'>();
+      const updatedModel = addAtom(model, newAtomId, elementNr, position);
+      return [updatedModel, newAtomId];
+    }
+  }
+
   export const addAtom = produce<MoleculeEditorModel, [AtomId, PsElementNumber, Vector2]>(
     (model, atomId, elementNr, position) => {
       model.atoms[atomId] = {
