@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { FormulaSymbolView } from '../../../services/molecule-editor.view';
 import { FormulaSymbol } from '../../../services/molecule-editor.shared';
 import { MoleculeEditorService } from '../../../services/molecule-editor.service';
-import * as C from '../../../services/molecule-editor.constants'
+import * as C from '../../../services/molecule-editor.constants';
 
 @Component({
   selector: 'g[formulaSymbol]',

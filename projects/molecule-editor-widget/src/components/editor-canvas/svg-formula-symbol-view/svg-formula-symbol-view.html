@@ -6,8 +6,8 @@
     class="symbol-handle"
     [class.selected]="formulaSymbol.selected"
     [class.temporary]="formulaSymbol.temporary"
-    [attr.x]="positionX - (symbolSize / 2)"
-    [attr.y]="positionY - (symbolSize / 2)"
+    [attr.x]="positionX - symbolSize / 2"
+    [attr.y]="positionY - symbolSize / 2"
     [attr.width]="symbolSize"
     [attr.height]="symbolSize"
     [attr.rx]="3"
@@ -24,8 +24,8 @@
     [class.temporary]="formulaSymbol.temporary"
     [attr.width]="symbolSize"
     [attr.height]="symbolSize"
-    [attr.x]="positionX - (symbolSize / 2)"
-    [attr.y]="positionY - (symbolSize / 2)"
+    [attr.x]="positionX - symbolSize / 2"
+    [attr.y]="positionY - symbolSize / 2"
     [attr.href]="symbolHref()"
   ></svg:use>
 </ng-container>

@@ -35,6 +35,4 @@ export interface VowReturnRequested {
   readonly saveState?: boolean;
 }
 
-export type VowParameterCollection =
-  | ReadonlyArray<VowParameter>
-  | Readonly<Record<string, undefined | string>>;
+export type VowParameterCollection = ReadonlyArray<VowParameter> | Readonly<Record<string, undefined | string>>;

@@ -17,7 +17,9 @@
     </button>
 
     <mat-icon
-      [matTooltip]="atom ? (atom.electrons === 1 ? `1 Valenzelektron` : `${atom.electrons} Valenzelektronen`) : 'Valenzelektronen'"
+      [matTooltip]="
+        atom ? (atom.electrons === 1 ? `1 Valenzelektron` : `${atom.electrons} Valenzelektronen`) : 'Valenzelektronen'
+      "
       [style.--mat-icon-color]="atom ? undefined : 'var(--mat-sys-secondary)'"
       [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'"
     />
@@ -148,7 +150,6 @@
 <!-- Right Toolbar -->
 <div class="right-container">
   <div class="toolbar right">
-
     <div class="element-columns-container">
       <div class="element-column">
         @for (element of quickPickElements1; track element.number) {
