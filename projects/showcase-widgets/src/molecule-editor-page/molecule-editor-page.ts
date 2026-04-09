@@ -29,7 +29,7 @@ import { FormsModule } from '@angular/forms';
         [MoleculeEditorParam.language]: PsLocale.German,
       },
       initSharedParameters: {
-        [MoleculeEditorSharedParam.bondingType]: MoleculeEditorBondingType.valence,
+        [MoleculeEditorSharedParam.bondingType]: 'VALENCE' satisfies MoleculeEditorBondingType,
       },
     }),
   ],
@@ -62,8 +62,8 @@ export class MoleculeEditorPage {
     else return data.asImage || undefined;
   });
 
-  protected readonly BondingTypeValence = MoleculeEditorBondingType.valence;
-  protected readonly BondingTypeElectrons = MoleculeEditorBondingType.electrons;
+  protected readonly BondingTypeValence = 'VALENCE' satisfies MoleculeEditorBondingType;
+  protected readonly BondingTypeElectrons = 'ELECTRONS' satisfies MoleculeEditorBondingType;
 
   protected readonly PsLangGerman = PsLocale.German;
   protected readonly PsLangEnglish = PsLocale.English;

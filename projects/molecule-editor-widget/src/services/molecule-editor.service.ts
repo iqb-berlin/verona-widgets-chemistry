@@ -4,22 +4,18 @@ import { PsElement, PsElementNumber } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
 import {
   AtomId,
-  BondMultiplicity,
-  EditorState,
+  FormulaSymbolId,
   ItemId,
-  MoleculeEditorGraph,
   MoleculeEditorModel,
+  PartialChargeId,
   ToolMode,
-  Vector2,
 } from './molecule-editor.model';
+import { defaultBondingType, editorHistoryCapacity, partialChargeMaxAtomDistance } from './molecule-editor.constants';
+import { EditorState } from './molecule-editor.state';
+import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
+import { MoleculeEditorGraph } from './molecule-editor.graph';
 import { deferPromise, DeferredPromise } from '../util/defer-promise';
 import { historySignal } from '../util/history-signal';
-import {
-  defaultBondingType,
-  editorHistoryCapacity,
-  snapProximityRadius,
-  snapRadius,
-} from './molecule-editor.constants';
 
 export const enum MoleculeEditorParam {
   language = 'LANGUAGE',
@@ -32,10 +28,7 @@ export const enum MoleculeEditorSharedParam {
   bondingType = 'BONDING_TYPE',
 }
 
-export const enum MoleculeEditorBondingType {
-  valence = 'VALENCE',
-  electrons = 'ELECTRONS',
-}
+export type MoleculeEditorBondingType = 'VALENCE' | 'ELECTRONS';
 
 export interface MoleculeEditorAppearance {
   readonly bondingType: MoleculeEditorBondingType;
@@ -63,15 +56,15 @@ export class MoleculeEditorService {
     const initialStateData = this.widgetService.stateData();
     this.model.set(parseSerializedEditorModel(initialStateData), false);
 
+    // Effect: PsTable closed without picking an element
     effect(() => {
-      // PsTable closed without picking an element
       if (!this.openPicker()) {
         this._currentPickElementPromise?.reject();
       }
     });
 
+    // Effect: Reset editor-state when tool-mode changes
     effect(() => {
-      // Reset editor-state when tool-mode changes
       const toolMode = this.toolMode(); // reset editor-state when tool-mode changes
       const editorState = untracked(this.editorState); // do NOT trigger on editor-state change!
 
@@ -84,7 +77,7 @@ export class MoleculeEditorService {
       else if (toolMode.mode === 'bonding' && editorState.state === 'selected') {
         this.model.update((model) => {
           const bond = model.bonds[editorState.itemId];
-          return bond ? MoleculeEditorModel.setBondMultiplicity(model, bond.itemId, toolMode.multiplicity) : model;
+          return bond ? MoleculeEditorModel.setBondMultiplicity(model, bond.id, toolMode.multiplicity) : model;
         });
       }
       // special case: selecting duplicate/bonding while adding an atom, keep state
@@ -152,8 +145,15 @@ export class MoleculeEditorService {
     }
   }
 
+  changeSelectedElementFormalCharge(delta: -1 | 1) {
+    const state = this.editorState();
+    if (state.state === 'selected') {
+      this.model.update((model) => MoleculeEditorModel.changeAtomCharge(model, state.itemId, delta), true);
+    }
+  }
+
   //endregion
-  //region Delete atom/bond
+  //region Delete atom/bond/partialCharge
 
   deleteSelectedItem() {
     const state = this.editorState();
@@ -191,39 +191,69 @@ export class MoleculeEditorService {
     const state = this.editorState();
 
     switch (state.state) {
+      case 'idle':
+      case 'preMoveAtom':
+      case 'movingAtom':
+      case 'movingGroup':
+      case 'preMoveFormulaSymbol':
+      case 'movingFormulaSymbol':
+      case 'movingPartialCharge':
+        break; // Do nothing
       case 'selected': {
         this.editorState.set(EditorState.idle);
         break;
       }
       case 'addingAtom': {
-        const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
-
-        const atomId = ItemId.generate<'Atom'>();
-        if (snap) {
-          const bondId = ItemId.generate<'Bond'>();
-          const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
-          this.model.update((model) => {
-            const model2 = MoleculeEditorModel.addAtom(model, atomId, elementNr, snap.snapPos);
-            return MoleculeEditorModel.addBond(model2, bondId, atomId, snap.targetId, multiplicity);
-          }, true);
-        } else {
-          this.model.update((model) => {
-            return MoleculeEditorModel.addAtom(model, atomId, elementNr, position);
-          }, true);
-        }
-
+        const { atomId, elementNr, nextPosition } = this.finishAddAtom(state, position, mode);
         this.editorState.set(EditorState.idle);
-
-        setTimeout(() => {
-          const nextPosition = snap ? snap.snapPos : position;
-          this.afterAtomAdded(atomId, elementNr, nextPosition);
-        }, 0);
+        setTimeout(() => this.afterAtomAdded(atomId, elementNr, nextPosition), 0);
+        break;
+      }
+      case 'addingPartialCharge': {
+        const result = this.finishAddPartialCharge(state, position);
+        if (result) {
+          const { id, charge, hoverPos } = result;
+          this.editorState.set(EditorState.select(id));
+          setTimeout(() => this.afterPartialChargeAdded(charge, hoverPos), 0);
+        } else {
+          this.editorState.set(EditorState.idle);
+        }
         break;
       }
       case 'addingBond': {
         this.editorState.set(EditorState.idle);
         break;
       }
+      case 'addingFormulaSymbol': {
+        const { symbolId, symbol } = this.finishAddFormulaSymbol(state, position);
+        this.editorState.set(EditorState.select(symbolId));
+        setTimeout(() => this.afterFormulaSymbolAdded(symbolId, symbol, position), 0);
+        break;
+      }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas click unknown state:', unknownState);
+      }
+    }
+  }
+
+  private finishAddAtom(state: EditorState.AddingAtom, position: Vector2, mode: ToolMode) {
+    const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
+
+    if (snap) {
+      let atomId!: AtomId;
+      const bondId = ItemId.generate<'Bond'>();
+      const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
+      this.model.update((model1) => {
+        const [model2, targetAtomId] = MoleculeEditorModel.createOrMergeAtom(model1, elementNr, snap.snapPos);
+        atomId = targetAtomId;
+        return MoleculeEditorModel.addBond(model2, bondId, targetAtomId, snap.targetId, multiplicity);
+      }, true);
+      return { atomId, elementNr, nextPosition: snap.snapPos } as const;
+    } else {
+      const atomId = ItemId.generate<'Atom'>();
+      this.model.update((model) => MoleculeEditorModel.addAtom(model, atomId, elementNr, position), true);
+      return { atomId, elementNr, nextPosition: position };
     }
   }
 
@@ -244,17 +274,90 @@ export class MoleculeEditorService {
     }
   }
 
+  private finishAddPartialCharge(state: EditorState.AddingPartialCharge, position: Vector2) {
+    const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+    if (!targetAtomId) return null;
+
+    const { atoms } = this.model();
+    const targetAtom = atoms[targetAtomId];
+    if (!targetAtom) return null;
+
+    const id = ItemId.generate<'PartialCharge'>();
+    const { charge, hoverPos } = state;
+    const relativePos = Vector2.sub(hoverPos, targetAtom.position);
+    this.model.update((model) => MoleculeEditorModel.addPartialCharge(model, id, targetAtomId, charge, relativePos));
+
+    return { id, charge, hoverPos } as const;
+  }
+
+  private afterPartialChargeAdded(charge: PartialCharge, position: Vector2) {
+    const toolMode = this.toolMode();
+    if (toolMode.mode === 'duplicate') {
+      const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+      if (targetAtomId) {
+        this.editorState.set(EditorState.addPartialCharge(charge, position, targetAtomId));
+      }
+    }
+  }
+
+  private finishAddFormulaSymbol(state: EditorState.AddingFormulaSymbol, position: Vector2) {
+    const symbolId = ItemId.generate<'FormulaSymbol'>();
+    this.model.update((model) => MoleculeEditorModel.addFormulaSymbol(model, symbolId, state.symbol, position));
+    return { symbolId, symbol: state.symbol } as const;
+  }
+
+  private afterFormulaSymbolAdded(symbolId: FormulaSymbolId, symbol: FormulaSymbol, position: Vector2) {
+    const toolMode = this.toolMode();
+    switch (toolMode.mode) {
+      case 'pointer': {
+        this.editorState.set(EditorState.select(symbolId));
+        break;
+      }
+      case 'duplicate': {
+        this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+        break;
+      }
+    }
+  }
+
   private handleCanvasMove(position: Vector2) {
     const state = this.editorState();
 
     switch (state.state) {
+      case 'idle':
+      case 'selected': {
+        break; // Do nothing
+      }
       case 'addingAtom': {
         this.editorState.set(this.searchSnap(EditorState.addAtom(state.elementNr, position)));
+        break;
+      }
+      case 'addingFormulaSymbol': {
+        this.editorState.set({ ...state, hoverPos: position });
+        break;
+      }
+      case 'addingPartialCharge': {
+        const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+        this.editorState.set({ ...state, hoverPos: position, targetAtomId });
         break;
       }
       case 'preMoveAtom':
       case 'movingAtom': {
         this.editorState.set(this.searchSnap(EditorState.moveAtom(state.atomId, position)));
+        break;
+      }
+      case 'preMoveFormulaSymbol':
+      case 'movingFormulaSymbol': {
+        this.editorState.set(EditorState.moveFormulaSymbol(state, position));
+        break;
+      }
+      case 'movingPartialCharge': {
+        const { partialId, targetAtomId: prevTargetAtomId } = state;
+        const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
+        if (targetAtomId) {
+          const clampedPosition = this.clampPositionForPartialCharge(targetAtomId, position);
+          this.editorState.set(EditorState.movePartialCharge(partialId, clampedPosition, targetAtomId));
+        }
         break;
       }
       case 'addingBond': {
@@ -265,13 +368,26 @@ export class MoleculeEditorService {
         this.editorState.set({ ...state, targetPos: position });
         break;
       }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas move unknown state:', unknownState);
+      }
     }
   }
 
   private handleCanvasUp(position: Vector2) {
     const state = this.editorState();
     switch (state.state) {
-      case 'preMoveAtom': {
+      case 'idle':
+      case 'selected':
+      case 'addingAtom':
+      case 'addingPartialCharge':
+      case 'addingFormulaSymbol':
+      case 'addingBond':
+        break; // Do nothing
+      case 'preMoveAtom':
+      case 'preMoveFormulaSymbol': {
+        // Cancel pre-movement if up-event occurred before move started
         this.editorState.set(EditorState.idle);
         break;
       }
@@ -280,14 +396,34 @@ export class MoleculeEditorService {
         const finalPosition = snap ? snap.snapPos : position;
         if (snap) {
           const bondId = ItemId.generate<'Bond'>();
-          this.model.update((model) => {
-            const m2 = MoleculeEditorModel.moveAtom(model, atomId, finalPosition);
-            return MoleculeEditorModel.addBond(m2, bondId, atomId, snap.targetId, 1);
+          this.model.update((modelBefore) => {
+            const modelAfter = MoleculeEditorModel.moveItem(modelBefore, atomId, finalPosition);
+            return MoleculeEditorModel.addBond(modelAfter, bondId, atomId, snap.targetId, 1);
           });
         } else {
-          this.model.update((model) => MoleculeEditorModel.moveAtom(model, atomId, position), true);
+          this.model.update((model) => MoleculeEditorModel.moveItem(model, atomId, position), true);
         }
         this.editorState.set(EditorState.idle);
+        break;
+      }
+      case 'movingFormulaSymbol': {
+        const { symbolId } = state;
+        this.model.update((model) => MoleculeEditorModel.moveItem(model, symbolId, position));
+        this.editorState.set(EditorState.idle);
+        break;
+      }
+      case 'movingPartialCharge': {
+        const { partialId, targetAtomId: prevTargetAtomId, moved } = state;
+        this.editorState.set(EditorState.select(partialId));
+        if (moved) {
+          const targetAtomId = this.searchNearestAtomForPartialCharge(position, partialId) ?? prevTargetAtomId;
+          if (targetAtomId) {
+            const clampedPosition = this.clampPositionForPartialCharge(targetAtomId, position);
+            this.model.update((model) => {
+              return MoleculeEditorModel.movePartialCharge(model, partialId, clampedPosition, targetAtomId);
+            });
+          }
+        }
         break;
       }
       case 'movingGroup': {
@@ -295,6 +431,10 @@ export class MoleculeEditorService {
         this.model.update((model) => MoleculeEditorModel.moveGroup(model, moveDelta, state.groupItemIds), true);
         this.editorState.set(EditorState.idle);
         break;
+      }
+      default: {
+        const unknownState = state satisfies never;
+        console.error('canvas up unknown state:', unknownState);
       }
     }
   }
@@ -470,15 +610,189 @@ export class MoleculeEditorService {
   }
 
   //endregion
+  //region Formula-symbol events
+
+  addFormulaSymbolToCanvas(symbol: FormulaSymbol, pointerEvent: PointerEvent) {
+    const { position } = this._canvasTransform(pointerEvent);
+    this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+  }
+
+  handleFormulaSymbolEvent(symbolId: FormulaSymbolId, pointerEvent: PointerEvent) {
+    // stop implicit bubbling
+    pointerEvent.stopPropagation();
+
+    // immediately bubble up to canvas for temporary atoms (itemId is not present in model)
+    if (this.isTemporaryItem(symbolId)) {
+      this.handleCanvasEvent(pointerEvent);
+      return;
+    }
+
+    // transform and handle event
+    const toolMode = this.toolMode();
+    const { event, position } = this._canvasTransform(pointerEvent);
+    switch (event) {
+      case 'move':
+        this.handleCanvasMove(position); // bubble up to canvas for movement
+        break;
+      case 'up': {
+        this.handleCanvasUp(position); // bubble up to canvas for mouse-up
+        break;
+      }
+      case 'down': {
+        switch (toolMode.mode) {
+          case 'pointer':
+            this.editorState.set(EditorState.prepareMoveFormulaSymbol(symbolId));
+            break;
+          case 'duplicate':
+            break; // duplication handled in click
+          case 'groupMove':
+            this.beginGroupMove(symbolId, position);
+            break;
+          case 'bonding':
+            break; // do nothing
+        }
+        break;
+      }
+      case 'click': {
+        switch (toolMode.mode) {
+          case 'pointer': {
+            this.editorState.set(EditorState.select(symbolId));
+            break;
+          }
+          case 'duplicate': {
+            const model = this.model();
+            const symbol = model.symbols[symbolId]?.symbol ?? FormulaSymbol.ReactionPlus;
+            this.editorState.set(EditorState.addFormulaSymbol(symbol, position));
+            break;
+          }
+          case 'groupMove':
+          case 'bonding':
+            break; // not applicable
+        }
+        break;
+      }
+      default:
+        console.warn(`Unknown formula-symbol "${symbolId}" event:`, event satisfies never);
+    }
+  }
+
+  //endregion
+  //region Partial-charge events
+
+  addPartialCharge(charge: PartialCharge, pointerEvent: PointerEvent) {
+    const { position } = this._canvasTransform(pointerEvent);
+    const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+    this.editorState.set(EditorState.addPartialCharge(charge, position, targetAtomId));
+  }
+
+  handlePartialChargeEvent(partialId: PartialChargeId, pointerEvent: PointerEvent) {
+    // stop implicit bubbling
+    pointerEvent.stopPropagation();
+
+    // immediately bubble up to canvas for temporary partial-charges (itemId is not present in model)
+    if (this.isTemporaryItem(partialId)) {
+      this.handleCanvasEvent(pointerEvent);
+      return;
+    }
+
+    const model = this.model();
+    const toolMode = this.toolMode();
+    const { event, position } = this._canvasTransform(pointerEvent);
+    switch (event) {
+      case 'move': {
+        this.handleCanvasMove(position);
+        break;
+      }
+      case 'up': {
+        this.handleCanvasUp(position);
+        break;
+      }
+      case 'down': {
+        switch (toolMode.mode) {
+          case 'pointer': {
+            const partial = model.partials[partialId];
+            if (partial) {
+              const atom = model.atoms[partial.targetAtomId];
+              if (atom) {
+                const startPos = Vector2.add(atom.position, partial.relativePosition);
+                this.editorState.set(EditorState.preMovePartialCharge(partialId, startPos));
+              }
+            }
+            break;
+          }
+          case 'duplicate': {
+            const partial = model.partials[partialId];
+            if (partial) {
+              const targetAtomId = this.searchNearestAtomForPartialCharge(position, undefined);
+              this.editorState.set(EditorState.addPartialCharge(partial.charge, position, targetAtomId));
+            }
+            break;
+          }
+          case 'groupMove': {
+            this.beginGroupMove(partialId, position);
+            break;
+          }
+          case 'bonding':
+            break; // not applicable
+        }
+        break;
+      }
+      case 'click': {
+        this.editorState.set(EditorState.select(partialId));
+        break;
+      }
+    }
+  }
+
+  private searchNearestAtomForPartialCharge(
+    searchPosition: Vector2,
+    existingId: undefined | PartialChargeId,
+  ): undefined | AtomId {
+    const { atomIdsWithoutPartialCharge } = this.graph();
+    const { atoms, partials } = this.model();
+
+    const existing = existingId ? partials[existingId] : undefined;
+    const prevTargetAtomId = existing?.targetAtomId;
+
+    let minDist = Number.POSITIVE_INFINITY;
+    let nearestAtomId: undefined | AtomId;
+    for (const atomKey in atoms) {
+      const atomId = atomKey as AtomId;
+      if (atomId === prevTargetAtomId || atomIdsWithoutPartialCharge.has(atomId)) {
+        const atom = atoms[atomId];
+        const dist = Vector2.distance(atom.position, searchPosition);
+        if (dist > partialChargeMaxAtomDistance) continue;
+        if (dist < minDist) {
+          minDist = dist;
+          nearestAtomId = atomId;
+        }
+      }
+    }
+    return nearestAtomId;
+  }
+
+  private clampPositionForPartialCharge(targetAtomId: AtomId, position: Vector2): Vector2 {
+    const { atoms } = this.model();
+    const targetAtom = atoms[targetAtomId];
+    if (!targetAtomId) return position;
+
+    const givenRelativePosition = Vector2.sub(position, targetAtom.position);
+    const clampedRelativePosition = Vector2.clampMagnitude(givenRelativePosition, partialChargeMaxAtomDistance);
+    return Vector2.add(targetAtom.position, clampedRelativePosition);
+  }
+
+  //endregion
 
   private isTemporaryItem(itemId: ItemId) {
     const model = this.model();
-    return !(itemId in model.atoms) && !(itemId in model.bonds);
+    return (
+      !(itemId in model.atoms) && !(itemId in model.bonds) && !(itemId in model.symbols) && !(itemId in model.partials)
+    );
   }
 
   private searchSnap<S extends EditorState.Substate<'addingAtom' | 'movingAtom'>>(state: S): S {
     const graph = this.graph();
-    return EditorState.searchSnap(state, snapRadius, snapProximityRadius, graph);
+    return EditorState.searchSnap(state, graph);
   }
 }
 
@@ -499,10 +813,10 @@ function parseBondingType(value: string): MoleculeEditorBondingType {
     return defaultBondingType;
   }
   switch (value.toUpperCase()) {
-    case MoleculeEditorBondingType.valence:
-      return MoleculeEditorBondingType.valence;
-    case MoleculeEditorBondingType.electrons:
-      return MoleculeEditorBondingType.electrons;
+    case 'VALENCE':
+      return 'VALENCE';
+    case 'ELECTRONS':
+      return 'ELECTRONS';
     default:
       console.warn(`Received unknown ${MoleculeEditorSharedParam.bondingType} parameter:`, value);
       return defaultBondingType;
@@ -521,7 +835,9 @@ function parseSerializedEditorModel(initialStateData: string): MoleculeEditorMod
     console.log('Parsing JSON editor-model state data:', data);
     const atoms = data.atoms ?? {};
     const bonds = data.bonds ?? {};
-    return { atoms, bonds };
+    const partials = data.partials ?? {};
+    const symbols = data.symbols ?? {};
+    return { atoms, bonds, symbols, partials };
   } catch (e) {
     console.warn('Received invalid JSON editor-model state data:', initialStateData);
     return MoleculeEditorModel.empty;

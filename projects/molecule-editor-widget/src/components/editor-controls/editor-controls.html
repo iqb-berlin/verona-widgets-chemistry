@@ -1,89 +1,148 @@
+@let atom = selectedAtom();
+@let noItemSelected = !isItemSelected();
+
 <!-- Top Toolbar -->
 <div class="top-container">
   <div class="toolbar top">
-    @let atom = selectedAtom();
-    @let noItemSelected = !isItemSelected();
+    <!-- Valence Electrons -->
+
     <button
-      matIconButton
       type="button"
+      matIconButton
+      matTooltip="Valenzelektron entfernen"
       [disabled]="noItemSelected || decrementElectronDisabled()"
       (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(-1)"
     >
-      <mat-icon>remove</mat-icon>
+      <mat-icon>keyboard_arrow_down</mat-icon>
     </button>
 
     <mat-icon
+      [matTooltip]="
+        atom ? (atom.electrons === 1 ? `1 Valenzelektron` : `${atom.electrons} Valenzelektronen`) : 'Valenzelektronen'
+      "
       [style.--mat-icon-color]="atom ? undefined : 'var(--mat-sys-secondary)'"
       [svgIcon]="atom ? `iqb:electrons_${atom.electrons}` : 'iqb:atom_electrons'"
     />
 
     <button
-      matIconButton
       type="button"
+      matIconButton
+      matTooltip="Valenzelektron hinzufügen"
       [disabled]="noItemSelected || incrementElectronDisabled()"
       (click)="$event.stopPropagation(); service.changeSelectedElementAtoms(+1)"
     >
-      <mat-icon>add</mat-icon>
+      <mat-icon>keyboard_arrow_up</mat-icon>
     </button>
 
+    <!-- Formal charge -->
     <div class="divider"></div>
 
     <button
-      matIconButton
       type="button"
-      title="1"
+      matIconButton
+      matTooltip="Formalladung Negativ"
+      [disabled]="formalChargeNegativeDisabled()"
+      disabledInteractive
+      (click)="$event.stopPropagation(); service.changeSelectedElementFormalCharge(-1)"
+    >
+      <mat-icon svgIcon="iqb:formal_charge_minus"></mat-icon>
+    </button>
+
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Formalladung Positiv"
+      [disabled]="formalChargePositiveDisabled()"
+      disabledInteractive
+      (click)="$event.stopPropagation(); service.changeSelectedElementFormalCharge(+1)"
+    >
+      <mat-icon svgIcon="iqb:formal_charge_plus"></mat-icon>
+    </button>
+
+    <!-- Partial charge -->
+    <div class="divider"></div>
+
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Partialladung Negativ"
+      [disabled]="partialChargeDisabled()"
+      disabledInteractive
+      (click)="$event.stopPropagation(); handleAddPartialCharge(partialChargeNegative, $event)"
+    >
+      <mat-icon svgIcon="iqb:delta_minus"></mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Partialladung Positiv"
+      [disabled]="partialChargeDisabled()"
+      disabledInteractive
+      (click)="$event.stopPropagation(); handleAddPartialCharge(partialChargePositive, $event)"
+    >
+      <mat-icon svgIcon="iqb:delta_plus"></mat-icon>
+    </button>
+
+    <!-- Formula symbols -->
+    <div class="divider"></div>
+
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Reaktionsformel Plus"
+      class="formula-button"
+      (click)="$event.stopPropagation(); handleAddFormulaSymbol(formulaReactionPlus, $event)"
+    >
+      <mat-icon svgIcon="iqb:reaction_plus"></mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Reaktionsformel Pfeil"
+      class="formula-button"
+      (click)="$event.stopPropagation(); handleAddFormulaSymbol(formulaReactionArrow, $event)"
+    >
+      <mat-icon svgIcon="iqb:reaction_arrow"></mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Reaktionsformel Gleichgewicht"
+      class="formula-button"
+      (click)="$event.stopPropagation(); handleAddFormulaSymbol(formulaEquilibriumArrow, $event)"
+    >
+      <mat-icon svgIcon="iqb:equilibrium_arrow"></mat-icon>
+    </button>
+
+    <!-- Bonding -->
+    <div class="divider"></div>
+
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Einfachbindung"
       [class.active-tool]="bondingSingleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(1)"
     >
       <mat-icon [svgIcon]="bondingSingleToolIcon()" />
     </button>
     <button
-      matIconButton
       type="button"
-      title="2"
+      matIconButton
+      matTooltip="Doppelbindung"
       [class.active-tool]="bondingDoubleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(2)"
     >
       <mat-icon [svgIcon]="bondingDoubleToolIcon()" />
     </button>
     <button
-      matIconButton
       type="button"
-      title="3"
+      matIconButton
+      matTooltip="Dreifachbindung"
       [class.active-tool]="bondingTripleModeActive()"
       (click)="$event.stopPropagation(); setBondingModeActive(3)"
     >
       <mat-icon [svgIcon]="bondingTripleToolIcon()" />
-    </button>
-
-    <div class="divider"></div>
-
-    <button matIconButton type="button" [class.active-tool]="pointerModeActive()" (click)="setPointerMode()">
-      <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
-    </button>
-    <button matIconButton type="button" [class.active-tool]="duplicateModeActive()" (click)="setDuplicateMode()">
-      <mat-icon fontSet="material-symbols">content_copy</mat-icon>
-    </button>
-    <button matIconButton type="button" [class.active-tool]="groupMoveModeActive()" (click)="setGroupMoveMode()">
-      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
-    </button>
-
-    <div class="divider"></div>
-
-    <button matIconButton type="button" [disabled]="!service.model.undoAvailable()" (click)="service.model.undo()">
-      <mat-icon>undo</mat-icon>
-    </button>
-    <button matIconButton type="button" [disabled]="!service.model.redoAvailable()" (click)="service.model.redo()">
-      <mat-icon>redo</mat-icon>
-    </button>
-
-    <div class="divider"></div>
-
-    <button matIconButton type="button" [disabled]="!isModelEmpty()" (click)="handleClearAll()">
-      <mat-icon>restart_alt</mat-icon>
-    </button>
-    <button matIconButton type="button" [disabled]="noItemSelected" (click)="service.deleteSelectedItem()">
-      <mat-icon>delete</mat-icon>
     </button>
   </div>
 </div>
@@ -91,25 +150,116 @@
 <!-- Right Toolbar -->
 <div class="right-container">
   <div class="toolbar right">
-    @for (element of quickPickElements1; track element.number) {
-      <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
-    }
+    <div class="element-columns-container">
+      <div class="element-column">
+        @for (element of quickPickElements1; track element.number) {
+          <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
+        }
+      </div>
+      <div class="element-columns-divider"></div>
+      <div class="element-column">
+        @for (element of quickPickElements2; track element.number) {
+          <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
+        }
+      </div>
+    </div>
     <div class="divider"></div>
-    @for (element of quickPickElements2; track element.number) {
-      <ng-container *ngTemplateOutlet="quickPickButton; context: { element }" />
-    }
-    <div class="divider"></div>
-    <button matIconButton type="button" (click)="handlePickElement($event)">
+    <button
+      matIconButton
+      matTooltip="Element aus dem Periodensystem wählen"
+      matTooltipPosition="left"
+      type="button"
+      (click)="handlePickElement($event)"
+    >
       <mat-icon>keyboard_double_arrow_left</mat-icon>
     </button>
   </div>
 </div>
 
 <!-- Left Toolbar -->
-<!-- DISABLED, currently not required -->
-@if (false) {
-  <div class="left-container">
-    <div class="toolbar left">
+<div class="left-container">
+  <div class="toolbar left">
+    <!-- Tool Modes -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Auswählen"
+      [class.active-tool]="pointerModeActive()"
+      (click)="setPointerMode()"
+    >
+      <mat-icon fontSet="material-symbols">arrow_selector_tool</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Kopieren"
+      [class.active-tool]="duplicateModeActive()"
+      (click)="setDuplicateMode()"
+    >
+      <mat-icon fontSet="material-symbols">content_copy</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Molekül bewegen"
+      [class.active-tool]="groupMoveModeActive()"
+      (click)="setGroupMoveMode()"
+    >
+      <mat-icon fontSet="material-symbols">drag_pan</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Undo, Redo -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Rückgängig machen"
+      [disabled]="!service.model.undoAvailable()"
+      disabledInteractive
+      (click)="service.model.undo()"
+    >
+      <mat-icon>undo</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Wiederherstellen"
+      [disabled]="!service.model.redoAvailable()"
+      disabledInteractive
+      (click)="service.model.redo()"
+    >
+      <mat-icon>redo</mat-icon>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Deletion -->
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Alles zurücksetzen"
+      [disabled]="!isModelEmpty()"
+      disabledInteractive
+      (click)="handleClearAll()"
+    >
+      <mat-icon>restart_alt</mat-icon>
+    </button>
+    <button
+      type="button"
+      matIconButton
+      matTooltip="Gewähltes Objekt löschen"
+      [disabled]="noItemSelected"
+      disabledInteractive
+      (click)="service.deleteSelectedItem()"
+    >
+      <mat-icon>delete</mat-icon>
+    </button>
+
+    <!-- Zoom controls DISABLED, currently not required -->
+    @if (false) {
+      <div class="divider"></div>
+
       <button matIconButton type="button" [disabled]="zoomInDisabled()" (click)="handleZoom(+1)">
         <mat-icon>zoom_in</mat-icon>
       </button>
@@ -117,9 +267,9 @@
       <button matIconButton type="button" [disabled]="zoomOutDisabled()" (click)="handleZoom(-1)">
         <mat-icon>zoom_out</mat-icon>
       </button>
-    </div>
+    }
   </div>
-}
+</div>
 
 <!-- Save button -->
 @let saveTemplate = saveTemplateRef();
@@ -131,7 +281,13 @@
 
 <!-- Template for quick-pick element button -->
 <ng-template #quickPickButton let-element="element">
-  <button matIconButton type="button" (click)="handleAddElement(element.number, $event)">
+  <button
+    matIconButton
+    [matTooltip]="`Element ${element.names.de}`"
+    matTooltipPosition="left"
+    type="button"
+    (click)="handleAddElement(element.number, $event)"
+  >
     {{ element.symbol }}
   </button>
 </ng-template>

@@ -1,4 +1,4 @@
-import type { Vector2 } from './molecule-editor.model';
+import type { Vector2 } from './molecule-editor.shared';
 
 export interface MoleculeCanvasTransform {
   (event: PointerEvent): MoleculeCanvasEvent;

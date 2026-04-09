@@ -127,7 +127,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
     }
 
     // Set initial state-data BEFORE updating internal state (don't send a state-changed notification)
-    this.stateData.set(command.state ?? "");
+    this.stateData.set(command.state ?? '');
 
     // Update internal state, triggering child components to be rendered
     this.state.set({

@@ -1,7 +1,7 @@
-import { MoleculeEditorBondingType } from './molecule-editor.service';
+import type { MoleculeEditorBondingType } from './molecule-editor.service';
 
 export const editorHistoryCapacity = 100;
-export const defaultBondingType = MoleculeEditorBondingType.electrons;
+export const defaultBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
 
 export const snapRadius = 80;
 export const snapProximityRadius = 60;
@@ -16,3 +16,13 @@ export const doubleElectronRadius = 3.5;
 export const bondSeparation = 6.0;
 export const electronBondRadius = 4.0;
 export const valenceBondRadius = 4.0;
+
+export const formalChargeHandleRadius = 10;
+export const formalChargePositionOffset = [+22.0, -22.0] as const;
+export const formalChargePositiveColor = '#c00';
+export const formalChargeNegativeColor = '#22f';
+
+export const partialChargeSize = 30;
+export const partialChargeMaxAtomDistance = 60;
+
+export const formulaSymbolSize = 50;
