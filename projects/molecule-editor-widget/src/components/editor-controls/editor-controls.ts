@@ -1,5 +1,6 @@
-import { Component, computed, contentChild, effect, inject, input, signal, TemplateRef } from '@angular/core';
+import { Component, computed, contentChild, effect, inject, signal, TemplateRef } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import {
@@ -9,24 +10,18 @@ import {
   MatDialogContent,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { PsElement, PsElementNumber, PsElements, PsElementSymbol } from 'periodic-system-common';
-import { MoleculeEditorBondingType, MoleculeEditorService } from '../../services/molecule-editor.service';
-import { AtomModel, BondMultiplicity, MoleculeEditorModel, ToolMode } from '../../services/molecule-editor.model';
 import { firstValueFrom } from 'rxjs';
-
-const elementBySymbol = new Map(PsElements.map((e) => [e.symbol, e] as const));
-
-function lookupElement(symbol: string): PsElement {
-  const element = elementBySymbol.get(symbol as PsElementSymbol);
-  if (!element) throw new Error(`Element symbol ${symbol} not found`);
-  return element;
-}
+import { PsElementNumber } from 'periodic-system-common';
+import { MoleculeEditorService } from '../../services/molecule-editor.service';
+import { AtomModel, MoleculeEditorModel, ToolMode } from '../../services/molecule-editor.model';
+import { BondMultiplicity, FormulaSymbol, PartialCharge } from '../../services/molecule-editor.shared';
+import { lookupElementSymbol } from '../../services/molecule-editor.helper';
 
 @Component({
   selector: 'app-editor-controls',
   templateUrl: './editor-controls.html',
   styleUrl: './editor-controls.scss',
-  imports: [MatIconButton, MatIcon, NgTemplateOutlet],
+  imports: [MatIconButton, MatIcon, NgTemplateOutlet, MatTooltip],
 })
 export class EditorControls {
   readonly service = inject(MoleculeEditorService);
@@ -35,19 +30,26 @@ export class EditorControls {
   readonly saveTemplateRef = contentChild('save', { read: TemplateRef });
 
   readonly quickPickElements1 = [
-    lookupElement('H'),
-    lookupElement('C'),
-    lookupElement('N'),
-    lookupElement('O'),
-    lookupElement('P'),
-    lookupElement('S'),
+    lookupElementSymbol('H'),
+    lookupElementSymbol('C'),
+    lookupElementSymbol('N'),
+    lookupElementSymbol('O'),
+    lookupElementSymbol('P'),
+    lookupElementSymbol('S'),
   ];
   readonly quickPickElements2 = [
-    lookupElement('F'),
-    lookupElement('Cl'),
-    lookupElement('Br'),
-    lookupElement('I'),
+    lookupElementSymbol('F'),
+    lookupElementSymbol('Cl'),
+    lookupElementSymbol('Br'),
+    lookupElementSymbol('I'),
   ];
+
+  readonly formulaReactionPlus = FormulaSymbol.ReactionPlus;
+  readonly formulaReactionArrow = FormulaSymbol.ReactionArrow;
+  readonly formulaEquilibriumArrow = FormulaSymbol.EquilibriumArrow;
+
+  readonly partialChargePositive = PartialCharge.Positive;
+  readonly partialChargeNegative = PartialCharge.Negative;
 
   readonly pointerModeActive = this.computeToolModeActive('pointer');
   readonly duplicateModeActive = this.computeToolModeActive('duplicate');
@@ -72,6 +74,11 @@ export class EditorControls {
     return state.state === 'selected';
   });
 
+  readonly atomCount = computed(() => {
+    const { atoms } = this.service.model();
+    return Object.keys(atoms).length;
+  });
+
   readonly selectedAtom = computed<AtomModel | undefined>(() => {
     const { atoms } = this.service.model();
     const state = this.service.editorState();
@@ -84,7 +91,7 @@ export class EditorControls {
     const selectedAtom = this.selectedAtom();
     if (!selectedAtom) return 0;
 
-    const atomBonds = graph.atomBonds.get(selectedAtom) ?? [];
+    const atomBonds = graph.atomBonds.get(selectedAtom.id) ?? [];
     const occupiedByBonds = atomBonds.reduce((sum, bond) => sum + bond.multiplicity, 0);
 
     return MoleculeEditorModel.ATOM_TOTAL_MAX_ELECTRONS - occupiedByBonds;
@@ -95,10 +102,23 @@ export class EditorControls {
     const maxElectrons = this.selectedAtomMaxElectrons();
     return !atom || atom.electrons >= maxElectrons;
   });
-
   readonly decrementElectronDisabled = computed(() => {
     const atom = this.selectedAtom();
     return !atom || atom.electrons <= 0;
+  });
+
+  readonly formalChargePositiveDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.formalCharge >= MoleculeEditorModel.ATOM_TOTAL_MAX_FORMAL_CHARGE;
+  });
+  readonly formalChargeNegativeDisabled = computed(() => {
+    const atom = this.selectedAtom();
+    return !atom || atom.formalCharge <= MoleculeEditorModel.ATOM_TOTAL_MIN_FORMAL_CHARGE;
+  });
+
+  readonly partialChargeDisabled = computed(() => {
+    const { atomIdsWithoutPartialCharge } = this.service.graph();
+    return atomIdsWithoutPartialCharge.size < 1;
   });
 
   readonly zoomOutDisabled = computed(() => this.zoomLevelIndex() <= 0);
@@ -146,9 +166,9 @@ export class EditorControls {
     return computed(() => {
       const appearance = this.service.appearance();
       switch (appearance.bondingType) {
-        case MoleculeEditorBondingType.valence:
+        case 'VALENCE':
           return `iqb:bond_line_${multiplicity}`;
-        case MoleculeEditorBondingType.electrons:
+        case 'ELECTRONS':
           return `iqb:bond_dots_${multiplicity}`;
       }
     });
@@ -163,6 +183,14 @@ export class EditorControls {
 
   handleAddElement(elementNr: PsElementNumber, event: PointerEvent) {
     this.service.addElementToCanvas(elementNr, event);
+  }
+
+  handleAddFormulaSymbol(symbol: FormulaSymbol, event: PointerEvent) {
+    this.service.addFormulaSymbolToCanvas(symbol, event);
+  }
+
+  handleAddPartialCharge(partialCharge: PartialCharge, pointerEvent: PointerEvent) {
+    this.service.addPartialCharge(partialCharge, pointerEvent);
   }
 
   async handleClearAll() {

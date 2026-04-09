@@ -48,7 +48,7 @@ import { boolParam, intParam, typeCastParam } from '../widget-page-common/param-
         [PeriodicSystemSelectParam.showInfoName]: '1',
         [PeriodicSystemSelectParam.showInfoAMass]: '1',
         [PeriodicSystemSelectParam.showInfoENeg]: '0',
-        [PeriodicSystemSelectParam.highlightBlocks]: '0',
+        [PeriodicSystemSelectParam.highlightBlocks]: '1',
         [PeriodicSystemSelectParam.maxNumberOfSelections]: '1',
         [PeriodicSystemSelectParam.closeOnSelection]: '0',
       },

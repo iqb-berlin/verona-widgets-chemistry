@@ -1,6 +1,6 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { AtomView, ElectronView } from '../../../services/molecule-editor.view';
-import { MoleculeEditorService } from '../../../services/molecule-editor.service';
+import { MoleculeEditorBondingType, MoleculeEditorService } from '../../../services/molecule-editor.service';
 import * as C from '../../../services/molecule-editor.constants';
 
 @Component({
@@ -13,6 +13,11 @@ export class SvgAtomView {
 
   readonly service = inject(MoleculeEditorService);
 
+  readonly bondingType = computed(() => {
+    const { bondingType } = this.service.appearance();
+    return bondingType;
+  });
+
   protected readonly atomHandleRadius = C.atomHandleRadius;
 
   protected readonly singleElectron = 1;
@@ -23,6 +28,12 @@ export class SvgAtomView {
   protected readonly doubleElectronDist = C.doubleElectronDist;
   protected readonly doubleElectronWidth = C.doubleElectronWidth;
   protected readonly doubleElectronRadius = C.doubleElectronRadius;
+
+  protected readonly formalChargeHandleRadius = C.formalChargeHandleRadius;
+
+  protected readonly valenceBondingType = 'VALENCE' satisfies MoleculeEditorBondingType;
+  protected readonly electronsBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
+  protected readonly electronsBondSeparation = C.bondSeparation;
 
   singleElectronCoordinates(electron: ElectronView, d: number) {
     const { position } = this.atomView();

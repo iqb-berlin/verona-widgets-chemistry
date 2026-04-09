@@ -36,6 +36,19 @@ export class PsTable {
     return this.elementByNumber.get(highlightedElementNr);
   });
 
+  readonly elementBlockLabels = computed(() => {
+    const appearance = this.service.appearance();
+    return (
+      Object.entries(appearance.blockColors)
+        // G-Block is unused by currently discovered elements
+        .filter(([block]) => block !== PsElementBlock.G)
+        .map(([block, color]) => {
+          const label = `${block.toUpperCase()}-Block`;
+          return { block, label, color } as const;
+        })
+    );
+  });
+
   protected elementClassNames(element: PsElement): ReadonlyArray<string> {
     return [
       this.groupClassName(element.group),

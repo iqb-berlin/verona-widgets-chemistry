@@ -36,6 +36,33 @@
   grid-column: 17/20;
 }
 
+.ps-block-color-labels {
+  grid-row: 10/12;
+  grid-column: 1/3;
+  font-size: 90%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  align-items: stretch;
+
+  .color-label {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: start;
+    align-items: center;
+    margin-left: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .block-color-square {
+    width: 1em;
+    height: 1em;
+    border-radius: 2px;
+  }
+}
+
 .ps-label {
   opacity: 70%;
   text-align: center;

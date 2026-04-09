@@ -1,4 +1,4 @@
-import { Injectable, InjectionToken, Provider, inject } from '@angular/core';
+import { inject, Injectable, InjectionToken, Provider } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 
@@ -10,7 +10,7 @@ export interface CustomIcons {
 const CUSTOM_ICONS = new InjectionToken<ReadonlyArray<CustomIcons>>('CustomIcons');
 
 export function registerCustomIcons(customIcons: ReadonlyArray<CustomIcons>): Array<Provider> {
-  return [{ provide: CUSTOM_ICONS, useValue: customIcons }, CustomIconsService];
+  return [CustomIconsService, { provide: CUSTOM_ICONS, useValue: customIcons }];
 }
 
 @Injectable()

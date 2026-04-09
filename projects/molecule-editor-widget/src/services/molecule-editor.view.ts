@@ -1,13 +1,14 @@
 import type { PsElement } from 'periodic-system-common';
-import type { AtomId, BondId, BondMultiplicity } from './molecule-editor.model';
-import { Vector2 } from './molecule-editor.model';
-import { AngleMath } from '../util/angle-math';
+import type { AtomId, BondId, FormulaSymbolId, PartialChargeId } from './molecule-editor.model';
+import { AngleMath, BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 
 // --- View data-types ---
 
 export interface MoleculeEditorView {
   readonly atoms: ReadonlyArray<AtomView>;
   readonly bonds: ReadonlyArray<BondView>;
+  readonly partials: ReadonlyArray<PartialChargeView>;
+  readonly symbols: ReadonlyArray<FormulaSymbolView>;
 }
 
 export interface AtomView {
@@ -15,6 +16,7 @@ export interface AtomView {
   readonly position: Vector2;
   readonly element: PsElement;
   readonly electrons: ReadonlyArray<ElectronView>;
+  readonly formalCharge: null | FormalChargeView;
   readonly selected: boolean;
   readonly temporary: boolean;
   readonly targeted: boolean;
@@ -32,6 +34,32 @@ export interface BondView {
 export interface ElectronView {
   readonly type: 1 | 2; // single or double
   readonly orientation: ElectronOrientation; // north, east, south, or west
+}
+
+export interface FormalChargeView {
+  readonly position: Vector2;
+  readonly color: string;
+  readonly label: string;
+  readonly labelLarge: boolean;
+}
+
+export interface PartialChargeView {
+  readonly itemId: PartialChargeId;
+  readonly absolutePosition: Vector2;
+  readonly targetAtomId: null | AtomId;
+  readonly targetAtomPosition: null | Vector2;
+  readonly charge: PartialCharge;
+  readonly selected: boolean;
+  readonly temporary: boolean;
+  readonly showConnection: boolean;
+}
+
+export interface FormulaSymbolView {
+  readonly itemId: FormulaSymbolId;
+  readonly position: Vector2;
+  readonly symbol: FormulaSymbol;
+  readonly selected: boolean;
+  readonly temporary: boolean;
 }
 
 export const enum ElectronOrientation {
@@ -185,5 +213,20 @@ export namespace ElectronView {
       items.splice(index, 1);
       items.push(item);
     }
+  }
+}
+
+export namespace FormalChargeView {
+  export function formalChargeLabel(formalCharge: number): string {
+    const n = Math.abs(formalCharge);
+    if (formalCharge === -1) return '–';
+    else if (formalCharge === +1) return '+';
+    else if (formalCharge < -1) return `${n}–`;
+    else if (formalCharge > +1) return `${n}+`;
+    else return '';
+  }
+
+  export function formalChargeLabelLarge(formalCharge: number): boolean {
+    return formalCharge <= 1 && -1 <= formalCharge;
   }
 }
