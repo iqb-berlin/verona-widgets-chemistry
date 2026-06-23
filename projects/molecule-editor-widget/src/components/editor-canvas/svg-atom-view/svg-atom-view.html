@@ -39,16 +39,57 @@
         ></svg:circle>
       }
       @case (doubleElectron) {
-        @let coords = doubleElectronCoordinates(electron, doubleElectronDist, doubleElectronWidth);
-        <svg:line
-          class="atom-electron"
-          [attr.x1]="coords.x1"
-          [attr.y1]="coords.y1"
-          [attr.x2]="coords.x2"
-          [attr.y2]="coords.y2"
-          [attr.stroke-width]="doubleElectronRadius"
-        ></svg:line>
+        @switch (bondingType()) {
+          @case (valenceBondingType) {
+            @let coords = doubleElectronCoordinates(electron, doubleElectronDist, doubleElectronWidth);
+            <svg:line
+              class="atom-electron"
+              [attr.x1]="coords.x1"
+              [attr.y1]="coords.y1"
+              [attr.x2]="coords.x2"
+              [attr.y2]="coords.y2"
+              [attr.stroke-width]="doubleElectronRadius"
+            ></svg:line>
+          }
+          @case (electronsBondingType) {
+            @let coords = doubleElectronCoordinates(electron, doubleElectronDist, electronsBondSeparation);
+            <svg:circle
+              class="atom-electron"
+              [attr.cx]="coords.x1"
+              [attr.cy]="coords.y1"
+              [attr.r]="singleElectronRadius"
+            ></svg:circle>
+            <svg:circle
+              class="atom-electron"
+              [attr.cx]="coords.x2"
+              [attr.cy]="coords.y2"
+              [attr.r]="singleElectronRadius"
+            ></svg:circle>
+          }
+        }
       }
     }
+  }
+
+  @if (!atom.temporary && atom.formalCharge) {
+    @let chargeX = atom.formalCharge.position[0];
+    @let chargeY = atom.formalCharge.position[1];
+    @let fontSize = atom.formalCharge.labelLarge ? 16 : 12;
+    <svg:circle
+      class="formal-charge-handle"
+      [attr.cx]="chargeX"
+      [attr.cy]="chargeY"
+      [attr.r]="formalChargeHandleRadius"
+      [attr.stroke]="atom.formalCharge.color"
+    ></svg:circle>
+    <svg:text
+      class="formal-charge-label"
+      [attr.x]="chargeX"
+      [attr.y]="chargeY"
+      [attr.fill]="atom.formalCharge.color"
+      [style.font-size.px]="fontSize"
+    >
+      {{ atom.formalCharge.label }}
+    </svg:text>
   }
 </ng-container>

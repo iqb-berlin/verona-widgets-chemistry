@@ -14,7 +14,7 @@
 
   <!-- Visible bond: Either draw as a line ("valence") or as dots ("electrons") -->
   @switch (bondingType()) {
-    @case (ValenceBondingType) {
+    @case (valenceBondingType) {
       @for (line of bondLinePositions(); track $index) {
         <svg:line
           class="bond-line"
@@ -28,7 +28,7 @@
         ></svg:line>
       }
     }
-    @case (ElectronsBondingType) {
+    @case (electronsBondingType) {
       @for (dot of bondDotsPositions(); track $index) {
         <svg:circle
           class="bond-dot"

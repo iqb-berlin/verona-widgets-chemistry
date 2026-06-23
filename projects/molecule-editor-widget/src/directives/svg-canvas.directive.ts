@@ -1,8 +1,7 @@
 import { Directive, effect, ElementRef, inject, input, signal } from '@angular/core';
 import { moleculeCanvasTransformPosition } from '../services/molecule-editor.event';
 import { MoleculeEditorService } from '../services/molecule-editor.service';
-import { MoleculeEditorImageService } from '../services/molecule-editor-image.service';
-import type { Vector2 } from '../services/molecule-editor.model';
+import type { Vector2 } from '../services/molecule-editor.shared';
 
 @Directive({ selector: '[appSvgCanvas]' })
 export class SvgCanvasDirective {
@@ -13,7 +12,6 @@ export class SvgCanvasDirective {
 
   protected readonly svgElementRef: ElementRef<SVGSVGElement> = inject(ElementRef);
   protected readonly editorService = inject(MoleculeEditorService);
-  protected readonly imageService = inject(MoleculeEditorImageService);
 
   private readonly resizeObserver = new ResizeObserver((entries) => {
     entries.forEach((entry) => {

@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { MoleculeEditorBondingType, MoleculeEditorService } from '../../../services/molecule-editor.service';
 import { BondView } from '../../../services/molecule-editor.view';
-import { Vector2 } from '../../../services/molecule-editor.model';
+import { Vector2 } from '../../../services/molecule-editor.shared';
 import * as C from '../../../services/molecule-editor.constants';
 
 @Component({
@@ -19,8 +19,8 @@ export class SvgBondView {
     return bondingType;
   });
 
-  protected readonly ValenceBondingType = MoleculeEditorBondingType.valence;
-  protected readonly ElectronsBondingType = MoleculeEditorBondingType.electrons;
+  protected readonly valenceBondingType = 'VALENCE' satisfies MoleculeEditorBondingType;
+  protected readonly electronsBondingType = 'ELECTRONS' satisfies MoleculeEditorBondingType;
   protected readonly electronBondRadius = C.electronBondRadius;
   protected readonly valenceBondRadius = C.valenceBondRadius;
 
