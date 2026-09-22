@@ -61,6 +61,12 @@
     },
     {
       "path": "./projects/molecule-editor-widget/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/calculator-widget/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/calculator-widget/tsconfig.spec.json"
     }
   ]
 }

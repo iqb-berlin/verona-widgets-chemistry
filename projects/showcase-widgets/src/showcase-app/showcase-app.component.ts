@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
-import { ShowcasePath } from './showcase-app.routes';
 import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
+import { ShowcasePath } from './showcase-app.routes';
 
 @Component({
   selector: 'app-showcase-root',
@@ -12,4 +12,5 @@ import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 export class ShowcaseApp {
   protected readonly PeriodicSystemSelectPath = ShowcasePath.PeriodicSystemSelect;
   protected readonly MoleculeEditorPath = ShowcasePath.MoleculeEditor;
+  protected readonly CalculatorPath = ShowcasePath.Calculator;
 }
