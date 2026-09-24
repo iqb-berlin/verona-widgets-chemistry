@@ -26,16 +26,12 @@ export function bigLcm(a: bigint, b: bigint): bigint {
 
 export function bigPow(value: bigint, exponent: bigint): bigint {
   if (exponent < 0n) throw new RangeError(`Negative pow exponent: ${exponent}`);
-  let r = 1n;
-  while (exponent > 0n) {
-    if (exponent & 1n) r *= value;
-    value *= value;
-    exponent >>= 1n;
-  }
-  return r;
+  return value ** exponent;
 }
 
+// cache powers of 10
 const POW10: bigint[] = [1n];
+bigPow10(15); // warmup
 
 export function bigPow10(exponent: number): bigint {
   if (exponent < 0) throw new RangeError(`Negative pow10 exponent: ${exponent}`);

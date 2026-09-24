@@ -1,7 +1,7 @@
 import { bigAbs, bigGcd, bigPow10, compareSign } from './utils';
 import type { Operand, Sign } from './operand.model';
 
-const DECIMAL_PATTERN = /^(?<sign>[+\-]?)(?<integral>\d*)(?:[.,](?<fraction>\d*))?$/;
+const DECIMAL_PATTERN = /^(?<sign>[+-]?)(?<integral>\d*)(?:[.,](?<fraction>\d*))?$/;
 const FRACTION_PATTERN = /^(?<numerator>[^/]+)\/(?<denominator>[^/]+)$/;
 
 type Numeric = number | bigint;
@@ -41,7 +41,7 @@ export class Rational implements Operand<Rational> {
     const trimmed = textual.trim();
     const matchFraction = trimmed.match(FRACTION_PATTERN);
     if (matchFraction) {
-      const { numerator, denominator } = matchFraction.groups ?? {};
+      const { numerator = '0', denominator = '1' } = matchFraction.groups ?? {};
       return Rational.parse(numerator).divide(Rational.parse(denominator));
     }
 
@@ -165,6 +165,7 @@ export class Rational implements Operand<Rational> {
     const negative = this.isNegative;
     const n = bigAbs(this.numerator) * scale;
     const d = this.denominator;
+
     let scaled = n / d;
     if ((n % d) * 2n >= d) scaled += 1n;
 
@@ -183,30 +184,30 @@ export class Rational implements Operand<Rational> {
   }
 }
 
-export const enum RationalErrorType {
+export const enum RationalErrorCode {
   SyntaxError = 'syntaxError',
   NonFinite = 'nonFinite',
   DivisionByZero = 'divisionByZero',
 }
 
 export class RationalError extends Error {
-  readonly type: RationalErrorType;
+  readonly code: RationalErrorCode;
 
-  private constructor(type: RationalErrorType, cause: Error) {
+  private constructor(code: RationalErrorCode, cause: Error) {
     super(cause.message, { cause });
     this.name = 'RationalError';
-    this.type = type;
+    this.code = code;
   }
 
   static syntaxError(message: string): RationalError {
-    return new RationalError(RationalErrorType.SyntaxError, new SyntaxError(message));
+    return new RationalError(RationalErrorCode.SyntaxError, new SyntaxError(message));
   }
 
   static nonFinite(offendingValue: number): RationalError {
-    return new RationalError(RationalErrorType.NonFinite, new RangeError(`Non-finite value: ${offendingValue}`));
+    return new RationalError(RationalErrorCode.NonFinite, new RangeError(`Non-finite value: ${offendingValue}`));
   }
 
   static divisionByZero(): RationalError {
-    return new RationalError(RationalErrorType.DivisionByZero, new RangeError('Division by zero'));
+    return new RationalError(RationalErrorCode.DivisionByZero, new RangeError('Division by zero'));
   }
 }

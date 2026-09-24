@@ -4,6 +4,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDrawer, MatDrawerContainer } from '@angular/material/sidenav';
 import { PsService, PsTable, PsTableInteractionsDirective } from 'periodic-system-common';
+import { debounceSignal } from 'verona-widget';
 import { MoleculeEditorModel } from '../../services/molecule-editor.model';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer';
@@ -13,7 +14,6 @@ import { MoleculeEditorImageRenderer } from '../../services/molecule-editor-imag
 import { CustomIconsService, registerCustomIcons } from '../../services/custom-icons.service';
 import { EditorCanvas } from '../editor-canvas/editor-canvas';
 import { EditorControls } from '../editor-controls/editor-controls';
-import { debounceSignal } from '../../util/debounce-signal';
 import IqbIcons from '../../assets/iqb-icons.svg';
 
 @Component({

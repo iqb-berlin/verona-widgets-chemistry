@@ -6,11 +6,11 @@ import * as U from './utils';
 
 //#region Types
 
-export type FormulaEvalIssueCode = `${E.ExactErrorType}` | `${R.RationalErrorType}` | 'incomplete';
+export type FormulaEvalIssueCode = `${E.ExactErrorCode}` | `${R.RationalErrorCode}` | 'incomplete';
 
 export interface FormulaEvalIssue {
   readonly code: FormulaEvalIssueCode;
-  readonly nodeId: AST.NodeId;
+  readonly nodeId: AST.FormulaNodeId;
   readonly message: string;
 }
 
@@ -31,7 +31,7 @@ export class FormulaEvalError extends Error {
   }
 }
 
-export interface FormattedResult {
+export interface FormulaFormatResult {
   /** The formatted value */
   readonly value: E.ExactValue;
   /** The exact result as a tree, ready for MathML or LaTeX. */
@@ -59,11 +59,11 @@ export function evaluateFormula(node: AST.FormulaNode): FormulaEvalResult {
 }
 
 export function lispFormula(node: AST.FormulaNode): string {
-  switch (node.type) {
+  switch (node.kind) {
     case 'number':
-      return node.hasDecimalPoint ? node.integerDigits + '.' + node.fractionDigits : node.integerDigits;
+      return node.literal;
     case 'hole':
-      return `_`;
+      return '_';
     case 'constant':
       return node.symbol;
     case 'group':
@@ -79,11 +79,13 @@ export function lispFormula(node: AST.FormulaNode): string {
     case 'divide':
       return `(/ ${lispFormula(node.divisor)} ${lispFormula(node.dividend)})`;
     case 'composite':
-      return `(+ ${lispFormula(node.integerPart)} (/ ${lispFormula(node.numerator)} ${node.denominator}))`;
+      return `(+ ${lispFormula(node.integerPart)} (/ ${lispFormula(node.numerator)} ${lispFormula(node.denominator)}))`;
     case 'pow':
       return `(** ${lispFormula(node.base)} ${lispFormula(node.exponent)})`;
     case 'root':
-      return `(root ${node.degree ? lispFormula(node.degree) : 2} ${lispFormula(node.radicand)})`;
+      return node.degree === null
+        ? `(sqrt ${lispFormula(node.radicand)})`
+        : `((root ${lispFormula(node.degree)}) ${lispFormula(node.radicand)})`;
   }
 }
 
@@ -97,23 +99,23 @@ export function evaluateToDecimalString(node: AST.FormulaNode, digits = 12): nul
   return result.ok ? result.value.toDecimalString(digits, true) : null;
 }
 
-export interface ExactToFormulaOptions {
+export interface FormatToFormulaOptions {
   readonly preferMixedFractions?: boolean;
   readonly divisionNotation?: AST.DivisionNotation;
 }
 
-export function exactToFormula(value: E.ExactValue, options: ExactToFormulaOptions = {}): AST.FormulaNode {
+export function valueToFormula(value: E.ExactValue, options: FormatToFormulaOptions = {}): AST.FormulaNode {
   const rational = value.asRational();
-  if (rational !== null) return reverseRationalToFormula(rational, options);
+  if (rational !== null) return rationalToFormula(rational, options);
 
-  const numerator = reversePolynomialToFormula(value.numerator, options);
+  const numerator = polynomialToFormula(value.numerator, options);
   if (E.ExactValue.isOnePolynomial(value.denominator)) return numerator;
 
-  const denominator = reversePolynomialToFormula(value.denominator, options);
+  const denominator = polynomialToFormula(value.denominator, options);
   return F.divide(numerator, denominator, options.divisionNotation ?? 'fraction');
 }
 
-export interface ExactToFormulaResultOptions extends ExactToFormulaOptions {
+export interface ExactToFormulaResultOptions extends FormatToFormulaOptions {
   readonly digits?: number;
 }
 
@@ -121,52 +123,56 @@ export interface ExactToFormulaResultOptions extends ExactToFormulaOptions {
  * Packages a value the way a calculator display wants it:
  * An exact line and an approximate line, with a flag for whether showing both is redundant.
  */
-export function exactToFormulaResult(value: E.ExactValue, options: ExactToFormulaResultOptions = {}): FormattedResult {
+export function valueToFormulaResult(
+  value: E.ExactValue,
+  options: ExactToFormulaResultOptions = {},
+): FormulaFormatResult {
   const digits = options.digits ?? 12;
   const rational = value.asRational();
   const isExactlyDecimal = rational !== null && onlyTwosAndFives(rational.denominator);
 
   return {
     value,
-    exact: exactToFormula(value, options),
+    exact: valueToFormula(value, options),
     decimal: value.toDecimalString(digits, true),
     isExactlyDecimal,
   };
 }
 
 //#endregion
+
+//#region Evaluation/formatting internals
 //#region Evaluate formula node to exact value
 
-function fail(code: FormulaEvalIssueCode, nodeId: AST.NodeId, message: string): never {
+function fail(code: FormulaEvalIssueCode, nodeId: AST.FormulaNodeId, message: string): never {
   throw new FormulaEvalError({ code, nodeId, message });
 }
 
 function errorIssue(error: R.RationalError | E.ExactError, node: AST.FormulaNode): FormulaEvalIssue {
-  return { code: error.type, message: error.message, nodeId: node.id };
+  return { code: error.code, message: error.message, nodeId: node.id };
 }
 
-function scope<T>(nodeId: AST.NodeId, block: () => T): T {
+function scope<T>(nodeId: AST.FormulaNodeId, block: () => T): T {
   try {
     return block();
   } catch (error: unknown) {
-    if (error instanceof R.RationalError) return fail(error.type, nodeId, error.message);
-    if (error instanceof E.ExactError) return fail(error.type, nodeId, error.message);
+    if (error instanceof R.RationalError) return fail(error.code, nodeId, error.message);
+    if (error instanceof E.ExactError) return fail(error.code, nodeId, error.message);
     throw error;
   }
 }
 
 function evaluateNode(node: AST.FormulaNode): E.ExactValue {
-  switch (node.type) {
+  switch (node.kind) {
     case 'hole':
       return fail('incomplete', node.id, 'Input required');
 
     case 'number':
       return scope(node.id, () => {
-        if (node.integerDigits.length === 0 && node.fractionDigits.length === 0) {
+        if (node.literal.length === 0) {
           return fail('incomplete', node.id, 'Empty number');
         } else {
-          const { integerDigits, fractionDigits } = node;
-          return E.ExactValue.fromRational(R.Rational.fromDigits(integerDigits, fractionDigits, false));
+          return E.ExactValue.fromRational(R.Rational.parse(node.literal));
         }
       });
 
@@ -242,7 +248,7 @@ function evaluateNode(node: AST.FormulaNode): E.ExactValue {
     }
 
     default:
-      console.error(`Invalid node type:`, node satisfies never);
+      console.error(`Invalid node:`, node satisfies never);
       throw new Error(`Invalid node: ${JSON.stringify(node)}`);
   }
 }
@@ -250,7 +256,7 @@ function evaluateNode(node: AST.FormulaNode): E.ExactValue {
 //#endregion
 //#region Evaluate exact value back to formula node
 
-function reverseRationalToFormula(value: R.Rational, options: ExactToFormulaOptions): AST.FormulaNode {
+function rationalToFormula(value: R.Rational, options: FormatToFormulaOptions): AST.FormulaNode {
   const magnitude = value.absolute();
   let node: AST.FormulaNode;
 
@@ -268,7 +274,7 @@ function reverseRationalToFormula(value: R.Rational, options: ExactToFormulaOpti
   return value.isNegative ? F.negate(node) : node;
 }
 
-function reversePolynomialToFormula(poly: E.Polynomial, options: ExactToFormulaOptions): AST.FormulaNode {
+function polynomialToFormula(poly: E.Polynomial, options: FormatToFormulaOptions): AST.FormulaNode {
   if (poly.length === 0) {
     return F.int(0);
   }
@@ -277,7 +283,7 @@ function reversePolynomialToFormula(poly: E.Polynomial, options: ExactToFormulaO
   for (const term of poly) {
     const negative = term.coefficient.isNegative;
     const monomial: E.Monomial = { coefficient: term.coefficient.absolute(), factors: term.factors };
-    const magnitude = reverseMonomialToFormula(monomial, options);
+    const magnitude = monomialToFormula(monomial, options);
     if (result === null) {
       result = negative ? F.negate(magnitude) : magnitude;
     } else {
@@ -287,12 +293,12 @@ function reversePolynomialToFormula(poly: E.Polynomial, options: ExactToFormulaO
   return result!;
 }
 
-function reverseMonomialToFormula(term: E.Monomial, options: ExactToFormulaOptions): AST.FormulaNode {
+function monomialToFormula(term: E.Monomial, options: FormatToFormulaOptions): AST.FormulaNode {
   if (term.factors.length === 0) {
-    return reverseRationalToFormula(term.coefficient, options);
+    return rationalToFormula(term.coefficient, options);
   }
 
-  const factors = term.factors.map((factor) => reverseFactorToFormula(factor, options));
+  const factors = term.factors.map((factor) => factorToFormula(factor, options));
   let product = factors.reduce((left, right) => F.multiply(left, right, 'dot'));
   if (term.coefficient.isOne) {
     return product;
@@ -306,9 +312,9 @@ function reverseMonomialToFormula(term: E.Monomial, options: ExactToFormulaOptio
   return product;
 }
 
-function reverseFactorToFormula(factor: E.Factor, options: ExactToFormulaOptions): AST.FormulaNode {
+function factorToFormula(factor: E.Factor, options: FormatToFormulaOptions): AST.FormulaNode {
   const base =
-    factor.base.kind === 'constant' ? F.constant(factor.base.symbol) : exactToFormula(factor.base.radicand, options);
+    factor.base.kind === 'constant' ? F.constant(factor.base.symbol) : valueToFormula(factor.base.radicand, options);
 
   const exponent = factor.exponent;
   if (exponent.isOne) return base;
@@ -328,4 +334,5 @@ function onlyTwosAndFives(denominator: bigint): boolean {
   return remaining === 1n;
 }
 
+//#endregion
 //#endregion

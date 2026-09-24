@@ -1,33 +1,20 @@
-import { Nominal } from './nominal';
+import { Nominal } from './typing';
 import { ConstantSymbol } from './constants.model';
 
 //#region Nodes
 
+// DESIGN:
 // 1. Nodes are immutable plain JSON-serializable data objects
 // 2. Nodes contain information about notation (except for the composite fraction)
 // 3. GroupNode represents user-typed parentheses; precedence-driven parentheses are inserted by renderers
 // 4. NumberNode represents integers *and* decimals, such that half-typed nodes can be represented
 // 5. Every node carries a stable node ID, such that MathML interaction events can be traced back to the tree
 
-export type NodeId = Nominal<string, 'NodeId'>;
+export type FormulaNodeId = Nominal<string, 'NodeId'>;
 
-export type NodeType =
-  | 'hole' // missing input yet to be typed
-  | 'number' // integral/decimal number
-  | 'constant' // irrational symbol like Pi
-  | 'group' // parentheses grouping subtrees
-  | 'negate' // unary negation
-  | 'add'
-  | 'subtract'
-  | 'multiply'
-  | 'divide'
-  | 'composite' // integral plus fraction
-  | 'pow' // exponential
-  | 'root'; // square/n-th root
-
-interface NodeBase<N extends NodeType> {
-  readonly type: N;
-  readonly id: NodeId;
+interface NodeBase<K extends string> {
+  readonly kind: K;
+  readonly id: FormulaNodeId;
 }
 
 export interface HoleNode extends NodeBase<'hole'> {
@@ -35,9 +22,7 @@ export interface HoleNode extends NodeBase<'hole'> {
 }
 
 export interface NumberNode extends NodeBase<'number'> {
-  readonly integerDigits: string;
-  readonly fractionDigits: string;
-  readonly hasDecimalPoint: boolean;
+  readonly literal: string; // integer or decimal number
 }
 
 export interface ConstantNode extends NodeBase<'constant'> {
@@ -111,14 +96,21 @@ export type FormulaNode =
   | PowNode
   | RootNode;
 
-export type NodeOfType<T extends NodeType> = Extract<FormulaNode, { readonly type: T }>;
+// Infer node -> node-kind
+export type FormulaNodeKind = FormulaNode['kind'];
+
+// Infer node-kind -> node
+export type FormulaNodeOfKind<K extends FormulaNodeKind> = Extract<FormulaNode, { readonly kind: K }>;
 
 //#endregion
 //#region Slots
 
-type NodeFieldName<T extends NodeType> = keyof NodeOfType<T>;
-type NodeFieldNames<T extends NodeType> = ReadonlyArray<NodeFieldName<T>>;
+type NodeFieldName<K extends FormulaNodeKind> = keyof FormulaNodeOfKind<K>;
+type NodeFieldNames<K extends FormulaNodeKind> = ReadonlyArray<NodeFieldName<K>>;
 
+/**
+ * Static table of node subtree slots available for each kind of node
+ */
 export const SLOTS = {
   hole: [],
   number: [],
@@ -132,13 +124,13 @@ export const SLOTS = {
   composite: ['integerPart', 'numerator', 'denominator'] satisfies NodeFieldNames<'composite'>,
   pow: ['base', 'exponent'] satisfies NodeFieldNames<'pow'>,
   root: ['radicand', 'degree'] satisfies NodeFieldNames<'root'>,
-} as const satisfies Record<NodeType, ReadonlyArray<string>>;
+} as const satisfies Record<FormulaNodeKind, ReadonlyArray<string>>;
 
-// infer slot-type from declared slots
-export type FormulaSlotOf<T extends NodeType> = (typeof SLOTS)[T][number];
-export type FormulaSlot = FormulaSlotOf<NodeType>;
+// Infer union of slot-types from declared slots
+export type FormulaSlotOf<K extends FormulaNodeKind> = (typeof SLOTS)[K][number];
+export type FormulaSlot = FormulaSlotOf<FormulaNodeKind>;
 
-// a position in the tree -> derived from a chain of slots leading to it
+// Position in the tree, derived from a chain of slots leading to it from root
 export type FormulaNodePath = ReadonlyArray<FormulaSlot>;
 
 //#endregion
@@ -146,19 +138,19 @@ export type FormulaNodePath = ReadonlyArray<FormulaSlot>;
 
 // higher precedence -> more tightly binding
 export enum Precedence {
-  Additive = 1,
+  Additive = 1, // lowest precedence, least tightly binding
   Unary = 2,
   Multiplicative = 3,
   Exponential = 4,
-  Atom = 5,
+  Atom = 5, // highest precedence, most tightly binding
 }
 
-// union of precedence values
+// Union of precedence values
 export type PrecedenceLevel = `${Precedence}` extends `${infer R extends number}` ? R : never;
 
 /** How tightly a node binds when written inline */
 export function precedenceOf(node: FormulaNode): PrecedenceLevel {
-  switch (node.type) {
+  switch (node.kind) {
     case 'number':
     case 'hole':
     case 'constant':
@@ -166,21 +158,17 @@ export function precedenceOf(node: FormulaNode): PrecedenceLevel {
     case 'root':
     case 'composite':
       return Precedence.Atom;
-
     case 'negate':
       return Precedence.Unary;
-
     case 'add':
     case 'subtract':
+      return Precedence.Additive;
     case 'multiply':
       return Precedence.Multiplicative;
-
     case 'divide':
       return node.notation === 'fraction' ? Precedence.Atom : Precedence.Multiplicative;
-
     case 'pow':
       return Precedence.Exponential;
-
     default:
       return invalidNode(node);
   }
@@ -188,18 +176,15 @@ export function precedenceOf(node: FormulaNode): PrecedenceLevel {
 
 /** True when a slot is already determined by its parents' notation, so no parentheses are required inside of it */
 export function isFencedSlot(node: FormulaNode, slot: FormulaSlot): boolean {
-  switch (node.type) {
+  switch (node.kind) {
     case 'group':
     case 'composite':
     case 'root':
       return true;
-
     case 'pow':
       return slot === ('exponent' satisfies NodeFieldName<'pow'>);
-
     case 'divide':
       return node.notation === 'fraction';
-
     case 'number':
     case 'hole':
     case 'constant':
@@ -208,7 +193,6 @@ export function isFencedSlot(node: FormulaNode, slot: FormulaSlot): boolean {
     case 'subtract':
     case 'multiply':
       return false;
-
     default:
       return invalidNode(node);
   }
@@ -221,14 +205,13 @@ export function requiredPrecedence(node: FormulaNode, slot: FormulaSlot): Preced
     return Precedence.Additive; // lowest precedence
   }
 
-  switch (node.type) {
+  switch (node.kind) {
     case 'add':
     case 'subtract':
       return slot === 'left' ? Precedence.Additive : Precedence.Unary;
     case 'multiply':
-      return slot === 'left' ? Precedence.Multiplicative : Precedence.Exponential;
     case 'divide':
-      return slot === 'dividend' ? Precedence.Multiplicative : Precedence.Exponential;
+      return slot === 'left' || slot === 'dividend' ? Precedence.Multiplicative : Precedence.Exponential;
     case 'negate':
       return Precedence.Multiplicative;
     case 'pow':
@@ -246,13 +229,19 @@ export function requiredPrecedence(node: FormulaNode, slot: FormulaSlot): Preced
 }
 
 export function needsParentheses(parent: FormulaNode, slot: FormulaSlot, child: FormulaNode): boolean {
-  if (child.type === 'group') return false; // group has its own parentheses
+  if (child.kind === 'group') return false; // group has its own parentheses
   return precedenceOf(child) < requiredPrecedence(parent, slot);
 }
 
+const DECIMAL = /[,.]/;
+
+export function hasDecimalPoint(node: FormulaNode): boolean {
+  return node.kind === 'number' && DECIMAL.test(node.literal);
+}
+
 function invalidNode(node: never): never {
-  console.error(`Invalid node type:`, node);
-  throw new Error(`Invalid node type: ${JSON.stringify(node)}`);
+  console.error(`Invalid node:`, node);
+  throw new Error(`Invalid node: ${JSON.stringify(node)}`);
 }
 
 //#endregion

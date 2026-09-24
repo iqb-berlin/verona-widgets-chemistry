@@ -1,5 +1,166 @@
-.calculator {
-  display: grid;
-
+:host {
+  --header-height: var(--calculator-header-height, 6rem);
+  --form-height: var(--calculator-form-height, 12rem);
 }
 
+math {
+  font-family: "Latin Modern Math", math;
+}
+
+.calculator {
+  max-width: 720px;
+  min-width: 240px;
+
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  gap: 0.7rem;
+
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-areas:
+    "hist .... .... .... .... exit"
+    "form form form form form form"
+    "nav0 nav1 nav2 nav3 nav4 ...."
+    "lpar rpar pi   c    back div "
+    "pow  root num7 num8 num9 mul "
+    "pow2 sqrt num4 num5 num6 sub "
+    "comp frac num1 num2 num3 add "
+    "s-d  dec  neg  num0 dot  eval";
+}
+
+.formula-area {
+  grid-area: form;
+  border: 1px solid var(--mat-sys-on-surface);
+  border-radius: var(--mat-sys-corner-small);
+  height: var(--form-height);
+  font-size: 2rem;
+
+  math {
+    text-align: right;
+    padding: 0 .5rem;
+  }
+}
+
+@mixin resize-icon-button($size) {
+  --mat-icon-button-icon-size: $size;
+  --mat-icon-button-state-layer-size: $size;
+  ::ng-deep .mat-icon {
+    line-height: $size;
+    font-size: $size;
+    width: $size;
+    height: $size;
+  }
+}
+
+.history {
+  grid-area: hist;
+}
+
+.close {
+  grid-area: exit;
+  --mat-icon-color: var(--mat-sys-error);
+}
+
+.history, .close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  @include resize-icon-button($size: 2.5rem);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+
+  .mdc-fab {
+    width: 100%;
+    --mat-fab-container-shape: 32px;
+  }
+
+  &.expand {
+    grid-area: nav0;
+    @include resize-icon-button($size: 2.5rem);
+  }
+
+  &.up {
+    grid-area: nav1;
+  }
+
+  &.down {
+    grid-area: nav2;
+  }
+
+  &.left {
+    grid-area: nav3;
+  }
+
+  &.right {
+    grid-area: nav4;
+  }
+}
+
+.control {
+  aspect-ratio: 1 / 1;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+  --mat-fab-foreground-color: var(--mat-sys-on-surface);
+  --mat-fab-container-shape: 50%;
+
+  .mdc-fab {
+    width: 100%;
+    height: 100%;
+    font-size: 48px;
+    font-weight: bold;
+  }
+
+  &.clear {
+    --mat-fab-container-color: var(--mat-sys-error);
+    --mat-fab-foreground-color: var(--mat-sys-on-error);
+  }
+
+  &.numpad {
+    --mat-fab-container-color: var(--mat-sys-surface-variant);
+    --mat-fab-foreground-color: var(--mat-sys-on-surface-variant);
+  }
+
+  &.backspace {
+    @include resize-icon-button($size: 3rem);
+  }
+
+  &.operation {
+    --mat-fab-container-color: var(--mat-sys-on-surface);
+    --mat-fab-foreground-color: var(--mat-sys-surface);
+  }
+}
+
+.formula-area ::ng-deep {
+  mrow.focused {
+    color: var(--mat-sys-on-primary);
+    background-color: var(--mat-sys-primary);
+    border-radius: 4px;
+
+    outline: 4px solid var(--mat-sys-secondary);
+    animation: 0.5s linear infinite alternate flashing-outline;
+    @media (prefers-reduced-motion: reduce) {
+      animation: none !important;
+    }
+  }
+}
+
+@keyframes flashing-outline {
+  from {
+    outline-color: transparent;
+  }
+  40% {
+    outline-color: transparent;
+  }
+  60% {
+    outline-color: var(--mat-sys-primary);
+  }
+  to {
+    outline-color: var(--mat-sys-primary);
+  }
+}

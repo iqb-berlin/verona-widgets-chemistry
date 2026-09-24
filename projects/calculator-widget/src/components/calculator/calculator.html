@@ -1,3 +1,151 @@
-<main class="calculator">
-  <p>calculator works!</p>
-</main>
+<!-- @let ef = evaluatedFormula(); -->
+<article class="calculator" xmlns:math="http://www.w3.org/1998/Math/MathML">
+  <div class="formula-area">
+    <math display="block">
+      <mrow [appFormulaNode]="formula()" [interactive]="true"></mrow>
+    </math>
+  </div>
+
+  <div class="history">
+    <button matIconButton [matMenuTriggerFor]="historyMenu" aria-label="Verlauf">
+      <mat-icon>history</mat-icon>
+    </button>
+  </div>
+  <div class="close">
+    <button matIconButton>
+      <mat-icon>cancel</mat-icon>
+    </button>
+  </div>
+  <div class="nav expand">
+    <button matIconButton>
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+  <div class="nav up">
+    <button matFab></button>
+  </div>
+  <div class="nav down">
+    <button matFab></button>
+  </div>
+  <div class="nav left">
+    <button matFab></button>
+  </div>
+  <div class="nav right">
+    <button matFab></button>
+  </div>
+
+  <div class="control left-paren" style="grid-area: lpar">
+    <button matFab>
+      (
+    </button>
+  </div>
+  <div class="control right-paren" style="grid-area: rpar">
+    <button matFab>
+      )
+    </button>
+  </div>
+  <div class="control pi" style="grid-area: pi">
+    <button matFab style="font-family: serif" (click)="void 0">
+      &pi;
+    </button>
+  </div>
+  <div class="control exponent-n" style="grid-area: pow">
+    <button matFab>
+      x<sup style="font-size: 32px">&squ;</sup>
+    </button>
+  </div>
+  <div class="control nth-root" style="grid-area: root">
+    <button matFab>
+      <sup style="font-size: 32px">&squ;</sup>&radic;x
+    </button>
+  </div>
+  <div class="control sqare" style="grid-area: pow2">
+    <button matFab>
+      x<sup>2</sup>
+    </button>
+  </div>
+  <div class="control sqrt" style="grid-area: sqrt">
+    <button matFab>
+      <sup>2</sup>&radic;x
+    </button>
+  </div>
+  <div class="control fraction" style="grid-area: frac">
+    <button matFab>
+      <math display="inline" style="math-style: compact">
+        <mfrac>
+          <mrow>&squ;</mrow>
+          <mrow>&#x25A0;</mrow>
+        </mfrac>
+      </math>
+    </button>
+  </div>
+  <div class="control composite-fraction" style="grid-area: comp">
+    <button matFab>
+      <math display="inline" style="math-style: compact; font-size: 80%">
+        <mrow>&squ;</mrow>
+        <mfrac>
+          <mrow>&squ;</mrow>
+          <mrow>&#x25A0;</mrow>
+        </mfrac>
+      </math>
+    </button>
+  </div>
+  <div class="control switch-decimal" style="grid-area: s-d">
+    <button matFab style="font-size: 38px">
+      S&DoubleLeftRightArrow;D
+    </button>
+  </div>
+  <div class="control evaluate-decimal" style="grid-area: dec">
+    <button matFab>
+      &approx;
+    </button>
+  </div>
+
+  <div class="control clear" style="grid-area: c">
+    <button matFab (click)="handleButton('clearEverything', { })">
+      C
+    </button>
+  </div>
+  <div class="control numpad backspace" style="grid-area: back">
+    <button matFab>
+      <mat-icon>backspace</mat-icon>
+    </button>
+  </div>
+  @for (n of ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']; track n) {
+    <div class="control numpad" [style.grid-area]="`num${n}`">
+      <button matFab (click)="handleButton('typeDigit', { digit: n })">{{ n }}</button>
+    </div>
+  }
+  <div class="control numpad" style="grid-area: neg">
+    <button matFab (click)="handleButton('applyUnaryOperator', { operator:'negate' })">
+      &plus;/&minus;
+    </button>
+  </div>
+  <div class="control numpad" style="grid-area: dot">
+    <button matFab (click)="handleButton('typeDecimalPoint', { })">
+      &comma;
+    </button>
+  </div>
+
+  <div class="control operation add" style="grid-area: add">
+    <button matFab>&plus;</button>
+  </div>
+  <div class="control operation subtract" style="grid-area: sub">
+    <button matFab>&minus;</button>
+  </div>
+  <div class="control operation divide" style="grid-area: div">
+    <button matFab>&divide;</button>
+  </div>
+  <div class="control operation multiply" style="grid-area: mul">
+    <button matFab>&times;</button>
+  </div>
+  <div class="control operation evaluate" style="grid-area: eval">
+    <button matFab>&equals;</button>
+  </div>
+</article>
+
+<mat-menu #historyMenu="matMenu" [hasBackdrop]="true">
+  <ng-template matMenuContent>
+    <div>HISTORY HERE</div>
+  </ng-template>
+</mat-menu>

@@ -65,8 +65,8 @@ export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
 
   readonly configuration = this.showcase.configuration;
 
-  readonly internalState = signal<VeronaWidgetState['state']>('initializing');
-  readonly internalMetadata = signal<undefined | VeronaModuleMetadata>(undefined);
+  private readonly internalState = signal<VeronaWidgetState['state']>('initializing');
+  private readonly internalMetadata = signal<undefined | VeronaModuleMetadata>(undefined);
 
   readonly stateData = signal<string>('');
   readonly state = computed<VeronaWidgetState>(() => {

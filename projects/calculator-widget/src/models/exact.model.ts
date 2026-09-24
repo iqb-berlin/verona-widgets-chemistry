@@ -2,7 +2,7 @@ import * as C from './constants.model';
 import { ConstantSymbol } from './constants.model';
 import * as R from './rational.model';
 import { Operand, Sign } from './operand.model';
-import { Nominal } from './nominal';
+import { Nominal } from './typing';
 import * as U from './utils';
 import { bigIsEven } from './utils';
 
@@ -85,7 +85,7 @@ export class ExactValue implements Operand<ExactValue> {
 
   private static normalize(numerator: Polynomial, denominator: Polynomial): ExactValue {
     if (numerator.length === 0) return ExactValue.ZERO;
-    if (denominator.length === 0) throw new ExactError(ExactErrorType.DivisionByZero, 'Zero denominator');
+    if (denominator.length === 0) throw new ExactError(ExactErrorCode.DivisionByZero, 'Zero denominator');
 
     if (denominator.length === 1) {
       const singleDenominatorTerm = denominator[0];
@@ -217,7 +217,7 @@ export class ExactValue implements Operand<ExactValue> {
   }
 
   divide(other: ExactValue): ExactValue {
-    if (other.isZero) throw new ExactError(ExactErrorType.DivisionByZero, 'Division by zero');
+    if (other.isZero) throw new ExactError(ExactErrorCode.DivisionByZero, 'Division by zero');
     return ExactValue.normalize(
       polyMultiply(this.numerator, other.denominator),
       polyMultiply(this.denominator, other.numerator),
@@ -226,7 +226,7 @@ export class ExactValue implements Operand<ExactValue> {
 
   pow(exponent: bigint): ExactValue {
     if (exponent === 0n) {
-      if (this.isZero) throw new ExactError(ExactErrorType.Indeterminate, 'Zero raised to the power of zero');
+      if (this.isZero) throw new ExactError(ExactErrorCode.Indeterminate, 'Zero raised to the power of zero');
       return ExactValue.ONE;
     }
     if (exponent < 0n) return this.pow(-exponent).inverse();
@@ -239,13 +239,13 @@ export class ExactValue implements Operand<ExactValue> {
     if (exponent.isNegative) return this.rationalPow(exponent.negate()).inverse();
     if (this.isZero) return ExactValue.ZERO;
     if (this.isNegative && bigIsEven(exponent.denominator))
-      throw new ExactError(ExactErrorType.ComplexResult, 'Even root of a negative value');
+      throw new ExactError(ExactErrorCode.ComplexResult, 'Even root of a negative value');
 
     return ExactValue.normalize(polyRoot(this.numerator, exponent), polyRoot(this.denominator, exponent));
   }
 
   rationalRoot(degree: R.Rational): ExactValue {
-    if (degree.isZero) throw new ExactError(ExactErrorType.Indeterminate, 'Root of degree zero');
+    if (degree.isZero) throw new ExactError(ExactErrorCode.Indeterminate, 'Root of degree zero');
     return this.rationalPow(degree.inverse());
   }
 
@@ -263,7 +263,7 @@ export class ExactValue implements Operand<ExactValue> {
   }
 
   inverse(): ExactValue {
-    if (this.isZero) throw new ExactError(ExactErrorType.DivisionByZero, 'Inverse of zero');
+    if (this.isZero) throw new ExactError(ExactErrorCode.DivisionByZero, 'Inverse of zero');
     return ExactValue.normalize(this.denominator, this.numerator);
   }
 
@@ -280,7 +280,7 @@ export class ExactValue implements Operand<ExactValue> {
     const guard = digits + 12;
     const numerator = polyScalar(this.numerator, guard);
     const denominator = polyScalar(this.denominator, guard);
-    if (denominator === 0n) throw new ExactError(ExactErrorType.DivisionByZero, 'Denominator evaluates to zero');
+    if (denominator === 0n) throw new ExactError(ExactErrorCode.DivisionByZero, 'Denominator evaluates to zero');
     return R.Rational.of(numerator, denominator).toDecimalString(digits, dropTrailingZeros);
   }
 
@@ -298,7 +298,7 @@ export class ExactValue implements Operand<ExactValue> {
   }
 }
 
-export const enum ExactErrorType {
+export const enum ExactErrorCode {
   DivisionByZero = 'divisionByZero',
   ComplexResult = 'complexResult',
   Indeterminate = 'indeterminate',
@@ -306,12 +306,12 @@ export const enum ExactErrorType {
 }
 
 export class ExactError extends Error {
-  readonly type: ExactErrorType;
+  readonly code: ExactErrorCode;
 
-  constructor(type: ExactErrorType, message: string) {
+  constructor(code: ExactErrorCode, message: string) {
     super(message);
     this.name = 'ExactError';
-    this.type = type;
+    this.code = code;
   }
 }
 
@@ -435,15 +435,15 @@ function polyAsRational(poly: Polynomial): null | R.Rational {
 }
 
 function polyPow(poly: Polynomial, exponent: bigint): Polynomial {
-  if (exponent < 0n) throw new ExactError(ExactErrorType.Unsupported, 'Negative polynomial');
+  if (exponent < 0n) throw new ExactError(ExactErrorCode.Unsupported, 'Negative polynomial');
   if (exponent > MAX_POW_EXPONENT)
-    throw new ExactError(ExactErrorType.Unsupported, `Exponent ${exponent} is too large`);
+    throw new ExactError(ExactErrorCode.Unsupported, `Exponent ${exponent} is too large`);
 
   let base = poly;
   let result: Polynomial = ONE_POLY;
   while (exponent > 0n) {
     if (exponent & 1n) result = polyMultiply(result, base);
-    exponent >>= 1n;
+    exponent /= 2n;
     if (exponent > 0n) base = polyMultiply(base, base);
   }
   return result;
@@ -452,7 +452,7 @@ function polyPow(poly: Polynomial, exponent: bigint): Polynomial {
 function polyRoot(poly: Polynomial, exponent: R.Rational): Polynomial {
   if (poly.length === 0) {
     if (exponent.sign() <= 0)
-      throw new ExactError(ExactErrorType.DivisionByZero, 'Zero raised to a non-positive power');
+      throw new ExactError(ExactErrorCode.DivisionByZero, 'Zero raised to a non-positive power');
     return ZERO_POLY;
   }
 
@@ -516,7 +516,7 @@ function monoNormalize(coefficient: R.Rational, rawFactors: ReadonlyArray<Factor
   for (const rawFactor of rawFactors) {
     if (rawFactor.exponent.isZero) continue;
     if (rawFactor.exponent.isNegative)
-      throw new ExactError(ExactErrorType.Unsupported, 'Factor exponents must remain positive');
+      throw new ExactError(ExactErrorCode.Unsupported, 'Factor exponents must remain positive');
 
     const key = baseKey(rawFactor.base);
     const existingFactor = mergedFactors.get(key);
@@ -556,7 +556,7 @@ function monoNormalize(coefficient: R.Rational, rawFactors: ReadonlyArray<Factor
       scalar = scalar.multiply(simplifiedCoefficient);
       if (simplifiedFactor) retainedFactors.push(simplifiedFactor);
     } else if (U.bigIsEven(fractional.denominator) && radicant.valueOf() < 0) {
-      throw new ExactError(ExactErrorType.ComplexResult, 'Even root of a negative value');
+      throw new ExactError(ExactErrorCode.ComplexResult, 'Even root of a negative value');
     } else {
       retainedFactors.push({ base: factor.base, exponent: fractional });
     }
@@ -584,10 +584,10 @@ function simplifySurd(value: R.Rational, exponent: R.Rational): [coefficient: R.
   const a = exponent.numerator;
   const b = exponent.denominator;
   if (b > MAX_ROOT_DEGREE)
-    throw new ExactError(ExactErrorType.Unsupported, `Root degree ${b} exceeds the supported maximum`);
+    throw new ExactError(ExactErrorCode.Unsupported, `Root degree ${b} exceeds the supported maximum`);
 
   const negative = value.isNegative;
-  if (negative && U.bigIsEven(b)) throw new ExactError(ExactErrorType.ComplexResult, 'Even root of a negative number');
+  if (negative && U.bigIsEven(b)) throw new ExactError(ExactErrorCode.ComplexResult, 'Even root of a negative number');
 
   const sign = negative && !U.bigIsEven(a) ? R.Rational.MINUS_ONE : R.Rational.ONE;
 
@@ -642,7 +642,7 @@ function baseScalar(base: FactorBase, digits: number): bigint {
   // infer base.kind === 'radical'
   const numerator = polyScalar(base.radicand.numerator, digits);
   const denominator = polyScalar(base.radicand.denominator, digits);
-  if (denominator === 0n) throw new ExactError(ExactErrorType.DivisionByZero, 'Radicand denominator evaluates to zero');
+  if (denominator === 0n) throw new ExactError(ExactErrorCode.DivisionByZero, 'Radicand denominator evaluates to zero');
   return (numerator * U.bigPow10(digits)) / denominator;
 }
 
@@ -659,19 +659,19 @@ function rootScalar(value: bigint, exponent: R.Rational, digits: number): bigint
   const b = exponent.denominator;
   const degree = Number(b);
   const negative = value < 0n;
-  if (negative && degree % 2 === 0) throw new ExactError(ExactErrorType.ComplexResult, 'Even root of a negative value');
+  if (negative && degree % 2 === 0) throw new ExactError(ExactErrorCode.ComplexResult, 'Even root of a negative value');
 
-  // (X / S) ^ (a / b) * S == (X ^ a * S ^ (b - a)) ^ (1 / b)
+  // (X / S) ^ (a / b) * S <=> (X ^ a * S ^ (b - a)) ^ (1 / b)
   const inner = U.bigPow(U.bigAbs(value), a) * U.bigPow(U.bigPow10(digits), b - a);
   const root = U.floorNthRoot(inner, degree);
-  return negative && a % 2n === 1n ? -root : root;
+  return negative && !U.bigIsEven(a) ? -root : root;
 }
 
 function powScaled(base: bigint, exponent: bigint, digits: number): bigint {
   let result = U.bigPow10(digits);
   while (exponent > 0n) {
     if (exponent & 1n) result = mulScaled(result, base, digits);
-    exponent >>= 1n;
+    exponent /= 2n;
     if (exponent > 0n) base = mulScaled(base, base, digits);
   }
   return result;

@@ -11,13 +11,16 @@ export interface DebounceSignal<T> extends Signal<T> {
 type TimeoutRef = ReturnType<typeof setTimeout>;
 
 export function debounceSignal<T>(input: Signal<T>, debounceMillis: number): DebounceSignal<T> {
-  let timeout: undefined | TimeoutRef;
-
   const debounced = signal(untracked(input));
+
+  let timeout: undefined | TimeoutRef;
   effect((onCleanup) => {
     const value = input();
     timeout = setTimeout(() => debounced.set(value), debounceMillis);
-    onCleanup(() => clearTimeout(timeout));
+    onCleanup(() => {
+      clearTimeout(timeout);
+      timeout = undefined;
+    });
   });
 
   return Object.assign(debounced, {

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import {
   provideShowcaseVeronaWidgetService,
   ShowcaseVeronaWidgetConfig,
@@ -24,4 +24,6 @@ import { FormsModule } from '@angular/forms';
 export class CalculatorPage {
   readonly config = inject(ShowcaseVeronaWidgetConfig);
   readonly service = inject(ShowcaseVeronaWidgetService);
+
+  readonly stateData = this.service.stateData;
 }

@@ -5,6 +5,9 @@
   <a mat-tab-link [routerLink]="CalculatorPath">Taschenrechner</a>
 </nav>
 <main>
+  <button matMiniFab class="theme-btn">
+    <mat-icon [fontIcon]="theme() === 'light' ? 'dark_mode' : 'light_mode'" (click)="toggleTheme()"></mat-icon>
+  </button>
   <mat-tab-nav-panel #tabNavPanel>
     <router-outlet />
   </mat-tab-nav-panel>

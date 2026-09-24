@@ -1,4 +1,5 @@
-import { computed, CreateSignalOptions, signal, Signal, untracked, WritableSignal } from '@angular/core';
+import type { CreateSignalOptions, Signal, WritableSignal } from '@angular/core';
+import { computed, signal, untracked } from '@angular/core';
 
 /**
  * Extension of a {@link WritableSignal} with undo/redo history functionality
@@ -6,11 +7,9 @@ import { computed, CreateSignalOptions, signal, Signal, untracked, WritableSigna
  */
 export interface HistorySignal<T> extends WritableSignal<T> {
   set(value: T, record?: boolean): void;
-
   update(fn: (value: T) => T, record?: boolean): void;
 
   undo(): void;
-
   redo(): void;
 
   readonly undoAvailable: Signal<boolean>;
@@ -22,15 +21,15 @@ export interface HistorySignalOptions<T> extends CreateSignalOptions<T> {
 }
 
 /**
- * Create a {@link HistorySignal} instance with a current value, and undo- and a redo-stack
+ * Create a {@link HistorySignal} instance with a current value, an undo-, and a redo-stack
  */
 export function historySignal<T>(initialValue: T, options: HistorySignalOptions<T>): HistorySignal<T> {
   const currentValue = signal(initialValue, options);
-  const undoStack = signal<ReadonlyArray<T>>([]);
-  const redoStack = signal<ReadonlyArray<T>>([]);
-
   const setCurrentValue = currentValue.set;
   const updateCurrentValue = currentValue.update;
+
+  const undoStack = signal<ReadonlyArray<T>>([]);
+  const redoStack = signal<ReadonlyArray<T>>([]);
 
   function commit(nextValue: T) {
     const appendedUndo = [...untracked(undoStack), untracked(currentValue)];
