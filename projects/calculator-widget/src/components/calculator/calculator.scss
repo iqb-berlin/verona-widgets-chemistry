@@ -20,7 +20,7 @@ math {
   grid-template-areas:
     "hist .... .... .... .... exit"
     "form form form form form form"
-    "nav0 nav1 nav2 nav3 nav4 ...."
+    "nav0 nav1 nav2 nav3 nav4 nav5"
     "lpar rpar pi   c    back div "
     "pow  root num7 num8 num9 mul "
     "pow2 sqrt num4 num5 num6 sub "
@@ -75,30 +75,20 @@ math {
 
   --mat-fab-container-color: var(--mat-sys-surface);
 
+  ::ng-deep .mat-icon {
+    line-height: 2.5rem;
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
   .mdc-fab {
     width: 100%;
     --mat-fab-container-shape: 32px;
   }
 
   &.expand {
-    grid-area: nav0;
-    @include resize-icon-button($size: 2.5rem);
-  }
-
-  &.up {
-    grid-area: nav1;
-  }
-
-  &.down {
-    grid-area: nav2;
-  }
-
-  &.left {
-    grid-area: nav3;
-  }
-
-  &.right {
-    grid-area: nav4;
+    @include resize-icon-button($size: 3rem);
   }
 }
 

@@ -28,6 +28,6 @@ export class PsSelect {
   });
 
   doSubmit() {
-    this.widgetService.sendReturn(true);
+    this.widgetService.sendReturn({ saveState: true });
   }
 }

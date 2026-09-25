@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, Provider, signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, Provider, signal, untracked, WritableSignal } from '@angular/core';
 import { VeronaModuleMetadata, VeronaWidgetConfiguration, VeronaWidgetService, VeronaWidgetState } from 'verona-widget';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -88,11 +88,11 @@ export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
     this.internalState.set('running'); // skips "ready" state, immediately go to "running"
   }
 
-  sendReturn(saveState?: boolean): void {
-    const stateData = this.stateData();
+  sendReturn(result: VeronaWidgetService.ReturnResult): void {
+    const stateData = result.finalState ?? untracked(this.stateData);
     const message =
-      (saveState ?? true)
-        ? `Widget return requested, state = "${stateData}"`
+      (result.saveState ?? true)
+        ? `Widget return requested, final state = "${stateData}"`
         : `Widget return requested, state not saved"`;
 
     this.snackbar.open(message, 'OK', { duration: 5_000 });

@@ -1,0 +1,78 @@
+<ng-container xmlns:math="http://www.w3.org/1998/Math/MathML">
+  @let parentToken = sequence();
+  @if (parentToken.items.length === 0) {
+    <math:mtext [style.cursor]="cursorStyle(parentToken)" (click)="handleClick(parentToken, $event)">
+      &square;
+    </math:mtext>
+  }
+  @for (token of parentToken.items; track token.id) {
+    <ng-container *ngTemplateOutlet="displayItem; context: { token }" />
+  }
+
+  <ng-template #displayItem let-unknownToken="token">
+    @let token = asToken(unknownToken);
+    @switch (token.kind) {
+      @case ('sequence') {
+        <!-- ILLEGAL NESTED SEQUENCE -->
+      }
+      @case ('literal') {
+        <math:mn [style.cursor]="cursorStyle(token)" (click)="handleClick(token, $event)">
+          {{ token.literal.replace('.', ',') }}
+        </math:mn>
+      }
+      @case ('constant') {
+        <math:mi [style.cursor]="cursorStyle(token)" (click)="handleClick(token, $event)">
+          {{ CONSTANTS[token.symbol].unicode }}
+        </math:mi>
+      }
+      @case ('fence') {
+        <math:mo [style.cursor]="cursorStyle(token)" (click)="handleClick(parentToken, $event)">
+          {{ token.fence }}
+        </math:mo>
+      }
+      @case ('operator') {
+        <math:mo [style.cursor]="cursorStyle(token)">
+          @switch (token.operator) {
+            @case ('+') {
+              &plus;
+            }
+            @case ('-') {
+              &minus;
+            }
+            @case ('*') {
+              &times;
+            }
+            @case ('/') {
+              &divide;
+            }
+          }
+        </math:mo>
+      }
+      @case ('fraction') {
+        <math:mfrac>
+          <math:mrow [appEditSequence]="token.divisor" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.dividend" [interactive]="interactive()"></math:mrow>
+        </math:mfrac>
+      }
+      @case ('composite') {
+        <math:mrow [appEditSequence]="token.integerPart" [interactive]="interactive()"></math:mrow>
+        <math:mfrac>
+          <math:mrow [appEditSequence]="token.numerator" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.denominator" [interactive]="interactive()"></math:mrow>
+        </math:mfrac>
+      }
+      @case ('exponent') {
+        <math:msup>
+          <math:mrow [appEditSequence]="token.base" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.exponent" [interactive]="interactive()"></math:mrow>
+        </math:msup>
+      }
+      @case ('root') {
+        <math:mroot>
+          <math:mrow [appEditSequence]="token.radicand" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.degree" [interactive]="interactive()"></math:mrow>
+        </math:mroot>
+      }
+    }
+  </ng-template>
+</ng-container>

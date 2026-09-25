@@ -2,7 +2,7 @@ import * as C from './constants.model';
 import { ConstantSymbol } from './constants.model';
 import * as R from './rational.model';
 import { Operand, Sign } from './operand.model';
-import { Nominal } from './typing';
+import { Nominal } from './types';
 import * as U from './utils';
 import { bigIsEven } from './utils';
 
@@ -91,14 +91,14 @@ export class ExactValue implements Operand<ExactValue> {
       const singleDenominatorTerm = denominator[0];
 
       // split the denominator into:
-      // - the part that can be inverted exactly (rational coefficient plus every surd over a rational radicant)
+      // - the part that can be inverted exactly (rational coefficient plus every surd over a rational radicand)
       // - the residual part (constants, nested radicals) that stays below the line as a denominator
       let multiplier: Polynomial = ONE_POLY;
       let clearedScalar = singleDenominatorTerm.coefficient;
       const residualFactors: Array<Factor> = [];
       for (const factor of singleDenominatorTerm.factors) {
-        const radicant = factor.base.kind === 'radical' ? factor.base.radicand.asRational() : null;
-        if (radicant === null) {
+        const radicand = factor.base.kind === 'radical' ? factor.base.radicand.asRational() : null;
+        if (radicand === null) {
           residualFactors.push(factor);
           continue;
         }
@@ -107,7 +107,7 @@ export class ExactValue implements Operand<ExactValue> {
         const inverseFactor: Factor = { base: factor.base, exponent: R.Rational.ONE.subtract(factor.exponent) };
         const monomial = monoNormalize(R.Rational.ONE, [inverseFactor]);
         multiplier = polyMultiply(multiplier, monomial);
-        clearedScalar = clearedScalar.multiply(radicant);
+        clearedScalar = clearedScalar.multiply(radicand);
       }
 
       const scaleByPoly = [{ coefficient: clearedScalar.inverse(), factors: [] }];
@@ -537,25 +537,25 @@ function monoNormalize(coefficient: R.Rational, rawFactors: ReadonlyArray<Factor
       continue;
     }
     // infer factor.base.kind === 'constant'
-    const radicant = factor.base.radicand;
-    if (radicant.isZero) return ZERO_POLY; // immediately collapses everything to zero
-    if (radicant.isOne) continue; // factor can be dropped
+    const radicand = factor.base.radicand;
+    if (radicand.isZero) return ZERO_POLY; // immediately collapses everything to zero
+    if (radicand.isOne) continue; // factor can be dropped
 
     // split base^(k + f) into the whole power base^k and the surd base^f
     const whole = factor.exponent.floor();
     const fractional = factor.exponent.subtract(R.Rational.of(whole));
     if (whole > 0n) {
-      const power = polyPow(radicant.numerator, whole);
+      const power = polyPow(radicand.numerator, whole);
       expandedPoly = expandedPoly === null ? power : polyMultiply(expandedPoly, power);
     }
     if (fractional.isZero) continue;
 
-    const radicantRational = radicant.asRational();
+    const radicantRational = radicand.asRational();
     if (radicantRational !== null) {
       const [simplifiedCoefficient, simplifiedFactor] = simplifySurd(radicantRational, fractional);
       scalar = scalar.multiply(simplifiedCoefficient);
       if (simplifiedFactor) retainedFactors.push(simplifiedFactor);
-    } else if (U.bigIsEven(fractional.denominator) && radicant.valueOf() < 0) {
+    } else if (U.bigIsEven(fractional.denominator) && radicand.valueOf() < 0) {
       throw new ExactError(ExactErrorCode.ComplexResult, 'Even root of a negative value');
     } else {
       retainedFactors.push({ base: factor.base, exponent: fractional });

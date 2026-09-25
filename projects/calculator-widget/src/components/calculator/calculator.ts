@@ -1,30 +1,19 @@
-import { Component, computed, HostListener, inject, signal } from '@angular/core';
-import { HistorySignal, historySignal } from 'verona-widget';
-import { FormulaContext } from '../display-formula-node/formula-context';
-import {
-  dispatchEditCommand,
-  EditCommand,
-  EditCommandName,
-  EditCommandOfName,
-  evaluateFormula,
-  FormulaEvalResult,
-  FormulaNode,
-  FormulaNodeId,
-  hole,
-  valueToFormulaResult,
-} from '../../models';
+import { Component, HostListener, inject, signal } from '@angular/core';
+import { historySignal, HistorySignal, VeronaWidgetService } from 'verona-widget';
+import { FocusContext } from '../display-edit-sequence/focus-context';
+import { ConstantSymbol, dispatchEditCommand, EditCommand, EditSequence, EditTokenId, sequence } from '../../models';
 import { MatFabButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuContent, MatMenuTrigger } from '@angular/material/menu';
-import { DisplayFormulaNode } from '../display-formula-node/display-formula-node';
+import { DisplayEditSequence } from '../display-edit-sequence/display-edit-sequence';
 
-type EditCommandDetails<N extends EditCommandName> = Omit<EditCommandOfName<N>, 'name' | 'targetId'>;
+type EditCommandDetails<N extends EditCommand.Name> = Omit<EditCommand.OfName<N>, 'name' | 'targetId'>;
 
 @Component({
   selector: 'app-calculator',
   templateUrl: './calculator.html',
   styleUrl: './calculator.scss',
-  providers: [FormulaContext],
+  providers: [FocusContext],
   imports: [
     MatFabButton,
     MatFabButton,
@@ -33,40 +22,34 @@ type EditCommandDetails<N extends EditCommandName> = Omit<EditCommandOfName<N>, 
     MatMenu,
     MatMenuTrigger,
     MatMenuContent,
-    DisplayFormulaNode,
+    DisplayEditSequence,
   ],
 })
 export class Calculator {
-  readonly context = inject(FormulaContext);
-  readonly formula: HistorySignal<FormulaNode>;
+  readonly widgetService = inject(VeronaWidgetService);
+  readonly focusContext = inject(FocusContext);
 
-  readonly evaluation = signal<null | FormulaEvalResult>(null);
-  readonly evaluationIssue = computed(() => {
-    const evaluation = this.evaluation();
-    if (evaluation === null || evaluation.ok) return null;
-    return evaluation.issue.code;
-  });
-  readonly evaluatedFormula = computed(() => {
-    const evaluation = this.evaluation();
-    if (evaluation === null || !evaluation.ok) return null;
-    return valueToFormulaResult(evaluation.value);
-  });
+  readonly editSequence: HistorySignal<EditSequence>;
+  readonly isNavExpanded = signal<boolean>(false);
+
+  protected readonly CONSTANT_PI = ConstantSymbol.Pi;
+  protected readonly DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 
   constructor() {
-    const blank = hole('blank');
-    this.formula = historySignal<FormulaNode>(blank, { capacity: 50 });
-    this.context.focusOn(blank);
+    const empty = sequence();
+    this.editSequence = historySignal<EditSequence>(empty, { capacity: 100 });
+    this.focusContext.focusOn(empty);
   }
 
   @HostListener('window:keyup', ['$event'])
-  handleKey(event: KeyboardEvent) {
+  handleKeypress(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      this.evaluation.set(evaluateFormula(this.formula()));
+      this.executeEvaluation('exact');
       return;
     }
 
-    const keyCommand = this.commandOfKeyEvent(event);
+    const keyCommand = this.commandOfKeypress(event);
     if (keyCommand) {
       event.preventDefault();
       this.executeCommand(keyCommand);
@@ -74,52 +57,70 @@ export class Calculator {
     }
   }
 
-  handleButton<N extends EditCommandName>(name: N, details: EditCommandDetails<N>): void {
+  handleClose() {
+    const finalState = 'TODO: Serialize state as LaTeX';
+    this.widgetService.sendReturn({ finalState, saveState: true });
+  }
+
+  handleButton<N extends EditCommand.Name>(name: N, details: EditCommandDetails<N>): void {
     const command = this.editCommand(name, details);
     this.executeCommand(command);
   }
 
-  protected currentFocusId(): FormulaNodeId {
-    return this.context.focusId() ?? this.formula().id;
+  toggleNavExpanded() {
+    this.isNavExpanded.update((value) => !value);
   }
 
-  private editCommand<N extends EditCommandName>(name: N, details: EditCommandDetails<N>): EditCommandOfName<N> {
+  executeEvaluation(mode: 'decimal' | 'exact') {
+    //TODO()
+  }
+
+  private currentFocusId(): EditTokenId {
+    return this.focusContext.focusId() ?? this.editSequence().id;
+  }
+
+  private editCommand<N extends EditCommand.Name>(name: N, details: EditCommandDetails<N>): EditCommand.OfName<N> {
     const targetId = this.currentFocusId();
-    return { name, targetId, ...details } as EditCommandOfName<N>;
+    return { name, targetId, ...details } as EditCommand.OfName<N>;
   }
 
   private executeCommand(command: EditCommand) {
-    const { tree, focusId, changed } = dispatchEditCommand(this.formula(), command);
-    //TODO const normalised = changed ? simplifyFormula(tree) : tree
-    const normalised = tree;
-    this.formula.set(normalised, changed); // set formula, only commit to history if something was changed
-    this.context.focus(focusId); // move focus after edit
+    const { tree, focusId, changed } = dispatchEditCommand(this.editSequence(), command);
+    this.editSequence.set(tree, changed); // set formula, only commit to history if something was changed
+    this.focusContext.focus(focusId); // move focus after edit
   }
 
-  private commandOfKeyEvent(event: KeyboardEvent): null | EditCommand {
-    if (/\d/.test(event.key)) {
-      return this.editCommand('typeDigit', { digit: event.key });
-    }
-    if (/[,.]/.test(event.key)) {
-      return this.editCommand('typeDecimalPoint', {});
-    }
-    switch (event.key) {
+  private commandOfKeypress(event: KeyboardEvent): null | EditCommand {
+    const input = event.key;
+    switch (input) {
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+      case '.':
+      case '(':
+      case ')':
       case '+':
-        return this.editCommand('applyBinaryOperator', { operator: 'add' });
       case '-':
-        return this.editCommand('applyBinaryOperator', { operator: 'subtract' });
       case '*':
-        return this.editCommand('applyBinaryOperator', { operator: 'multiply', notation: 'cross' });
       case '/':
-        return this.editCommand('applyBinaryOperator', { operator: 'divide', notation: 'fraction' });
+        return this.editCommand('typeInput', { input });
+      case ',':
+        return this.editCommand('typeInput', { input: '.' });
       case 'ArrowDown':
-        return this.editCommand('move', { direction: 'in' });
+        return this.editCommand('move', { direction: 'down' });
       case 'ArrowUp':
-        return this.editCommand('move', { direction: 'out' });
+        return this.editCommand('move', { direction: 'up' });
       case 'ArrowLeft':
-        return this.editCommand('move', { direction: 'previous' });
+        return this.editCommand('move', { direction: 'left' });
       case 'ArrowRight':
-        return this.editCommand('move', { direction: 'next' });
+        return this.editCommand('move', { direction: 'right' });
       default:
         return null;
     }

@@ -1,9 +1,16 @@
+export * from './types';
+
 export * from './constants.model';
 export * from './rational.model';
 export * from './exact.model';
-export * from './ast.model';
-export * from './ast.factory';
-export * from './ast.eval';
-export * from './ast.traversal';
-export * from './ast.editing';
-export * from './latex.codec';
+
+export * from './formula.ast';
+export * from './formula.factory';
+export * from './formula.eval';
+
+export * from './editing.ast';
+export * from './editing.factory';
+export * from './editing.traversal';
+export * from './editing.command';
+export * from './editing.compile';
+export * from './editing.latex';

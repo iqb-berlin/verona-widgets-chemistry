@@ -40,7 +40,7 @@ export function bigPow10(exponent: number): bigint {
 }
 
 export function floorNthRoot(value: bigint, degree: number): bigint {
-  if (value < 0n) throw new RangeError(`Negative floorNthRoot radicant: ${value}`);
+  if (value < 0n) throw new RangeError(`Negative floorNthRoot radicand: ${value}`);
   if (degree < 1) throw new RangeError(`Non-positive floorNthRoot degree: ${degree}`);
   if (degree === 1 || value === 1n) return value;
 
