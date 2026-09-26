@@ -8,6 +8,7 @@ import { computed, signal, untracked } from '@angular/core';
 export interface HistorySignal<T> extends WritableSignal<T> {
   set(value: T, record?: boolean): void;
   update(fn: (value: T) => T, record?: boolean): void;
+  reset(value: T): void;
 
   undo(): void;
   redo(): void;
@@ -49,6 +50,12 @@ export function historySignal<T>(initialValue: T, options: HistorySignalOptions<
     else updateCurrentValue(fn);
   }
 
+  function reset(value: T) {
+    undoStack.set([]);
+    redoStack.set([]);
+    setCurrentValue(value);
+  }
+
   function undo() {
     const prevUndo = untracked(undoStack);
     if (prevUndo.length === 0) return;
@@ -71,6 +78,7 @@ export function historySignal<T>(initialValue: T, options: HistorySignalOptions<
 
   return Object.assign(currentValue, {
     set,
+    reset,
     update,
     undo,
     redo,

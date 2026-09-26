@@ -1,0 +1,33 @@
+// The caret is a zero-width box between two tokens, scaling with the font size of the
+// sequence it sits in, so that it stays thin and correct inside exponents and fractions
+.caret {
+  color: var(--mat-sys-on-surface);
+  font-weight: bold;
+  animation: caret-blink 1.06s infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    animation: none;
+  }
+}
+
+// An empty sub-sequence shows the blank it still needs
+.placeholder {
+  opacity: 0.4;
+
+  &.edited {
+    opacity: 0.7;
+  }
+}

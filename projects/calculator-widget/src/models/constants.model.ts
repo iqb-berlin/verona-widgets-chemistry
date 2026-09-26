@@ -22,7 +22,7 @@ export const CONSTANTS = {
   [ConstantSymbol.E]: {
     symbol: ConstantSymbol.E,
     unicode: '\u2107',
-    latex: '\\mathtrm{e}',
+    latex: '\\mathrm{e}',
     decimal: '2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274',
   },
   [ConstantSymbol.Tau]: {

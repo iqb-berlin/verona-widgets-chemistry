@@ -599,7 +599,7 @@ function simplifySurd(value: R.Rational, exponent: R.Rational): [coefficient: R.
     return [coefficient, null];
   } else {
     const base: RadicalBase = { kind: 'radical', radicand: ExactValue.fromRational(R.Rational.of(inside)) } as const;
-    const factor: Factor = { base, exponent: R.Rational.of(1n, b) };
+    const factor: Factor = { base, exponent: R.Rational.of(1n, b) } as const;
     return [coefficient, factor];
   }
 }

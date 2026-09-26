@@ -8,7 +8,7 @@
       linebreakmultchar="&times;"
       stretchy="true"
     >
-      <mrow [appEditSequence]="editSequence()" [interactive]="true"></mrow>
+      <mrow [appEditSequence]="editSequence()" [interactive]="true" [topLevel]="true"></mrow>
     </math>
   </div>
 
@@ -24,7 +24,11 @@
   </div>
 
   <div class="nav expand" style="grid-area: nav0">
-    <button matIconButton (click)="toggleNavExpanded()">
+    <button
+      matIconButton
+      (click)="toggleNavExpanded()"
+      [aria-label]="isNavExpanded() ? 'Navigation ausblenden' : 'Navigation einblenden'"
+    >
       @if (isNavExpanded()) {
         <mat-icon>chevron_left</mat-icon>
       } @else {
@@ -34,146 +38,164 @@
   </div>
   @if (isNavExpanded()) {
     <div class="nav" style="grid-area: nav1">
-      <button matFab (click)="handleButton('move', { direction: 'up' })">
+      <button matFab (click)="handleButton('move', { direction: 'up' })" aria-label="Navigation nach oben">
         <mat-icon>keyboard_arrow_up</mat-icon>
       </button>
     </div>
     <div class="nav" style="grid-area: nav2">
-      <button matFab (click)="handleButton('move', { direction: 'down' })">
+      <button matFab (click)="handleButton('move', { direction: 'down' })" aria-label="Navigation nach unten">
         <mat-icon>keyboard_arrow_down</mat-icon>
       </button>
     </div>
     <div class="nav" style="grid-area: nav3">
-      <button matFab (click)="handleButton('move', { direction: 'left' })">
+      <button matFab (click)="handleButton('move', { direction: 'left' })" aria-label="Navigation nach links">
         <mat-icon>keyboard_arrow_left</mat-icon>
       </button>
     </div>
     <div class="nav" style="grid-area: nav4">
-      <button matFab (click)="handleButton('move', { direction: 'right' })">
+      <button matFab (click)="handleButton('move', { direction: 'right' })" aria-label="Navigation nach rechts">
         <mat-icon>keyboard_arrow_right</mat-icon>
       </button>
     </div>
   }
 
   <div class="control" style="grid-area: lpar">
-    <button matFab (click)="handleButton('typeInput', {input:'('})">
-      (
+    <button matFab (click)="handleButton('typeInput', {input:'('})"
+            aria-label="Klammer auf">
+      <span aria-hidden="true">(</span>
     </button>
   </div>
   <div class="control" style="grid-area: rpar">
-    <button matFab (click)="handleButton('typeInput', {input:')'})">
-      )
+    <button matFab (click)="handleButton('typeInput', {input:')'})"
+            aria-label="Klammer zu">
+      <span aria-hidden="true">)</span>
     </button>
   </div>
   <div class="control" style="grid-area: pi">
-    <button matFab style="font-family: serif" (click)="handleButton('typeInput', { input: CONSTANT_PI })">
-      &pi;
+    <button matFab style="font-family: serif" (click)="handleButton('typeInput', { input: CONSTANT_PI })"
+            aria-label="Konstante Pi">
+      <span aria-hidden="true">&pi;</span>
     </button>
   </div>
   <div class="control" style="grid-area: pow">
-    <button matFab (click)="handleButton('applyExponent', { square: false })">
-      x<sup style="font-size: 32px">&squ;</sup>
+    <button matFab (click)="handleButton('applyExponent', { square: false })"
+            aria-label="Exponent">
+      <span aria-hidden="true">x<sup style="font-size: 32px">&squ;</sup></span>
     </button>
   </div>
   <div class="control" style="grid-area: root">
-    <button matFab (click)="handleButton('applyRoot', { sqrt: false })">
-      <sup style="font-size: 32px">&squ;</sup>&radic;x
+    <button matFab (click)="handleButton('applyRoot', { sqrt: false })"
+            aria-label="Wurzel">
+      <span aria-hidden="true"><sup style="font-size: 32px">&squ;</sup>&radic;x</span>
     </button>
   </div>
   <div class="control" style="grid-area: pow2">
-    <button matFab (click)="handleButton('applyExponent', { square: true })">
-      x<sup>2</sup>
+    <button matFab (click)="handleButton('applyExponent', { square: true })"
+            aria-label="Quadrat">
+      <span aria-hidden="true">x<sup>2</sup></span>
     </button>
   </div>
   <div class="control" style="grid-area: sqrt">
-    <button matFab (click)="handleButton('applyRoot', { sqrt: true })">
-      <sup>2</sup>&radic;x
+    <button matFab (click)="handleButton('applyRoot', { sqrt: true })"
+            aria-label="Quadratwurzel">
+      <span aria-hidden="true"><sup>2</sup>&radic;x</span>
     </button>
   </div>
   <div class="control" style="grid-area: frac">
-    <button matFab>
-      <math display="inline" style="math-style: compact">
-        <mfrac>
-          <mrow>&squ;</mrow>
-          <mrow>&#x25A0;</mrow>
-        </mfrac>
-      </math>
+    <button matFab (click)="handleButton('applyFraction', { composite: false })"
+            aria-label="Bruchstrich">
+      <div class="fraction" aria-hidden="true">
+        <span>&#x2B1A;</span>
+        <span>&#x25A0;</span>
+      </div>
     </button>
   </div>
   <div class="control" style="grid-area: comp">
-    <button matFab (click)="handleButton('applyFraction', { composite: true })">
-      <math display="inline" style="math-style: compact; font-size: 80%">
-        <mrow>&squ;</mrow>
-        <mfrac>
-          <mrow>&squ;</mrow>
-          <mrow>&#x25A0;</mrow>
-        </mfrac>
-      </math>
+    <button matFab (click)="handleButton('applyFraction', { composite: true })"
+            aria-label="Ganzzahl mit Bruch">
+      <div class="composite" aria-hidden="true">
+        <span>&#x2B1A;</span>
+        <div class="fraction">
+          <span>&#x2B1A;</span>
+          <span>&#x25A0;</span>
+        </div>
+      </div>
     </button>
   </div>
   <div class="control" style="grid-area: s-d">
-    <button matFab style="font-size: 38px" (click)="handleButton('toggleComposite', { })">
-      S&DoubleLeftRightArrow;D
+    <button matFab style="font-size: 38px" (click)="handleButton('toggleComposite', { })"
+            aria-label="Wechsle Darstellung zwischen Standard und Dezimal"
+    >
+      <span aria-hidden="true">S&DoubleLeftRightArrow;D</span>
     </button>
   </div>
 
-  <div class="control" style="grid-area: c">
-    <button matFab (click)="handleButton('clearAll', { })">
-      C
+  <div class="control clear" style="grid-area: c">
+    <button matFab (click)="handleButton('clearAll', { })"
+            aria-label="Lösche gesamte Eingabe">
+      <span aria-hidden="true">C</span>
     </button>
   </div>
   <div class="control numpad backspace" style="grid-area: back">
-    <button matFab (click)="handleButton('backspace', { })">
+    <button matFab (click)="handleButton('backspace', { })"
+            aria-label="Rücktaste">
       <mat-icon>backspace</mat-icon>
     </button>
   </div>
   @for (d of DIGITS; track d) {
     <div class="control numpad" [style.grid-area]="`num${d}`">
-      <button matFab (click)="handleButton('typeInput', { input: d })">
-        {{ d }}
+      <button matFab (click)="handleButton('typeInput', { input: d })"
+              [aria-label]="`Zahl {d}`">
+        <span aria-hidden="true">{{ d }}</span>
       </button>
     </div>
   }
   <div class="control numpad" style="grid-area: neg">
-    <button matFab (click)="handleButton('toggleNegate', { })">
-      &plus;&frasl;&minus;
+    <button matFab (click)="handleButton('toggleNegate', { })" aria-label="Wechsle Vorzeichen">
+      <span aria-hidden="true">&plus;&frasl;&minus;</span>
     </button>
   </div>
   <div class="control numpad" style="grid-area: dot">
-    <button matFab (click)="handleButton('typeInput', { input: '.' })">
-      &comma;
+    <button matFab (click)="handleButton('typeInput', { input: '.' })" aria-label="Komma">
+      <span aria-hidden="true">&comma;</span>
     </button>
   </div>
 
   <div class="control operation" style="grid-area: add">
-    <button matFab (click)="handleButton('typeInput', { input: '+' })">
-      &plus;
+    <button matFab (click)="handleButton('typeInput', { input: '+' })"
+            aria-label="Addition">
+      <span aria-hidden="true">&plus;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: sub">
-    <button matFab (click)="handleButton('typeInput', { input: '-' })">
-      &minus;
+    <button matFab (click)="handleButton('typeInput', { input: '-' })"
+            aria-label="Subtraktion">
+      <span aria-hidden="true">&minus;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: div">
-    <button matFab (click)="handleButton('typeInput', { input: '/' })">
-      &divide;
+    <button matFab (click)="handleButton('typeInput', { input: '/' })"
+            aria-label="Geteilt durch">
+      <span aria-hidden="true">&divide;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: mul">
-    <button matFab (click)="handleButton('typeInput', { input: '*' })">
-      &times;
+    <button matFab (click)="handleButton('typeInput', { input: '*' })"
+            aria-label="Multiplikation">
+      <span aria-hidden="true">&times;</span>
     </button>
   </div>
 
   <div class="control operation" style="grid-area: eval">
-    <button matFab (click)="executeEvaluation('exact')">
-      &equals;
+    <button matFab (click)="executeEvaluation('exact')"
+            aria-label="Berechnung ausführen">
+      <span aria-hidden="true">&equals;</span>
     </button>
   </div>
   <div class="control" style="grid-area: dec">
-    <button matFab (click)="executeEvaluation('decimal')">
-      &approx;
+    <button matFab (click)="executeEvaluation('decimal')"
+            aria-label="Dezimalrechnung ausführen">
+      <span aria-hidden="true">&approx;</span>
     </button>
   </div>
 </article>

@@ -16,6 +16,8 @@ import {
 } from './formula.factory';
 import { evaluateFormula } from './formula.eval';
 import { ExactValue } from './exact.model';
+import { tokenizeFormula } from './editing.tokenize';
+import { compileToFormula } from './editing.compile';
 
 describe('Formula', () => {
   function doEval(
@@ -37,6 +39,18 @@ describe('Formula', () => {
 
   function isDecimal(formula: FormulaNode, expectedDecimal: string, digits = 12) {
     return () => doEval(formula, expectedDecimal, 'decimal', (value) => value.toDecimalString(digits, true));
+  }
+
+  // Tokenize the formula for editing and compile it back, which must not change its value
+  function isStableWhenEdited(formula: FormulaNode, expectedExact: string) {
+    return () => {
+      const compiled = compileToFormula(tokenizeFormula(formula));
+      if (!compiled.ok) {
+        fail(`Editing ${FormulaNode.asLispString(formula)} does not compile back: ${compiled.issue.code}`);
+        return;
+      }
+      doEval(compiled.value, expectedExact, 'exact after a round trip', (value) => value.toString());
+    };
   }
 
   /* ---- exact rational arithmetic ---- */
@@ -91,4 +105,21 @@ describe('Formula', () => {
 
   it('division by zero', isExact(fraction(int(1), int(0)), 'error:divisionByZero'));
   it('sqrt of negative', isExact(sqrt(subtract(int(1), int(5))), 'error:complexResult'));
+
+  /* ---- round trip through the edit model ---- */
+
+  it('0.1 + 0.2 survives editing', isStableWhenEdited(add(decimal('0.1'), decimal('0.2')), '3/10'));
+  it('1/3 + 1/6 survives editing', isStableWhenEdited(add(fraction(int(1), int(3)), fraction(int(1), int(6))), '1/2'));
+  it('7 - 9 survives editing', isStableWhenEdited(subtract(int(7), int(9)), '-2'));
+  it('sqrt(8) survives editing', isStableWhenEdited(sqrt(int(8)), '2*sqrt(2)'));
+  it('cube root of 27 survives editing', isStableWhenEdited(root(int(27), int(3)), '3'));
+  it('cube root of -8 survives editing', isStableWhenEdited(root(negate(int(8)), int(3)), '-2'));
+  it('2^-2 survives editing', isStableWhenEdited(exponential(int(2), negate(int(2))), '1/4'));
+  it('(1+sqrt(2))^2 survives editing', isStableWhenEdited(square(add(int(1), sqrt(int(2)))), '3+2*sqrt(2)'));
+  it('pi/2 * 2 survives editing', isStableWhenEdited(multiply(fraction(pi(), int(2)), int(2)), 'pi'));
+  it(
+    'mixed symbolic sum survives editing',
+    isStableWhenEdited(add(multiply(int(2), pi()), sqrt(int(3))), '2*pi+sqrt(3)'),
+  );
+  it('2 1/2 survives editing', isStableWhenEdited(twoAndAHalf, '5/2'));
 });

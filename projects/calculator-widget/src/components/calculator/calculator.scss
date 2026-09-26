@@ -18,7 +18,7 @@ math {
 
   grid-template-columns: repeat(6, 1fr);
   grid-template-areas:
-    "hist .... .... .... .... exit"
+    "hist undo redo .... .... exit"
     "form form form form form form"
     "nav0 nav1 nav2 nav3 nav4 nav5"
     "lpar rpar pi   c    back div "
@@ -124,10 +124,37 @@ math {
     --mat-fab-container-color: var(--mat-sys-on-surface);
     --mat-fab-foreground-color: var(--mat-sys-surface);
   }
+
+  .composite {
+    font-size: 90%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .fraction {
+    font-size: 70%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+
+    :first-child {
+      margin-bottom: 4px;
+    }
+
+    :last-child {
+      border-top: 4px solid var(--mat-sys-on-surface);
+    }
+  }
 }
 
-.formula-area ::ng-deep {
-  mrow.focused {
+.formula-area math ::ng-deep {
+  .focused {
     color: var(--mat-sys-on-primary);
     background-color: var(--mat-sys-primary);
     border-radius: 4px;

@@ -13,4 +13,5 @@ export * from './editing.factory';
 export * from './editing.traversal';
 export * from './editing.command';
 export * from './editing.compile';
+export * from './editing.tokenize';
 export * from './editing.latex';

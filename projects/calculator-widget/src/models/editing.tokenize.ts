@@ -15,7 +15,7 @@ function tokenizeNode(node: FormulaNode): EditToken {
     case 'constant':
       return token('constant', { symbol: node.symbol });
     case 'unary':
-      return (operatorToken('negate'), tokenizeChild(node, node.operand));
+      return sequence(operatorToken(node.operator), tokenizeChild(node, node.operand));
     case 'binary':
       return sequence(
         tokenizeChild(node, node.left, true),
@@ -40,12 +40,17 @@ function tokenizeNode(node: FormulaNode): EditToken {
       });
     case 'root':
       return token('root', {
-        degree: tokenizeChild(node, node.degree),
+        // an empty degree denotes the square root, which is written without an index
+        degree: isSquareDegree(node.degree) ? sequence() : tokenizeChild(node, node.degree),
         radicand: tokenizeChild(node, node.radicand),
       });
     default:
       return invalidNode(node);
   }
+}
+
+function isSquareDegree(degree: FormulaNode): boolean {
+  return degree.kind === 'literal' && degree.literal === '2';
 }
 
 function tokenizeChild(parent: FormulaNode, child: FormulaNode, leftHand: boolean = false): EditSequence {

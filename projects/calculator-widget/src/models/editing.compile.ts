@@ -1,6 +1,6 @@
 import { EditSequence, EditToken, EditTokenId } from './editing.ast';
 import { FormulaNode } from './formula.ast';
-import { add, constant, decimal, divide, exponential, multiply, negate, root, subtract } from './formula.factory';
+import { add, constant, decimal, divide, exponential, int, multiply, negate, root, subtract } from './formula.factory';
 import { Result } from './types';
 
 export function compileToFormula(sequence: EditSequence): CompileToFormulaResult {
@@ -68,63 +68,42 @@ class EditSequenceCompiler {
   //#region Syntax tree
 
   private expression(): FormulaNode {
-    let result = this.unary();
+    let result = this.product();
     while (this.matches((t) => t.kind === 'operator' && (t.operator === '+' || t.operator === '-'))) {
       const operator = this.consume() as EditToken.Operator;
-      const next = this.unary();
+      const next = this.product();
       if (operator.operator === '+') result = add(result, next);
       if (operator.operator === '-') result = subtract(result, next);
     }
     return result;
   }
 
-  private unary(): FormulaNode {
-    if (this.matches((t) => t.kind === 'operator' && t.operator === '-')) {
-      this.consume();
-      return negate(this.unary()); // unary -
-    }
-    if (this.matches((t) => t.kind === 'operator' && t.operator === '+')) {
-      this.consume();
-      return this.unary(); // unary +
-    }
-    return this.product();
-  }
-
   private product(): FormulaNode {
-    let result = this.exponential();
+    let result = this.factor();
     while (true) {
       if (this.matches((t) => t.kind === 'operator' && t.operator === '*')) {
         this.consume();
-        result = multiply(result, this.exponential());
+        result = multiply(result, this.factor());
       } else if (this.matches((t) => t.kind === 'operator' && t.operator === '/')) {
         this.consume();
-        result = divide(result, this.exponential());
-      } else if (this.matches((t) => t.kind === 'fraction')) {
-        this.consume();
-        result = divide(result, this.exponential());
+        result = divide(result, this.factor());
       } else if (this.startsAtom()) {
-        result = multiply(result, this.exponential());
+        result = multiply(result, this.atom()); // implicit multiplication, e.g. 2(3+4)
       } else {
         return result;
       }
     }
   }
 
-  private exponential(): FormulaNode {
-    const base = this.atom();
-    if (this.matches((t) => t.kind === 'exponent')) {
+  // An atom, preceded by any number of signs, e.g. the `-3` of `2 * -3`
+  private factor(): FormulaNode {
+    if (this.matches((t) => t.kind === 'operator' && t.operator === '-')) {
       this.consume();
-      return exponential(base, this.argument());
+      return negate(this.factor()); // unary -
     }
-    return base;
-  }
-
-  private argument(): FormulaNode {
-    if (this.matches((t) => t.kind === 'fence' && t.fence === '(')) {
+    if (this.matches((t) => t.kind === 'operator' && t.operator === '+')) {
       this.consume();
-      const node = this.expression();
-      this.consume((t) => t.kind === 'fence' && t.fence === ')');
-      return node;
+      return this.factor(); // unary +
     }
     return this.atom();
   }
@@ -133,15 +112,16 @@ class EditSequenceCompiler {
     const token = this.peek();
     if (token === undefined) return false; // this should never happen
     switch (token.kind) {
+      case 'fence':
+        return token.fence === '('; // a closing fence ends the enclosing atom instead
       case 'literal':
       case 'constant':
-      case 'fence':
       case 'fraction':
       case 'composite':
+      case 'exponent':
       case 'root':
         return true;
       case 'operator':
-      case 'exponent':
       case 'sequence':
         return false;
     }
@@ -159,29 +139,36 @@ class EditSequenceCompiler {
         return expression;
       }
       case 'literal': {
+        this.consume();
         return decimal(token.literal);
       }
       case 'constant': {
+        this.consume();
         return constant(token.symbol);
       }
       case 'fraction': {
+        this.consume();
         const dividend = this.childSequence(token.dividend);
         const divisor = this.childSequence(token.divisor);
         return divide(dividend, divisor);
       }
       case 'composite': {
+        this.consume();
         const integerPart = this.childSequence(token.integerPart);
         const numerator = this.childSequence(token.numerator);
         const denominator = this.childSequence(token.denominator);
         return add(integerPart, divide(numerator, denominator));
       }
       case 'exponent': {
+        this.consume();
         const base = this.childSequence(token.base);
         const exponent = this.childSequence(token.exponent);
         return exponential(base, exponent);
       }
       case 'root': {
-        const degree = this.childSequence(token.degree);
+        this.consume();
+        // an empty degree denotes the square root, which is written without an index
+        const degree = token.degree.items.length === 0 ? int(2) : this.childSequence(token.degree);
         const radicand = this.childSequence(token.radicand);
         return root(radicand, degree);
       }

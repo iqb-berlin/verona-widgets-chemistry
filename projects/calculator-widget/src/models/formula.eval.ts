@@ -82,7 +82,7 @@ export function exactToFormula(value: ExactValue, options: FormatToFormulaOption
   if (ExactValue.isOnePolynomial(value.denominator)) return numerator;
 
   const denominator = polynomialToFormula(value.denominator, options);
-  return divide(numerator, denominator);
+  return fraction(numerator, denominator);
 }
 
 export interface ExactToFormulaOutputOptions extends FormatToFormulaOptions {
@@ -222,7 +222,7 @@ function rationalToFormula(value: Rational, options: FormatToFormulaOptions): Fo
     const remainder = magnitude.subtract(Rational.of(whole));
     node = compositeFraction(int(whole), int(remainder.numerator), int(remainder.denominator));
   } else {
-    node = divide(int(magnitude.numerator), int(magnitude.denominator));
+    node = fraction(int(magnitude.numerator), int(magnitude.denominator));
   }
 
   return value.isNegative ? negate(node) : node;

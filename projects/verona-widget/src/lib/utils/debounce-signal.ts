@@ -1,34 +1,16 @@
-import { effect, signal, Signal, untracked } from '@angular/core';
+import { signal, Signal, untracked } from '@angular/core';
+import { debounceEffect } from './debounce-effect';
 
 export interface DebounceSignal<T> extends Signal<T> {
   /** Duration in milliseconds by which this signal is debounced from its source */
-  readonly debounceMillis: number;
+  readonly debounceMs: number;
 
   /** Cancel the debounce timeout, if one is currently pending */
   cancelPending(): void;
 }
 
-type TimeoutRef = ReturnType<typeof setTimeout>;
-
-export function debounceSignal<T>(input: Signal<T>, debounceMillis: number): DebounceSignal<T> {
+export function debounceSignal<T>(input: Signal<T>, debounceMs: number): DebounceSignal<T> {
   const debounced = signal(untracked(input));
-
-  let timeout: undefined | TimeoutRef;
-  effect((onCleanup) => {
-    const value = input();
-    timeout = setTimeout(() => debounced.set(value), debounceMillis);
-    onCleanup(() => {
-      clearTimeout(timeout);
-      timeout = undefined;
-    });
-  });
-
-  return Object.assign(debounced, {
-    debounceMillis,
-    cancelPending() {
-      if (timeout !== undefined) {
-        clearTimeout(timeout);
-      }
-    },
-  });
+  const { cancelPending } = debounceEffect(input, debounced.set, { debounceMs });
+  return Object.assign(debounced, { debounceMs, cancelPending });
 }

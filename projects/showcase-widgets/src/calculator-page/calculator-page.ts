@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   provideShowcaseVeronaWidgetService,
   ShowcaseVeronaWidgetConfig,
@@ -26,4 +26,8 @@ export class CalculatorPage {
   readonly service = inject(ShowcaseVeronaWidgetService);
 
   readonly stateData = this.service.stateData;
+
+  constructor() {
+    this.stateData.set('-\\frac{4}{2}+\\sqrt{{\\frac{4}{2}}^{2}-2}\n');
+  }
 }
