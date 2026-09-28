@@ -1,4 +1,5 @@
 import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { MatActionList, MatListItem } from '@angular/material/list';
 import { MatIcon } from '@angular/material/icon';
 import { MatFabButton, MatIconButton } from '@angular/material/button';
 import { MatMenu, MatMenuContent, MatMenuTrigger } from '@angular/material/menu';
@@ -21,6 +22,8 @@ import { mathToPng } from '../../services/math-to-png';
     MatMenuTrigger,
     MatMenuContent,
     DisplayEditSequence,
+    MatListItem,
+    MatActionList,
   ],
 })
 export class Calculator implements OnInit, JournalImageSource {

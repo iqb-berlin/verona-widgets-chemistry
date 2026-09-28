@@ -23,8 +23,7 @@ export type EditCommand =
   | EditCommand.ApplyExponent
   | EditCommand.ApplyRoot
   | EditCommand.ApplyFraction
-  | EditCommand.ToggleNegate
-  | EditCommand.ToggleComposite;
+  | EditCommand.ToggleNegate;
 
 export namespace EditCommand {
   interface Base<N extends string> {
@@ -67,8 +66,6 @@ export namespace EditCommand {
 
   export interface ToggleNegate extends Base<'toggleNegate'> {}
 
-  export interface ToggleComposite extends Base<'toggleComposite'> {}
-
   export type Name = EditCommand['name'];
   export type OfName<N extends Name> = Extract<EditCommand, { readonly name: N }>;
 }
@@ -87,12 +84,7 @@ const COMMAND_DISPATCH: EditCommandDispatch = {
   applyRoot,
   applyFraction,
   toggleNegate,
-  toggleComposite,
 } as const;
-
-// Sequence of digits, optionally with one decimal point, as typed into a literal token
-const DIGITS_PATTERN = /^\d+$/;
-const ZERO_PATTERN = /^0+(\.0*)?$/;
 
 //#region Command handlers
 
@@ -197,16 +189,6 @@ function toggleNegate(tree: EditSequence, { targetId }: EditCommand.ToggleNegate
   const sign = token('operator', { operator: '-' });
   const negated = EditTraversal.spliceSequence(tree, host.id, start, 0, [sign]);
   return edited(negated, keptFocusId ?? sign.id);
-}
-
-function toggleComposite(tree: EditSequence, { targetId }: EditCommand.ToggleComposite): EditResult {
-  const caret = EditTraversal.caretAt(tree, targetId);
-  const target = fractionAt(caret);
-  if (target === null) return unchanged(tree, targetId);
-
-  const replacement = target.kind === 'fraction' ? asCompositeToken(target) : asFractionToken(target);
-  if (replacement === null) return unchanged(tree, targetId); // conversion would drop the integer part
-  return changed(tree, target.id, focusInside(replacement), replacement);
 }
 
 //#endregion
@@ -351,83 +333,6 @@ function isFenced(content: ReadonlyArray<EditToken>): boolean {
 
 function fenced(content: ReadonlyArray<EditToken>): ReadonlyArray<EditToken> {
   return [token('fence', { fence: '(' }), ...content, token('fence', { fence: ')' })];
-}
-
-//#endregion
-//#region Fraction notation
-
-function fractionAt(caret: EditCaret): null | EditToken.Fraction | EditToken.Composite {
-  const before = EditTraversal.caretBefore(caret);
-  if (isFractionToken(before)) return before;
-
-  const after = EditTraversal.caretAfter(caret);
-  if (isFractionToken(after)) return after;
-
-  for (const ancestor of EditTraversal.caretAncestors(caret)) {
-    if (isFractionToken(ancestor)) return ancestor;
-  }
-  return null;
-}
-
-function isFractionToken(item: null | EditToken): item is EditToken.Fraction | EditToken.Composite {
-  return item !== null && (item.kind === 'fraction' || item.kind === 'composite');
-}
-
-// Write a fraction as a composite (mixed) fraction, e.g. `7/3` as `2 1/3`
-function asCompositeToken(fraction: EditToken.Fraction): EditToken.Composite {
-  const dividend = integerValueOf(fraction.dividend);
-  const divisor = integerValueOf(fraction.divisor);
-
-  if (dividend !== null && divisor !== null && divisor > 0n) {
-    return token('composite', {
-      integerPart: sequence(literalToken(dividend / divisor)),
-      numerator: sequence(literalToken(dividend % divisor)),
-      denominator: sequence(literalToken(divisor)),
-    });
-  }
-
-  // not a plain fraction of integers: switch the notation only, `n/d` becomes `0 n/d`
-  return token('composite', {
-    integerPart: sequence(literalToken(0n)),
-    numerator: fraction.dividend,
-    denominator: fraction.divisor,
-  });
-}
-
-// Write a composite (mixed) fraction as a true fraction, e.g. `2 1/3` as `7/3`;
-// `null` when that would require arithmetic this editing model cannot do
-function asFractionToken(composite: EditToken.Composite): null | EditToken.Fraction {
-  const integerPart = integerValueOf(composite.integerPart);
-  const numerator = integerValueOf(composite.numerator);
-  const denominator = integerValueOf(composite.denominator);
-
-  if (integerPart !== null && numerator !== null && denominator !== null && denominator > 0n) {
-    return token('fraction', {
-      dividend: sequence(literalToken(integerPart * denominator + numerator)),
-      divisor: sequence(literalToken(denominator)),
-    });
-  }
-
-  // without an integer part the notation can be switched as it is
-  if (isBlankOrZero(composite.integerPart)) {
-    return token('fraction', { dividend: composite.numerator, divisor: composite.denominator });
-  }
-  return null;
-}
-
-// Value of a sequence holding nothing but one non-negative integer literal
-function integerValueOf(part: EditSequence): null | bigint {
-  if (part.items.length !== 1) return null;
-  const item = part.items[0];
-  if (item.kind !== 'literal' || !DIGITS_PATTERN.test(item.literal)) return null;
-  return BigInt(item.literal);
-}
-
-function isBlankOrZero(part: EditSequence): boolean {
-  if (part.items.length === 0) return true;
-  if (part.items.length !== 1) return false;
-  const item = part.items[0];
-  return item.kind === 'literal' && ZERO_PATTERN.test(item.literal);
 }
 
 //#endregion

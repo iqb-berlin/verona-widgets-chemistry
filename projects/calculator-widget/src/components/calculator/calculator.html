@@ -34,7 +34,8 @@
   </div>
 
   <div style="grid-area: hist">
-    <button matIconButton [matMenuTriggerFor]="historyMenu" title="Verlauf">
+    <button matIconButton [matMenuTriggerFor]="historyMenu" [disabled]="service.historyEntries().length === 0"
+            title="Verlauf">
       <mat-icon>history</mat-icon>
     </button>
   </div>
@@ -155,13 +156,6 @@
       </div>
     </button>
   </div>
-  <div class="control operator" style="grid-area: s-d">
-    <button matFab style="font-size: 38px" (click)="service.handleButton('toggleComposite', { })"
-            title="Wechsle Darstellung zwischen Standard und Dezimal"
-    >
-      <span aria-hidden="true">S&DoubleLeftRightArrow;D</span>
-    </button>
-  </div>
 
   <div class="control clear" style="grid-area: c">
     <button matFab (click)="service.handleButton('clearAll', { })"
@@ -220,7 +214,7 @@
   </div>
 
   <div class="control operation" style="grid-area: eval">
-    <button matFab (click)="service.handleEvaluation('exact')"
+    <button matFab (click)="service.handleEvaluation('rational')"
             title="Berechnung ausführen">
       <span aria-hidden="true">&equals;</span>
     </button>
@@ -231,10 +225,27 @@
       <span aria-hidden="true">&approx;</span>
     </button>
   </div>
+  <div class="control operator" style="grid-area: s-d">
+    <button matFab style="font-size: 38px" (click)="service.toggleEvaluationMode()"
+            title="Wechsel zwischen Standard und Dezimal"
+    >
+      <span aria-hidden="true">S&DoubleLeftRightArrow;D</span>
+    </button>
+  </div>
 </article>
 
-<mat-menu #historyMenu="matMenu" [hasBackdrop]="true">
+<mat-menu #historyMenu="matMenu" class="wide-menu" [hasBackdrop]="true">
   <ng-template matMenuContent>
-    <div>HISTORY GOES HERE</div>
+    <mat-action-list>
+      @for (entry of service.historyEntries(); track entry.id) {
+        <button mat-list-item [title]="`Eintrag #${$index}`" (click)="service.restoreFromHistory(entry)">
+          <math display="inline">
+            <mrow [appEditSequence]="entry.input" [topLevel]="true"></mrow>
+            <mo>=</mo>
+            <mrow [appEditSequence]="entry.output" [topLevel]="true"></mrow>
+          </math>
+        </button>
+      }
+    </mat-action-list>
   </ng-template>
 </mat-menu>

@@ -58,11 +58,11 @@ class EditSequenceCompiler {
   }
 
   private entrypoint(): FormulaNode {
-    if (this.sequence.items.length === 0) {
-      this.raiseIssue('empty');
-    }
-
     return tokenScope(this.sequence, () => {
+      if (this.sequence.items.length === 0) {
+        this.raiseIssue('empty');
+      }
+
       const node = this.expression();
       if (this.index < this.sequence.items.length) {
         const unexpected = this.peek()!;

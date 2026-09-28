@@ -553,49 +553,6 @@ describe('Editing', () => {
   });
 
   //#endregion
-  //#region Fraction notation
-
-  it('writes a fraction of integers as a mixed number and back', () => {
-    const session = edit().type('7').run('applyFraction', { composite: false }).type('2');
-
-    expect(session.run('toggleComposite', {}).display).toBe('[3&1/2]|');
-    expect(session.formula).toBe('(add 3 (divide 1 2))');
-    expect(session.run('toggleComposite', {}).display).toBe('[7/2]|');
-    expect(session.formula).toBe('(divide 7 2)');
-  });
-
-  it('toggles the fraction the caret sits inside', () => {
-    const session = edit().type('9').run('applyFraction', { composite: false }).type('4');
-
-    expect(session.display).toBe('[9/4|]'); // the caret is in the divisor
-    expect(session.run('toggleComposite', {}).display).toBe('[2&1/4]|');
-  });
-
-  it('switches the notation only when the parts are no plain integers', () => {
-    const session = edit().type('1+2').run('applyFraction', { composite: false }).type('3');
-
-    expect(session.display).toBe('1+[2/3|]');
-    expect(session.run('toggleComposite', {}).display).toBe('1+[0&2/3]|'); // an integer part of zero
-    expect(session.run('toggleComposite', {}).display).toBe('1+[2/3]|');
-  });
-
-  it('keeps a composite fraction which cannot be written as a true fraction', () => {
-    const session = edit().run('applyFraction', { composite: true });
-    session.type('1+1').move('right').type('2').move('down').type('3'); // a sum as the integer part
-
-    expect(session.display).toBe('[1+1&2/3|]');
-    expect(session.run('toggleComposite', {}).display).toBe('[1+1&2/3|]');
-    expect(session.lastChanged).toBeFalse(); // rather than dropping the integer part
-  });
-
-  it('does nothing without a fraction at the caret', () => {
-    const session = edit().type('12');
-
-    expect(session.run('toggleComposite', {}).display).toBe('12|');
-    expect(session.lastChanged).toBeFalse();
-  });
-
-  //#endregion
   //#region Deleting
 
   it('shortens a literal character by character', () => {
