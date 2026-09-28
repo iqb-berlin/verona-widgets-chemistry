@@ -14,14 +14,14 @@
 
   grid-template-columns: repeat(6, 1fr);
   grid-template-areas:
-    "hist undo redo .... .... exit"
-    "form form form form form form"
-    "nav0 nav1 nav2 nav3 nav4 nav5"
-    "lpar rpar pi   c    back div "
-    "pow  root num7 num8 num9 mul "
-    "pow2 sqrt num4 num5 num6 sub "
-    "comp frac num1 num2 num3 add "
-    "s-d  dec  neg  num0 dot  eval";
+    'hist undo redo .... .... exit'
+    'form form form form form form'
+    'nav0 nav1 nav2 nav3 nav4 nav5'
+    'lpar rpar pi   c    back div '
+    'pow  root num7 num8 num9 mul '
+    'pow2 sqrt num4 num5 num6 sub '
+    'comp frac num1 num2 num3 add '
+    's-d  dec  neg  num0 dot  eval';
 }
 
 .formula-area {
@@ -49,7 +49,7 @@
   }
 
   math {
-    padding: .25rem;
+    padding: 0.25rem;
   }
 
   .error-message {
@@ -74,7 +74,8 @@
   --mat-icon-color: var(--mat-sys-error);
 }
 
-.history, .close {
+.history,
+.close {
   display: flex;
   align-items: center;
   justify-content: center;

@@ -225,9 +225,31 @@ export class CalculatorService implements OnDestroy {
     this.evaluationResult.set(Result.ok(output));
   }
 
+  undo(): void {
+    this.editSequence.undo();
+    this.recoverCaret();
+  }
+
+  redo(): void {
+    this.editSequence.redo();
+    this.recoverCaret();
+  }
+
   restoreFromHistory(entry: HistoryEntry) {
     this.editSequence.set(entry.input);
     this.caretTokenId.set(lastTokenIdOf(entry.input));
+    this.evaluationResult.set(null);
+  }
+
+  /**
+   * Put the caret back where it can be seen after the input was exchanged: the token it sat
+   * on may be gone with the input it belonged to, and so is any result of that input.
+   */
+  private recoverCaret(): void {
+    const input = this.editSequence();
+    const caretTokenId = this.caretTokenId();
+    const stillThere = caretTokenId !== null && EditTraversal.containsToken(input, caretTokenId);
+    this.caretTokenId.set(stillThere ? caretTokenId : lastTokenIdOf(input));
     this.evaluationResult.set(null);
   }
 
@@ -256,8 +278,8 @@ export class CalculatorService implements OnDestroy {
   }
 
   handleKey(event: KeyboardEvent): void {
-    if (event.ctrlKey || event.altKey) {
-      return; // ignore keypresses with modifiers
+    if (event.ctrlKey || event.altKey || event.metaKey) {
+      return; // ignore keys with modifiers
     }
     if (event.key === 'Enter') {
       event.preventDefault();

@@ -26,5 +26,5 @@ export const routes: Routes = [
   {
     path: ShowcasePath.Calculator,
     component: CalculatorPage,
-  }
+  },
 ];

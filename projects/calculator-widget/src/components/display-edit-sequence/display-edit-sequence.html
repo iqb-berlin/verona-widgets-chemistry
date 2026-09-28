@@ -33,26 +33,22 @@
         <!-- ILLEGAL NESTED SEQUENCE -->
       }
       @case ('literal') {
-        <math:mn [style.cursor]="cursorStyle()" [class.problem]="isProblem"
-                 (click)="handleClick(token, index, $event)">
+        <math:mn [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
           {{ token.literal.replace('.', ',') }}
         </math:mn>
       }
       @case ('constant') {
-        <math:mi [style.cursor]="cursorStyle()" [class.problem]="isProblem"
-                 (click)="handleClick(token, index, $event)">
+        <math:mi [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
           {{ CONSTANTS[token.symbol].unicode }}
         </math:mi>
       }
       @case ('fence') {
-        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem"
-                 (click)="handleClick(token, index, $event)">
+        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
           {{ token.fence }}
         </math:mo>
       }
       @case ('operator') {
-        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem"
-                 (click)="handleClick(token, index, $event)">
+        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
           {{ OPERATOR_SYMBOLS[token.operator] }}
         </math:mo>
       }

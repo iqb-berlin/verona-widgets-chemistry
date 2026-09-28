@@ -16,7 +16,9 @@
     <ul>
       @for (item of decodedStateData(); track $index) {
         <li>
-          <div>LaTeX: <code>$$ {{ item.asLatex }} $$</code></div>
+          <div>
+            LaTeX: <code>$$ {{ item.asLatex }} $$</code>
+          </div>
           <div>
             <img [alt]="item.asLatex" [src]="item.asImage" />
           </div>

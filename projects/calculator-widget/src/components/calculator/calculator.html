@@ -7,7 +7,7 @@
       stretchy="true"
       linebreakstyle="after"
       linebreakmultchar="&times;"
-      style="font-family: sans-serif; text-align: right;"
+      style="font-family: sans-serif; text-align: right"
       aria-label="Eingabebereich"
     >
       <mtable>
@@ -22,7 +22,7 @@
           <mtr>
             <mtd>
               @if (result.ok) {
-                <mrow style="font-size: 150%;" [appEditSequence]="result.value.outputSequence"></mrow>
+                <mrow style="font-size: 150%" [appEditSequence]="result.value.outputSequence"></mrow>
               } @else {
                 <merror class="error-message">{{ result.issue.message }}</merror>
               }
@@ -34,20 +34,27 @@
   </div>
 
   <div style="grid-area: hist">
-    <button matIconButton [matMenuTriggerFor]="historyMenu" [disabled]="service.historyEntries().length === 0"
-            title="Verlauf">
+    <button
+      matIconButton
+      [matMenuTriggerFor]="historyMenu"
+      [disabled]="service.historyEntries().length === 0"
+      title="Verlauf"
+    >
       <mat-icon>history</mat-icon>
     </button>
   </div>
   <div style="grid-area: undo">
-    <button matIconButton (click)="service.editSequence.undo()" [disabled]="!service.editSequence.undoAvailable()"
-            title="Zurück">
+    <button matIconButton (click)="service.undo()" [disabled]="!service.editSequence.undoAvailable()" title="Zurück">
       <mat-icon>undo</mat-icon>
     </button>
   </div>
   <div style="grid-area: redo">
-    <button matIconButton (click)="service.editSequence.redo()" [disabled]="!service.editSequence.redoAvailable()"
-            title="Wiederholen">
+    <button
+      matIconButton
+      (click)="service.redo()"
+      [disabled]="!service.editSequence.redoAvailable()"
+      title="Wiederholen"
+    >
       <mat-icon>redo</mat-icon>
     </button>
   </div>
@@ -94,50 +101,47 @@
   }
 
   <div class="control operator" style="grid-area: lpar">
-    <button matFab (click)="service.handleButton('typeInput', {input:'('})"
-            title="Klammer auf">
+    <button matFab (click)="service.handleButton('typeInput', { input: '(' })" title="Klammer auf">
       <span aria-hidden="true">(</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: rpar">
-    <button matFab (click)="service.handleButton('typeInput', {input:')'})"
-            title="Klammer zu">
+    <button matFab (click)="service.handleButton('typeInput', { input: ')' })" title="Klammer zu">
       <span aria-hidden="true">)</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: pi">
-    <button matFab style="font-family: serif" (click)="service.handleButton('typeInput', { input: CONSTANT_PI })"
-            title="Konstante Pi">
+    <button
+      matFab
+      style="font-family: serif"
+      (click)="service.handleButton('typeInput', { input: CONSTANT_PI })"
+      title="Konstante Pi"
+    >
       <span aria-hidden="true">&pi;</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: pow">
-    <button matFab (click)="service.handleButton('applyExponent', { square: false })"
-            title="Exponent">
+    <button matFab (click)="service.handleButton('applyExponent', { square: false })" title="Exponent">
       <span aria-hidden="true">x<sup style="font-size: 32px">&squ;</sup></span>
     </button>
   </div>
   <div class="control operator" style="grid-area: root">
-    <button matFab (click)="service.handleButton('applyRoot', { sqrt: false })"
-            title="Wurzel">
+    <button matFab (click)="service.handleButton('applyRoot', { sqrt: false })" title="Wurzel">
       <span aria-hidden="true"><sup style="font-size: 32px">&squ;</sup>&radic;x</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: pow2">
-    <button matFab (click)="service.handleButton('applyExponent', { square: true })"
-            title="Quadrat">
+    <button matFab (click)="service.handleButton('applyExponent', { square: true })" title="Quadrat">
       <span aria-hidden="true">x<sup>2</sup></span>
     </button>
   </div>
   <div class="control operator" style="grid-area: sqrt">
-    <button matFab (click)="service.handleButton('applyRoot', { sqrt: true })"
-            title="Quadratwurzel">
+    <button matFab (click)="service.handleButton('applyRoot', { sqrt: true })" title="Quadratwurzel">
       <span aria-hidden="true"><sup>2</sup>&radic;x</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: frac">
-    <button matFab (click)="service.handleButton('applyFraction', { composite: false })"
-            title="Bruchstrich">
+    <button matFab (click)="service.handleButton('applyFraction', { composite: false })" title="Bruchstrich">
       <div class="fraction" aria-hidden="true">
         <span>&#x2B1A;</span>
         <span>&#x25A0;</span>
@@ -145,8 +149,7 @@
     </button>
   </div>
   <div class="control operator" style="grid-area: comp">
-    <button matFab (click)="service.handleButton('applyFraction', { composite: true })"
-            title="Ganzzahl mit Bruch">
+    <button matFab (click)="service.handleButton('applyFraction', { composite: true })" title="Ganzzahl mit Bruch">
       <div class="composite" aria-hidden="true">
         <span>&#x2B1A;</span>
         <div class="fraction">
@@ -158,27 +161,24 @@
   </div>
 
   <div class="control clear" style="grid-area: c">
-    <button matFab (click)="service.handleButton('clearAll', { })"
-            title="Lösche gesamte Eingabe">
+    <button matFab (click)="service.handleButton('clearAll', {})" title="Lösche gesamte Eingabe">
       <span aria-hidden="true">C</span>
     </button>
   </div>
   <div class="control numpad backspace" style="grid-area: back">
-    <button matFab (click)="service.handleButton('backspace', { })"
-            title="Rücktaste">
+    <button matFab (click)="service.handleButton('backspace', {})" title="Rücktaste">
       <mat-icon>backspace</mat-icon>
     </button>
   </div>
   @for (d of DIGITS; track d) {
     <div class="control numpad" [style.grid-area]="`num${d}`">
-      <button matFab (click)="service.handleButton('typeInput', { input: d })"
-              [title]="`Zahl ${d}`">
+      <button matFab (click)="service.handleButton('typeInput', { input: d })" [title]="`Zahl ${d}`">
         <span aria-hidden="true">{{ d }}</span>
       </button>
     </div>
   }
   <div class="control numpad" style="grid-area: neg">
-    <button matFab (click)="service.handleButton('toggleNegate', { })" title="Wechsle Vorzeichen">
+    <button matFab (click)="service.handleButton('toggleNegate', {})" title="Wechsle Vorzeichen">
       <span aria-hidden="true">&plus;&frasl;&minus;</span>
     </button>
   </div>
@@ -189,45 +189,42 @@
   </div>
 
   <div class="control operation" style="grid-area: add">
-    <button matFab (click)="service.handleButton('typeInput', { input: '+' })"
-            title="Addition">
+    <button matFab (click)="service.handleButton('typeInput', { input: '+' })" title="Addition">
       <span aria-hidden="true">&plus;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: sub">
-    <button matFab (click)="service.handleButton('typeInput', { input: '-' })"
-            title="Subtraktion">
+    <button matFab (click)="service.handleButton('typeInput', { input: '-' })" title="Subtraktion">
       <span aria-hidden="true">&minus;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: div">
-    <button matFab (click)="service.handleButton('typeInput', { input: '/' })"
-            title="Geteilt durch">
+    <button matFab (click)="service.handleButton('typeInput', { input: '/' })" title="Geteilt durch">
       <span aria-hidden="true">&divide;</span>
     </button>
   </div>
   <div class="control operation" style="grid-area: mul">
-    <button matFab (click)="service.handleButton('typeInput', { input: '*' })"
-            title="Multiplikation">
+    <button matFab (click)="service.handleButton('typeInput', { input: '*' })" title="Multiplikation">
       <span aria-hidden="true">&times;</span>
     </button>
   </div>
 
   <div class="control operation" style="grid-area: eval">
-    <button matFab (click)="service.handleEvaluation('rational')"
-            title="Berechnung ausführen">
+    <button matFab (click)="service.handleEvaluation('rational')" title="Berechnung ausführen">
       <span aria-hidden="true">&equals;</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: dec">
-    <button matFab (click)="service.handleEvaluation('decimal')"
-            title="Dezimalrechnung ausführen">
+    <button matFab (click)="service.handleEvaluation('decimal')" title="Dezimalrechnung ausführen">
       <span aria-hidden="true">&approx;</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: s-d">
-    <button matFab style="font-size: 38px" (click)="service.toggleEvaluationMode()"
-            title="Wechsel zwischen Standard und Dezimal"
+    <button
+      matFab
+      style="font-size: 38px"
+      (click)="service.toggleEvaluationMode()"
+      title="Wechsel zwischen Standard und Dezimal"
     >
       <span aria-hidden="true">S&DoubleLeftRightArrow;D</span>
     </button>

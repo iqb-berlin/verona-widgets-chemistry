@@ -70,11 +70,6 @@ export async function mathToPng(el: Element, options: MathToPngOptions = {}): Pr
   clone.setAttribute('style', clone.getAttribute('style') + ';margin:0');
   clone.setAttribute('display', 'inline');
 
-  const xmlSerializer = new XMLSerializer();
-
-  // XMLSerializer emits xmlns="http://www.w3.org/1998/Math/MathML" for us.
-  const mathXml = xmlSerializer.serializeToString(clone);
-
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', pw.toString());
   svg.setAttribute('height', ph.toString());
@@ -93,9 +88,10 @@ export async function mathToPng(el: Element, options: MathToPngOptions = {}): Pr
   foreignDiv.appendChild(clone);
   foreignObject.appendChild(foreignDiv);
 
-  const img = new Image();
+  const xmlSerializer = new XMLSerializer();
   const svgXml = xmlSerializer.serializeToString(svg);
-  //console.log('SVG XML =', svgXml);
+
+  const img = new Image();
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgXml)}`;
   await img.decode();
 
