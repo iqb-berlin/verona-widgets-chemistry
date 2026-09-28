@@ -6,6 +6,13 @@
   animation: caret-blink 1.06s infinite;
 }
 
+:host.problem, .problem {
+  color: var(--mat-sys-error);
+  border: 4px solid var(--mat-sys-error);
+  border-radius: var(--mat-sys-corner-small);
+  padding: 2px;
+}
+
 @keyframes caret-blink {
   0%,
   49% {

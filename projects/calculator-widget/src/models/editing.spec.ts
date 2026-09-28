@@ -1,4 +1,4 @@
-import { EditSequence, EditSlot, EditToken, EditTokenId } from './editing.ast';
+import { EditSequence, EditSlot, EditToken, EditTokenColumn, EditTokenId } from './editing.ast';
 import { resetTokenIdGenerator, sequence, token } from './editing.factory';
 import { EditTraversal } from './editing.traversal';
 import { dispatchEditCommand, EditCommand } from './editing.command';
@@ -278,9 +278,9 @@ describe('Editing', () => {
     const fraction = token('fraction', { dividend: sequence(), divisor: sequence() });
     const exponent = token('exponent', { base: sequence(), exponent: sequence() });
 
-    expect(EditTraversal.columnsOf(fraction)).toEqual(['dividend', 'divisor']);
-    expect(EditTraversal.columnsOf(exponent)).toEqual(['exponent', 'base']); // the exponent sits on top
-    expect(EditTraversal.columnsOf(literal('1'))).toEqual([]);
+    expect(EditTokenColumn.columnsOf(fraction)).toEqual(['dividend', 'divisor']);
+    expect(EditTokenColumn.columnsOf(exponent)).toEqual(['exponent', 'base']); // the exponent sits on top
+    expect(EditTokenColumn.columnsOf(literal('1'))).toEqual([]);
     expect(EditSlot.slotsOf(exponent)).toEqual(['base', 'exponent']); // editing order, left to right
   });
 

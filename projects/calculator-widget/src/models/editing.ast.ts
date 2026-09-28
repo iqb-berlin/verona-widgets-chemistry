@@ -119,3 +119,27 @@ export namespace EditSlot {
     return slotsOf(token).length === 0;
   }
 }
+
+export type EditTokenColumn<K extends EditToken.Kind> = ReadonlyArray<EditSlot.SlotOf<K>>;
+type EditTokenColumnsDictionary = { readonly [K in EditToken.Kind]: EditTokenColumn<K> };
+
+// Declare which slots of a token are stacked vertically on screen, ordered top to bottom.
+// Slots left out here are not reachable by vertical caret movement, only by horizontal movement.
+const COLUMNS = {
+  sequence: [],
+  fence: [],
+  literal: [],
+  constant: [],
+  operator: [],
+  fraction: ['dividend', 'divisor'],
+  composite: ['numerator', 'denominator'], // the integer part sits beside the fraction, not above it
+  exponent: ['exponent', 'base'],
+  root: ['degree', 'radicand'],
+} as const satisfies EditTokenColumnsDictionary;
+
+export namespace EditTokenColumn {
+  // Slots of a token which are stacked vertically on screen, ordered top to bottom
+  export function columnsOf(token: EditToken): ReadonlyArray<EditSlot> {
+    return COLUMNS[token.kind];
+  }
+}

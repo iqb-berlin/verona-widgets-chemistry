@@ -17,6 +17,7 @@ import {
 } from './formula.factory';
 import { EnumLiteral, Result } from './types';
 import { bigIsEven } from './utils';
+import { EditTokenId } from './editing.ast';
 
 //#region Evaluation public API
 
@@ -25,6 +26,7 @@ export type FormulaEvalIssueCode = EnumLiteral<ExactErrorCode> | EnumLiteral<Rat
 export interface FormulaEvalIssue {
   readonly code: FormulaEvalIssueCode;
   readonly detail: string;
+  readonly sourceTokenId: null | EditTokenId;
 }
 
 export type FormulaEvalResult = Result<ExactValue, FormulaEvalIssue>;
@@ -113,7 +115,7 @@ export function exactToFormulaOutput(
 //#region Evaluation internals
 //#region Evaluate formula node to exact value
 
-function fail(code: FormulaEvalIssueCode, message?: unknown): never {
+function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, message?: unknown): never {
   const detail =
     message === undefined
       ? ''
@@ -123,18 +125,22 @@ function fail(code: FormulaEvalIssueCode, message?: unknown): never {
           ? message.message
           : JSON.stringify(message);
 
-  throw new FormulaEvalError({ code, detail });
+  throw new FormulaEvalError({ code, detail, sourceTokenId });
 }
 
 function errorIssue(error: RationalError | ExactError): FormulaEvalIssue {
-  return { code: error.code, detail: error.message };
+  return {
+    code: error.code,
+    detail: error.message,
+    sourceTokenId: null,
+  };
 }
 
 function evaluateNode(node: FormulaNode): ExactValue {
   switch (node.kind) {
     case 'literal':
       if (node.literal.length === 0) {
-        return fail('syntaxError', 'Empty number');
+        return fail('syntaxError', node.sourceTokenId, 'Leere Zahl');
       } else {
         return ExactValue.fromRational(Rational.parse(node.literal));
       }
@@ -146,7 +152,7 @@ function evaluateNode(node: FormulaNode): ExactValue {
         case 'negate':
           return operand.negate();
         default:
-          return fail('syntaxError', node satisfies never);
+          return fail('syntaxError', null, node satisfies never);
       }
     }
     case 'binary': {
@@ -160,10 +166,10 @@ function evaluateNode(node: FormulaNode): ExactValue {
         case 'multiply':
           return left.multiply(right);
         case 'divide':
-          if (right.isZero) return fail('divisionByZero');
+          if (right.isZero) return fail('divisionByZero', node.right.sourceTokenId);
           return left.divide(right);
         default:
-          return fail('syntaxError', node satisfies never);
+          return fail('syntaxError', null, node satisfies never);
       }
     }
     case 'fraction': {
@@ -175,7 +181,7 @@ function evaluateNode(node: FormulaNode): ExactValue {
       const integerPart = evaluateNode(node.integerPart);
       const numerator = evaluateNode(node.numerator);
       const denominator = evaluateNode(node.denominator);
-      if (denominator.isZero) return fail('divisionByZero');
+      if (denominator.isZero) return fail('divisionByZero', node.denominator.sourceTokenId);
       const fractionalPart = numerator.divide(denominator);
       return integerPart.isNegative ? integerPart.subtract(fractionalPart) : integerPart.add(fractionalPart);
     }
@@ -183,11 +189,13 @@ function evaluateNode(node: FormulaNode): ExactValue {
       const base = evaluateNode(node.base);
       const exponent = evaluateNode(node.exponent);
       const rationalExponent = exponent.asRational();
-      if (rationalExponent === null) return fail('unsupported', 'Exponent must be a rational number');
+      if (rationalExponent === null) {
+        return fail('unsupported', node.exponent.sourceTokenId, 'Exponent muss eine rationale Zahl sein');
+      }
       if (base.isZero && rationalExponent.sign() <= 0) {
         const zeroExponent = rationalExponent.isZero;
-        if (zeroExponent) return fail('indeterminate', 'Zero to the power of zero');
-        return fail('divisionByZero', 'Zero raised to a negative power');
+        if (zeroExponent) return fail('indeterminate', node.sourceTokenId, 'Null hoch null ist unbestimmt');
+        return fail('divisionByZero', node.exponent.sourceTokenId, 'Null hoch negativer Zahl ist unbestimmt');
       }
 
       return base.rationalPow(rationalExponent);
@@ -196,9 +204,12 @@ function evaluateNode(node: FormulaNode): ExactValue {
       const degree = evaluateNode(node.degree);
       const radicand = evaluateNode(node.radicand);
       const rationalDegree = degree.asRational();
-      if (rationalDegree === null) return fail('unsupported', 'Root degree must be a rational number');
-      if (radicand.isNegative && rationalDegree.isInteger && bigIsEven(rationalDegree.numerator))
-        return fail('complexResult', 'Even root of a negative number');
+      if (rationalDegree === null) {
+        return fail('unsupported', node.degree.sourceTokenId, 'Wurzelgrad muss eine rationale Zahl sein');
+      }
+      if (radicand.isNegative && rationalDegree.isInteger && bigIsEven(rationalDegree.numerator)) {
+        return fail('complexResult', node.sourceTokenId, 'Gerade Wurzel einer negativen Zahl ist komplex');
+      }
 
       return radicand.rationalRoot(rationalDegree);
     }

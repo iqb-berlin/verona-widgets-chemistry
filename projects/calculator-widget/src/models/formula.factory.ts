@@ -1,7 +1,23 @@
 import { FormulaNode } from './formula.ast';
 import { ConstantSymbol } from './constants.model';
 import { BinaryOperator, UnaryOperator } from './types';
+import { EditToken, EditTokenId } from './editing.ast';
 
+//#region Formula source EditTokenId assignment
+
+let sourceTokenId: null | EditTokenId = null;
+
+export function tokenScope<T>(token: EditToken, block: () => T): T {
+  const previousTokenId = sourceTokenId;
+  sourceTokenId = token.id;
+  try {
+    return block();
+  } finally {
+    sourceTokenId = previousTokenId;
+  }
+}
+
+//#endregion
 //#region Formula factory functions
 
 const DECIMAL_PATTERN = /^\d*[,.]?\d*$/;
@@ -13,6 +29,7 @@ export function decimal(value: string | number | bigint): FormulaNode.Literal {
   return {
     kind: 'literal',
     literal: literal.replace(DECIMAL_POINT, '.'), // normalize decimal point character to '.'
+    sourceTokenId,
   };
 }
 
@@ -23,7 +40,7 @@ export function int(value: string | number | bigint): FormulaNode.Literal {
 }
 
 export function constant(symbol: ConstantSymbol): FormulaNode.Constant {
-  return { kind: 'constant', symbol };
+  return { kind: 'constant', symbol, sourceTokenId };
 }
 
 export function pi(): FormulaNode.Constant {
@@ -31,7 +48,7 @@ export function pi(): FormulaNode.Constant {
 }
 
 export function unary(operator: UnaryOperator, operand: FormulaNode): FormulaNode.Unary {
-  return { kind: 'unary', operator, operand };
+  return { kind: 'unary', operator, operand, sourceTokenId };
 }
 
 export function negate(operand: FormulaNode): FormulaNode.Unary {
@@ -39,7 +56,7 @@ export function negate(operand: FormulaNode): FormulaNode.Unary {
 }
 
 export function binary(operator: BinaryOperator, left: FormulaNode, right: FormulaNode): FormulaNode.Binary {
-  return { kind: 'binary', operator, left, right };
+  return { kind: 'binary', operator, left, right, sourceTokenId };
 }
 
 export function add(left: FormulaNode, right: FormulaNode): FormulaNode.Binary {
@@ -59,7 +76,7 @@ export function divide(left: FormulaNode, right: FormulaNode): FormulaNode.Binar
 }
 
 export function fraction(dividend: FormulaNode, divisor: FormulaNode): FormulaNode.TrueFraction {
-  return { kind: 'fraction', dividend, divisor };
+  return { kind: 'fraction', dividend, divisor, sourceTokenId };
 }
 
 export function compositeFraction(
@@ -67,11 +84,11 @@ export function compositeFraction(
   numerator: FormulaNode,
   denominator: FormulaNode,
 ): FormulaNode.CompositeFraction {
-  return { kind: 'composite', integerPart, numerator, denominator };
+  return { kind: 'composite', integerPart, numerator, denominator, sourceTokenId };
 }
 
 export function exponential(base: FormulaNode, exponent: FormulaNode): FormulaNode.Exponent {
-  return { kind: 'exponential', base, exponent };
+  return { kind: 'exponential', base, exponent, sourceTokenId };
 }
 
 export function square(base: FormulaNode): FormulaNode.Exponent {
@@ -79,7 +96,7 @@ export function square(base: FormulaNode): FormulaNode.Exponent {
 }
 
 export function root(radicand: FormulaNode, degree: FormulaNode): FormulaNode.Root {
-  return { kind: 'root', radicand, degree };
+  return { kind: 'root', radicand, degree, sourceTokenId };
 }
 
 export function sqrt(radicand: FormulaNode): FormulaNode.Root {

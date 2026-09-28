@@ -1,6 +1,18 @@
 import { EditSequence, EditToken, EditTokenId } from './editing.ast';
 import { FormulaNode } from './formula.ast';
-import { add, constant, decimal, divide, exponential, int, multiply, negate, root, subtract } from './formula.factory';
+import {
+  add,
+  constant,
+  decimal,
+  divide,
+  exponential,
+  int,
+  multiply,
+  negate,
+  root,
+  subtract,
+  tokenScope,
+} from './formula.factory';
 import { Result } from './types';
 
 export function compileToFormula(sequence: EditSequence): CompileToFormulaResult {
@@ -17,7 +29,7 @@ export interface CompileToFormulaIssue {
   readonly detail: null | string;
 }
 
-export type CompileToFormulaIssueCode = 'incomplete' | 'unexpectedEnd' | 'unexpectedToken';
+export type CompileToFormulaIssueCode = 'empty' | 'incomplete' | 'unexpectedEnd' | 'unexpectedToken';
 
 //#region Internal
 
@@ -47,16 +59,17 @@ class EditSequenceCompiler {
 
   private entrypoint(): FormulaNode {
     if (this.sequence.items.length === 0) {
-      this.raiseIssue('incomplete');
+      this.raiseIssue('empty');
     }
 
-    const node = this.expression();
-    if (this.index < this.sequence.items.length) {
-      const unexpected = this.peek()!;
-      this.raiseIssue('unexpectedToken', unexpected, unexpected.kind);
-    }
-
-    return node;
+    return tokenScope(this.sequence, () => {
+      const node = this.expression();
+      if (this.index < this.sequence.items.length) {
+        const unexpected = this.peek()!;
+        this.raiseIssue('unexpectedToken', unexpected, unexpected.kind);
+      }
+      return node;
+    });
   }
 
   private raiseIssue(code: CompileToFormulaIssueCode, offender?: null | EditToken, detail?: null | string): never {
@@ -72,8 +85,10 @@ class EditSequenceCompiler {
     while (this.matches((t) => t.kind === 'operator' && (t.operator === '+' || t.operator === '-'))) {
       const operator = this.consume() as EditToken.Operator;
       const next = this.product();
-      if (operator.operator === '+') result = add(result, next);
-      if (operator.operator === '-') result = subtract(result, next);
+      tokenScope(operator, () => {
+        if (operator.operator === '+') result = add(result, next);
+        if (operator.operator === '-') result = subtract(result, next);
+      });
     }
     return result;
   }
@@ -82,13 +97,20 @@ class EditSequenceCompiler {
     let result = this.factor();
     while (true) {
       if (this.matches((t) => t.kind === 'operator' && t.operator === '*')) {
-        this.consume();
-        result = multiply(result, this.factor());
+        const operator = this.consume();
+        const next = this.factor();
+        tokenScope(operator, () => {
+          result = multiply(result, next);
+        });
       } else if (this.matches((t) => t.kind === 'operator' && t.operator === '/')) {
-        this.consume();
-        result = divide(result, this.factor());
+        const operator = this.consume();
+        const next = this.factor();
+        tokenScope(operator, () => {
+          result = divide(result, next);
+        });
       } else if (this.startsAtom()) {
-        result = multiply(result, this.atom()); // implicit multiplication, e.g. 2(3+4)
+        const next = this.atom();
+        result = multiply(result, next); // implicit multiplication, e.g. 2(3+4)
       } else {
         return result;
       }
@@ -98,12 +120,12 @@ class EditSequenceCompiler {
   // An atom, preceded by any number of signs, e.g. the `-3` of `2 * -3`
   private factor(): FormulaNode {
     if (this.matches((t) => t.kind === 'operator' && t.operator === '-')) {
-      this.consume();
-      return negate(this.factor()); // unary -
+      const operator = this.consume();
+      return tokenScope(operator, () => negate(this.factor())); // unary -
     }
     if (this.matches((t) => t.kind === 'operator' && t.operator === '+')) {
-      this.consume();
-      return this.factor(); // unary +
+      const operator = this.consume();
+      return tokenScope(operator, () => this.factor()); // unary +
     }
     return this.atom();
   }
@@ -131,54 +153,56 @@ class EditSequenceCompiler {
     const token = this.peek();
     if (token === undefined) this.raiseIssue('unexpectedEnd');
 
-    switch (token.kind) {
-      case 'fence': {
-        this.consume((t) => t.kind === 'fence' && t.fence === '(');
-        const expression = this.expression();
-        this.consume((t) => t.kind === 'fence' && t.fence === ')');
-        return expression;
+    return tokenScope(token, () => {
+      switch (token.kind) {
+        case 'fence': {
+          this.consume((t) => t.kind === 'fence' && t.fence === '(');
+          const expression = this.expression();
+          this.consume((t) => t.kind === 'fence' && t.fence === ')');
+          return expression;
+        }
+        case 'literal': {
+          this.consume();
+          return decimal(token.literal);
+        }
+        case 'constant': {
+          this.consume();
+          return constant(token.symbol);
+        }
+        case 'fraction': {
+          this.consume();
+          const dividend = this.childSequence(token.dividend);
+          const divisor = this.childSequence(token.divisor);
+          return divide(dividend, divisor);
+        }
+        case 'composite': {
+          this.consume();
+          const integerPart = this.childSequence(token.integerPart);
+          const numerator = this.childSequence(token.numerator);
+          const denominator = this.childSequence(token.denominator);
+          return add(integerPart, divide(numerator, denominator));
+        }
+        case 'exponent': {
+          this.consume();
+          const base = this.childSequence(token.base);
+          const exponent = this.childSequence(token.exponent);
+          return exponential(base, exponent);
+        }
+        case 'root': {
+          this.consume();
+          // an empty degree denotes the square root, which is written without an index
+          const degree = token.degree.items.length === 0 ? int(2) : this.childSequence(token.degree);
+          const radicand = this.childSequence(token.radicand);
+          return root(radicand, degree);
+        }
+        case 'operator':
+        case 'sequence':
+          return this.raiseIssue('unexpectedToken', token, token.kind);
+        default:
+          console.error('Unknown token:', token satisfies never);
+          throw new Error(`Unknown token: ${JSON.stringify(token)}`);
       }
-      case 'literal': {
-        this.consume();
-        return decimal(token.literal);
-      }
-      case 'constant': {
-        this.consume();
-        return constant(token.symbol);
-      }
-      case 'fraction': {
-        this.consume();
-        const dividend = this.childSequence(token.dividend);
-        const divisor = this.childSequence(token.divisor);
-        return divide(dividend, divisor);
-      }
-      case 'composite': {
-        this.consume();
-        const integerPart = this.childSequence(token.integerPart);
-        const numerator = this.childSequence(token.numerator);
-        const denominator = this.childSequence(token.denominator);
-        return add(integerPart, divide(numerator, denominator));
-      }
-      case 'exponent': {
-        this.consume();
-        const base = this.childSequence(token.base);
-        const exponent = this.childSequence(token.exponent);
-        return exponential(base, exponent);
-      }
-      case 'root': {
-        this.consume();
-        // an empty degree denotes the square root, which is written without an index
-        const degree = token.degree.items.length === 0 ? int(2) : this.childSequence(token.degree);
-        const radicand = this.childSequence(token.radicand);
-        return root(radicand, degree);
-      }
-      case 'operator':
-      case 'sequence':
-        return this.raiseIssue('unexpectedToken', token, token.kind);
-      default:
-        console.error('Unknown token:', token satisfies never);
-        throw new Error(`Unknown token: ${JSON.stringify(token)}`);
-    }
+    });
   }
 
   //#endregion

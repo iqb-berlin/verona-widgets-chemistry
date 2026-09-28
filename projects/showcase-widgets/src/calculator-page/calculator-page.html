@@ -1,13 +1,27 @@
 <div class="params-container">
   <div class="params-column">
-    <p>calculator params</p>
+    <mat-form-field>
+      <mat-label>Image width (px)</mat-label>
+      <input matInput type="number" [(ngModel)]="imageWidthParam" />
+    </mat-form-field>
   </div>
 </div>
 
-<code style="font-family: monospace; white-space: pre-wrap;">
-  {{ stateData() || "(Empty state)" }}
-</code>
-
-<section class="widget" *showcaseVeronaWidget="['WIDGET_CALC', 'calculator']">
-  <app-calculator></app-calculator>
-</section>
+<div class="widget-container">
+  <section class="widget" *showcaseVeronaWidget="['WIDGET_CALC', 'calculator']">
+    <app-calculator></app-calculator>
+  </section>
+  <div>
+    State:
+    <ul>
+      @for (item of decodedStateData(); track $index) {
+        <li>
+          <div>LaTeX: <code>$$ {{ item.asLatex }} $$</code></div>
+          <div>
+            <img [alt]="item.asLatex" [src]="item.asImage" />
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+</div>

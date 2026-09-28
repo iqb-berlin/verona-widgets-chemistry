@@ -1,4 +1,4 @@
-import { EditSequence, EditSlot, EditToken, EditTokenId } from './editing.ast';
+import { EditSequence, EditSlot, EditToken, EditTokenColumn, EditTokenId } from './editing.ast';
 import { sequence } from './editing.factory';
 import { castDraft, produce } from 'immer';
 
@@ -48,23 +48,6 @@ export interface EditSpan {
   readonly end: number;
 }
 
-type EditTokenColumn<K extends EditToken.Kind> = ReadonlyArray<EditSlot.SlotOf<K>>;
-type EditTokenColumnsDictionary = { readonly [K in EditToken.Kind]: EditTokenColumn<K> };
-
-// Declare which slots of a token are stacked vertically on screen, ordered top to bottom.
-// Slots left out here are not reachable by vertical caret movement, only by horizontal movement.
-const COLUMNS = {
-  sequence: [],
-  fence: [],
-  literal: [],
-  constant: [],
-  operator: [],
-  fraction: ['dividend', 'divisor'],
-  composite: ['numerator', 'denominator'], // the integer part sits beside the fraction, not above it
-  exponent: ['exponent', 'base'],
-  root: ['degree', 'radicand'],
-} as const satisfies EditTokenColumnsDictionary;
-
 export namespace EditTraversal {
   //#region Querying functions
 
@@ -87,11 +70,6 @@ export namespace EditTraversal {
       const childSequence = EditSlot.get(token, slot);
       if (childSequence !== null) yield childSequence;
     }
-  }
-
-  // Slots of a token which are stacked vertically on screen, ordered top to bottom
-  export function columnsOf(token: EditToken): ReadonlyArray<EditSlot> {
-    return COLUMNS[token.kind];
   }
 
   export interface VisitContext {
@@ -362,7 +340,7 @@ export namespace EditTraversal {
       const { parent, slot, parentIndex } = caret.frames[level];
       if (parent === null || slot === null || parentIndex === null) break;
 
-      const columns = columnsOf(parent);
+      const columns = EditTokenColumn.columnsOf(parent);
       const position = columns.indexOf(slot);
       if (position < 0) continue; // this slot is not part of a vertical stack
 

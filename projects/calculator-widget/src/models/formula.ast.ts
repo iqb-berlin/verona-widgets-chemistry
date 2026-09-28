@@ -1,5 +1,6 @@
 import { BinaryOperator, UnaryOperator } from './types';
 import { ConstantSymbol } from './constants.model';
+import { EditTokenId } from './editing.ast';
 
 //#region Formula Nodes
 
@@ -16,6 +17,7 @@ export type FormulaNode =
 export namespace FormulaNode {
   interface Base<K extends string> {
     readonly kind: K;
+    readonly sourceTokenId: null | EditTokenId;
   }
 
   export interface Literal extends Base<'literal'> {
