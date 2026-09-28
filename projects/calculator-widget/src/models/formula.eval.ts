@@ -1,27 +1,15 @@
 import { FormulaNode } from './formula.ast';
-import { ExactError, ExactErrorCode, ExactValue, Factor, Monomial, Polynomial } from './exact.model';
-import { Rational, RationalError, RationalErrorCode } from './rational.model';
-import {
-  add,
-  compositeFraction,
-  constant,
-  divide,
-  exponential,
-  fraction,
-  int,
-  multiply,
-  negate,
-  root,
-  sqrt,
-  subtract,
-} from './formula.factory';
+import { NumericError, NumericErrorCode, NumericValue } from './numeric.model';
+import { Rational } from './rational.model';
+import { Irrational } from './irrational.model';
+import { compositeFraction, decimal, fraction, int, negate } from './formula.factory';
 import { EnumLiteral, Result } from './types';
 import { bigIsEven } from './utils';
 import { EditTokenId } from './editing.ast';
 
 //#region Evaluation public API
 
-export type FormulaEvalIssueCode = EnumLiteral<ExactErrorCode> | EnumLiteral<RationalErrorCode>;
+export type FormulaEvalIssueCode = EnumLiteral<NumericErrorCode>;
 
 export interface FormulaEvalIssue {
   readonly code: FormulaEvalIssueCode;
@@ -29,7 +17,7 @@ export interface FormulaEvalIssue {
   readonly sourceTokenId: null | EditTokenId;
 }
 
-export type FormulaEvalResult = Result<ExactValue, FormulaEvalIssue>;
+export type FormulaEvalResult = Result<NumericValue, FormulaEvalIssue>;
 
 export class FormulaEvalError extends Error {
   constructor(readonly issue: FormulaEvalIssue) {
@@ -39,24 +27,24 @@ export class FormulaEvalError extends Error {
 }
 
 export interface FormulaFormatOutput {
-  /** The formatted value */
-  readonly value: ExactValue;
-  /** The exact result as a tree */
-  readonly exact: FormulaNode;
+  /** The value which was formatted */
+  readonly value: NumericValue;
+  /** The result as a tree: a fraction for a rational number, a decimal for an irrational one */
+  readonly formula: FormulaNode;
   /** A rounded decimal, for the display line */
   readonly decimal: string;
-  /** True when the exact form is just a decimal already */
+  /** True when the result tree says no more than the decimal line, so showing both is redundant */
   readonly isExactlyDecimal: boolean;
 }
 
+const DEFAULT_DIGITS = 12;
+
 export function evaluateFormula(node: FormulaNode): FormulaEvalResult {
   try {
-    const result = evaluateNode(node);
-    return Result.ok(result);
+    return Result.ok(evaluateNode(node));
   } catch (error: unknown) {
     if (error instanceof FormulaEvalError) return Result.issue(error.issue);
-    if (error instanceof RationalError) return Result.issue(errorIssue(error));
-    if (error instanceof ExactError) return Result.issue(errorIssue(error));
+    if (error instanceof NumericError) return Result.issue(errorIssue(error));
     console.error('Unexpected evaluate formula', node, 'error:', error);
     throw error;
   }
@@ -67,53 +55,48 @@ export function evaluateFormulaToNumber(node: FormulaNode): null | number {
   return result.ok ? result.value.valueOf() : null;
 }
 
-export function evaluateFormulaToDecimalString(node: FormulaNode, digits = 12): null | string {
+export function evaluateFormulaToDecimalString(node: FormulaNode, digits = DEFAULT_DIGITS): null | string {
   const result = evaluateFormula(node);
   return result.ok ? result.value.toDecimalString(digits, true) : null;
 }
 
 export interface FormatToFormulaOptions {
+  /** Write a rational number greater than one as a mixed fraction */
   readonly preferMixedFractions?: boolean;
-}
-
-export function exactToFormula(value: ExactValue, options: FormatToFormulaOptions = {}): FormulaNode {
-  const rational = value.asRational();
-  if (rational !== null) return rationalToFormula(rational, options);
-
-  const numerator = polynomialToFormula(value.numerator, options);
-  if (ExactValue.isOnePolynomial(value.denominator)) return numerator;
-
-  const denominator = polynomialToFormula(value.denominator, options);
-  return fraction(numerator, denominator);
-}
-
-export interface ExactToFormulaOutputOptions extends FormatToFormulaOptions {
+  /** Write every number as a decimal, even a rational one */
+  readonly preferDecimal?: boolean;
+  /** Decimal places a decimal number is rounded to */
   readonly digits?: number;
 }
 
 /**
- * Packages a value the way a calculator display wants it:
- * An exact line and an approximate line, with a flag for whether showing both is redundant.
+ * The value as a formula tree: a rational number as a fraction — which is exact — and an
+ * irrational number as the decimal it is rounded to, as it has no exact form to write.
  */
-export function exactToFormulaOutput(
-  exact: ExactValue,
-  options: ExactToFormulaOutputOptions = {},
-): FormulaFormatOutput {
-  const digits = options.digits ?? 12;
-  const rational = exact.asRational();
-  const isExactlyDecimal = rational !== null && onlyTwosAndFives(rational.denominator);
+export function numericToFormula(value: NumericValue, options: FormatToFormulaOptions = {}): FormulaNode {
+  const rational = value.asRational();
+  if (rational !== null && options.preferDecimal !== true) return rationalToFormula(rational, options);
+  return decimalToFormula(value, options.digits ?? DEFAULT_DIGITS);
+}
+
+/**
+ * Packages a value the way a calculator display wants it:
+ * a result line and an approximate line, with a flag for whether showing both is redundant.
+ */
+export function numericToFormulaOutput(value: NumericValue, options: FormatToFormulaOptions = {}): FormulaFormatOutput {
+  const digits = options.digits ?? DEFAULT_DIGITS;
+  const decimalText = value.toDecimalString(digits, true);
 
   return {
-    value: exact,
-    exact: exactToFormula(exact, options),
-    decimal: exact.toDecimalString(digits, true),
-    isExactlyDecimal,
+    value,
+    formula: numericToFormula(value, { ...options, digits }),
+    decimal: decimalText,
+    isExactlyDecimal: saysTheSame(value, decimalText, options),
   };
 }
 
 //#endregion
 //#region Evaluation internals
-//#region Evaluate formula node to exact value
 
 function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, message?: unknown): never {
   const detail =
@@ -128,24 +111,17 @@ function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, mes
   throw new FormulaEvalError({ code, detail, sourceTokenId });
 }
 
-function errorIssue(error: RationalError | ExactError): FormulaEvalIssue {
-  return {
-    code: error.code,
-    detail: error.message,
-    sourceTokenId: null,
-  };
+function errorIssue(error: NumericError): FormulaEvalIssue {
+  return { code: error.code, detail: error.message, sourceTokenId: null };
 }
 
-function evaluateNode(node: FormulaNode): ExactValue {
+function evaluateNode(node: FormulaNode): NumericValue {
   switch (node.kind) {
     case 'literal':
-      if (node.literal.length === 0) {
-        return fail('syntaxError', node.sourceTokenId, 'Leere Zahl');
-      } else {
-        return ExactValue.fromRational(Rational.parse(node.literal));
-      }
+      if (node.literal.length === 0) return fail('syntaxError', node.sourceTokenId, 'Leere Zahl');
+      return Rational.parse(node.literal);
     case 'constant':
-      return ExactValue.fromConstant(node.symbol);
+      return Irrational.fromConstant(node.symbol);
     case 'unary': {
       const operand = evaluateNode(node.operand);
       switch (node.operator) {
@@ -175,6 +151,7 @@ function evaluateNode(node: FormulaNode): ExactValue {
     case 'fraction': {
       const dividend = evaluateNode(node.dividend);
       const divisor = evaluateNode(node.divisor);
+      if (divisor.isZero) return fail('divisionByZero', node.divisor.sourceTokenId);
       return dividend.divide(divisor);
     }
     case 'composite': {
@@ -188,30 +165,28 @@ function evaluateNode(node: FormulaNode): ExactValue {
     case 'exponential': {
       const base = evaluateNode(node.base);
       const exponent = evaluateNode(node.exponent);
-      const rationalExponent = exponent.asRational();
-      if (rationalExponent === null) {
+      if (!exponent.isRational()) {
         return fail('unsupported', node.exponent.sourceTokenId, 'Exponent muss eine rationale Zahl sein');
       }
-      if (base.isZero && rationalExponent.sign() <= 0) {
-        const zeroExponent = rationalExponent.isZero;
-        if (zeroExponent) return fail('indeterminate', node.sourceTokenId, 'Null hoch null ist unbestimmt');
+      if (base.isZero && exponent.isZero) {
+        return fail('indeterminate', node.sourceTokenId, 'Null hoch null ist unbestimmt');
+      }
+      if (base.isZero && exponent.isNegative) {
         return fail('divisionByZero', node.exponent.sourceTokenId, 'Null hoch negativer Zahl ist unbestimmt');
       }
-
-      return base.rationalPow(rationalExponent);
+      return base.power(exponent);
     }
     case 'root': {
       const degree = evaluateNode(node.degree);
       const radicand = evaluateNode(node.radicand);
-      const rationalDegree = degree.asRational();
-      if (rationalDegree === null) {
+      if (!degree.isRational()) {
         return fail('unsupported', node.degree.sourceTokenId, 'Wurzelgrad muss eine rationale Zahl sein');
       }
-      if (radicand.isNegative && rationalDegree.isInteger && bigIsEven(rationalDegree.numerator)) {
+      if (degree.isZero) return fail('divisionByZero', node.degree.sourceTokenId, 'Wurzel vom Grad Null');
+      if (radicand.isNegative && degree.isInteger && bigIsEven(degree.numerator)) {
         return fail('complexResult', node.sourceTokenId, 'Gerade Wurzel einer negativen Zahl ist komplex');
       }
-
-      return radicand.rationalRoot(rationalDegree);
+      return radicand.root(degree);
     }
     default:
       console.error(`Invalid node:`, node satisfies never);
@@ -220,7 +195,7 @@ function evaluateNode(node: FormulaNode): ExactValue {
 }
 
 //#endregion
-//#region Evaluate exact value back to formula node
+//#region Formatting internals
 
 function rationalToFormula(value: Rational, options: FormatToFormulaOptions): FormulaNode {
   const magnitude = value.absolute();
@@ -230,8 +205,8 @@ function rationalToFormula(value: Rational, options: FormatToFormulaOptions): Fo
     node = int(magnitude.numerator);
   } else if (options.preferMixedFractions && magnitude.compareTo(Rational.ONE) > 0) {
     const whole = magnitude.floor();
-    const remainder = magnitude.subtract(Rational.of(whole));
-    node = compositeFraction(int(whole), int(remainder.numerator), int(remainder.denominator));
+    const remainder = magnitude.numerator - whole * magnitude.denominator;
+    node = compositeFraction(int(whole), int(remainder), int(magnitude.denominator));
   } else {
     node = fraction(int(magnitude.numerator), int(magnitude.denominator));
   }
@@ -239,65 +214,17 @@ function rationalToFormula(value: Rational, options: FormatToFormulaOptions): Fo
   return value.isNegative ? negate(node) : node;
 }
 
-function polynomialToFormula(poly: Polynomial, options: FormatToFormulaOptions): FormulaNode {
-  if (poly.length === 0) {
-    return int(0);
-  }
-
-  let result: FormulaNode | null = null;
-  for (const term of poly) {
-    const negative = term.coefficient.isNegative;
-    const monomial: Monomial = { coefficient: term.coefficient.absolute(), factors: term.factors };
-    const magnitude = monomialToFormula(monomial, options);
-    if (result === null) {
-      result = negative ? negate(magnitude) : magnitude;
-    } else {
-      result = negative ? subtract(result, magnitude) : add(result, magnitude);
-    }
-  }
-  return result!;
+function decimalToFormula(value: NumericValue, digits: number): FormulaNode {
+  const magnitude = decimal(value.absolute().toDecimalString(digits, true));
+  return value.isNegative ? negate(magnitude) : magnitude;
 }
 
-function monomialToFormula(term: Monomial, options: FormatToFormulaOptions): FormulaNode {
-  if (term.factors.length === 0) {
-    return rationalToFormula(term.coefficient, options);
-  }
-
-  const factors = term.factors.map((factor) => factorToFormula(factor, options));
-  let product = factors.reduce((left, right) => multiply(left, right));
-  if (term.coefficient.isOne) {
-    return product;
-  }
-
-  // A rational coefficient in front of symbols reads best as a fraction of the whole product: `(2/3)*pi` becomes `2*pi / 3`
-  const numerator = term.coefficient.numerator;
-  const denominator = term.coefficient.denominator;
-  if (numerator !== 1n) product = multiply(int(numerator), product);
-  if (denominator !== 1n) product = fraction(product, int(denominator));
-  return product;
+// True when the rounded decimal holds the whole value, so that an exact line adds nothing
+function saysTheSame(value: NumericValue, decimalText: string, options: FormatToFormulaOptions): boolean {
+  if (options.preferDecimal === true) return true;
+  const rational = value.asRational();
+  if (rational === null) return true; // an irrational number has no exact form to compare against
+  return Rational.parse(decimalText).equalTo(rational);
 }
 
-function factorToFormula(factor: Factor, options: FormatToFormulaOptions): FormulaNode {
-  const base =
-    factor.base.kind === 'constant' ? constant(factor.base.symbol) : exactToFormula(factor.base.radicand, options);
-
-  const exponent = factor.exponent;
-  if (exponent.isOne) return base;
-  if (exponent.isInteger) return exponential(base, int(exponent.numerator));
-
-  const degree = exponent.denominator;
-  const radical = degree === 2n ? sqrt(base) : root(base, int(degree));
-  return exponent.numerator === 1n ? radical : exponential(radical, int(exponent.numerator));
-}
-
-// A fraction terminates in base 10 exactly when its denominator is 2^i * 5^j
-function onlyTwosAndFives(denominator: bigint): boolean {
-  let remaining = denominator;
-  for (const prime of [2n, 5n]) {
-    while (remaining % prime === 0n) remaining /= prime;
-  }
-  return remaining === 1n;
-}
-
-//#endregion
 //#endregion

@@ -169,6 +169,20 @@ export namespace EditTraversal {
     return { start: index - 1, end: index };
   }
 
+  /**
+   * Open fences of a sequence which are still waiting to be closed. Fences never reach out
+   * of the sequence they are in: every slot of a token holds a formula of its own, so a
+   * fence in one of them can only ever match a fence in the same one.
+   */
+  export function openFenceCount(sequence: EditSequence): number {
+    let open = 0;
+    for (const item of sequence.items) {
+      if (item.kind !== 'fence') continue;
+      open += item.fence === '(' ? 1 : -1;
+    }
+    return Math.max(0, open);
+  }
+
   // Index of the open fence matching the close fence at `closeIndex`
   export function matchingOpenFence(sequence: EditSequence, closeIndex: number): null | number {
     let depth = 0;

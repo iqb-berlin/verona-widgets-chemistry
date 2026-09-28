@@ -94,9 +94,6 @@ const COMMAND_DISPATCH: EditCommandDispatch = {
 const DIGITS_PATTERN = /^\d+$/;
 const ZERO_PATTERN = /^0+(\.0*)?$/;
 
-// Configure if useless fences should be stripped out
-const ENABLE_STRIP_FENCES = false
-
 //#region Command handlers
 
 function focus(tree: EditSequence, { targetId }: EditCommand.Focus): EditResult {
@@ -126,7 +123,7 @@ function typeInput(tree: EditSequence, { targetId, input }: EditCommand.TypeInpu
       return appendDigit(tree, targetId, input);
     case '(':
     case ')':
-      return appendToken(tree, targetId, token('fence', { fence: input }));
+      return appendFence(tree, targetId, input);
     case '+':
     case '-':
     case '*':
@@ -215,6 +212,21 @@ function toggleComposite(tree: EditSequence, { targetId }: EditCommand.ToggleCom
 //#endregion
 //#region Editing operations
 
+/**
+ * A closing fence is only taken where an open one is waiting for it, the way the key of a
+ * calculator behaves. Without that, a fence could be put into a slot while its counterpart
+ * sits outside of it: the two would be drawn as one group, but each slot is a formula of
+ * its own, so they could never belong together.
+ */
+function appendFence(tree: EditSequence, targetId: EditTokenId, fence: EditCommand.Fence): EditResult {
+  if (fence === ')') {
+    const caret = EditTraversal.caretAt(tree, targetId);
+    const host = EditTraversal.caretSequence(caret);
+    if (EditTraversal.openFenceCount(host) === 0) return unchanged(tree, targetId);
+  }
+  return appendToken(tree, targetId, token('fence', { fence }));
+}
+
 // Insert a token at the caret and continue editing inside it, if it has a blank slot
 function appendToken(tree: EditSequence, targetId: EditTokenId, newToken: EditToken): EditResult {
   const caret = EditTraversal.caretAt(tree, targetId);
@@ -255,7 +267,7 @@ function wrapOperand(
 
   const start = span?.start ?? caret.index;
   const items = span === null ? [] : host.items.slice(span.start, span.end);
-  const operand = sequence(...stripOuterFences(items)); // slots enclose their content already
+  const operand = sequence(...items);
   const wrapper = create(operand);
 
   const wrapped = EditTraversal.spliceSequence(tree, host.id, start, caret.index - start, [wrapper]);
@@ -268,7 +280,6 @@ function removeTokenAt(tree: EditSequence, host: EditSequence, index: number): E
   const focusId = index > 0 ? host.items[index - 1].id : host.id;
   return edited(EditTraversal.spliceSequence(tree, host.id, index, 1), focusId);
 }
-
 
 // A backspace mirrors the input before it: It takes away the last thing that was added,
 // wherever that sits. In front of the caret is a literal, whose last character goes;
@@ -314,7 +325,7 @@ function backspaceAtStart(tree: EditSequence, caret: EditCaret): EditResult {
  * Remove a token, but keep what its slots hold: The content moves into the enclosing
  * sequence, where the caret then sits behind it. Content of more than one token is fenced
  * again when it lands next to other tokens, so that it keeps binding the way it did inside
- * the slot — the counterpart of the fences `wrapOperand` strips.
+ * the slot, where it stood on its own.
  */
 function unwrapToken(tree: EditSequence, enclosing: EditSequence, parent: EditToken, index: number): EditResult {
   const slotContent = Array.from(EditTraversal.childSequencesOf(parent)).flatMap((slot) => [...slot.items]);
@@ -326,7 +337,16 @@ function unwrapToken(tree: EditSequence, enclosing: EditSequence, parent: EditTo
 }
 
 function needsFences(enclosing: EditSequence, content: ReadonlyArray<EditToken>): boolean {
-  return content.length > 1 && enclosing.items.length > 1;
+  if (content.length < 2 || enclosing.items.length < 2) return false;
+  return !isFenced(content); // content which brought its own fences along needs no second pair
+}
+
+function isFenced(content: ReadonlyArray<EditToken>): boolean {
+  const first = content[0];
+  const last = content[content.length - 1];
+  if (first.kind !== 'fence' || first.fence !== '(') return false;
+  if (last.kind !== 'fence' || last.fence !== ')') return false;
+  return content.slice(1, -1).every((item) => item.kind !== 'fence'); // one pair around the whole content
 }
 
 function fenced(content: ReadonlyArray<EditToken>): ReadonlyArray<EditToken> {
@@ -456,17 +476,6 @@ function isSignAt(host: EditSequence, index: number): boolean {
   if (preceding === null) return true;
   if (preceding.kind === 'operator') return true;
   return preceding.kind === 'fence' && preceding.fence === '(';
-}
-
-// Parentheses around a whole operand are redundant once it is moved into a slot of its own
-function stripOuterFences(items: ReadonlyArray<EditToken>): ReadonlyArray<EditToken> {
-  if (!ENABLE_STRIP_FENCES) return items;
-  if (items.length < 2) return items;
-  const first = items[0];
-  const last = items[items.length - 1];
-  if (first.kind !== 'fence' || first.fence !== '(') return items;
-  if (last.kind !== 'fence' || last.fence !== ')') return items;
-  return items.slice(1, -1);
 }
 
 //#endregion

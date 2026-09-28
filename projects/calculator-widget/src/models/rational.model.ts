@@ -1,13 +1,23 @@
-import { bigAbs, bigGcd, bigPow10, compareSign } from './utils';
-import type { Operand, Sign } from './operand.model';
+import { bigDigits, bigDivideRounded, bigGcd, bigPow10, compareSign, decimalText, exactNthRoot } from './utils';
+import { DECIMAL_PATTERN, FRACTION_PATTERN, NumericError, NumericValue, Sign } from './numeric.model';
+import { Irrational } from './irrational.model';
 
-const DECIMAL_PATTERN = /^(?<sign>[+-]?)(?<integral>\d*)(?:[.,](?<fraction>\d*))?$/;
-const FRACTION_PATTERN = /^(?<numerator>[^/]+)\/(?<denominator>[^/]+)$/;
+/** Largest whole exponent a power is worked out for, and the digits its result may have */
+const MAX_INTEGER_POWER = 10_000n;
+const MAX_RESULT_DIGITS = 20_000;
 
 type Numeric = number | bigint;
 type Coercible = Numeric | string;
 
-export class Rational implements Operand<Rational> {
+/**
+ * A rational number, held as a fraction of two whole numbers in its shortest form, with
+ * the sign in the numerator. Arithmetic of two of them is exact; only a root or a
+ * fractional power can lead out of the rationals, and then an {@link Irrational} is
+ * returned instead.
+ */
+export class Rational extends NumericValue {
+  readonly kind = 'rational';
+
   static readonly ZERO = new this(0n, 1n);
   static readonly ONE = new this(1n, 1n);
   static readonly TWO = new this(2n, 1n);
@@ -17,19 +27,21 @@ export class Rational implements Operand<Rational> {
   private constructor(
     readonly numerator: bigint,
     readonly denominator: bigint,
-  ) {}
+  ) {
+    super();
+  }
 
   //#region Static factories
 
   static of(numerator: Coercible, denominator: Coercible = 1n): Rational {
-    return Rational.coerce(numerator).divide(Rational.coerce(denominator));
+    return Rational.coerce(numerator).divideExactly(Rational.coerce(denominator));
   }
 
   private static coerce(value: Coercible): Rational {
     if (typeof value === 'bigint') {
       return Rational.create(value, 1n);
     } else if (typeof value === 'number') {
-      if (!Number.isFinite(value)) throw RationalError.nonFinite(value);
+      if (!Number.isFinite(value)) throw NumericError.nonFinite(value);
       if (Number.isInteger(value)) return Rational.create(BigInt(value), 1n);
       return Rational.parse(value.toString(10));
     } else {
@@ -42,7 +54,7 @@ export class Rational implements Operand<Rational> {
     const matchFraction = trimmed.match(FRACTION_PATTERN);
     if (matchFraction) {
       const { numerator = '0', denominator = '1' } = matchFraction.groups ?? {};
-      return Rational.parse(numerator).divide(Rational.parse(denominator));
+      return Rational.parse(numerator).divideExactly(Rational.parse(denominator));
     }
 
     const matchDecimal = trimmed.match(DECIMAL_PATTERN);
@@ -52,20 +64,21 @@ export class Rational implements Operand<Rational> {
       return Rational.fromDigits(integral ?? '', fraction ?? '', negative);
     }
 
-    throw RationalError.syntaxError(`Could not parse: ${textual}`);
+    throw NumericError.syntaxError(`Keine Zahl: ${textual}`);
   }
 
   static fromDigits(integral: string, fraction: string, negative: boolean): Rational {
     const digits = (integral || '0') + fraction;
-    if (digits.length === 0 || /\D/.test(digits))
-      throw RationalError.syntaxError(`Invalid digits: ${negative ? '-' : ''}${integral}.${fraction}`);
+    if (digits.length === 0 || /\D/.test(digits)) {
+      throw NumericError.syntaxError(`Ungültige Ziffern: ${negative ? '-' : ''}${integral}.${fraction}`);
+    }
 
     const magnitude = Rational.create(BigInt(digits), bigPow10(fraction.length));
     return negative ? magnitude.negate() : magnitude;
   }
 
   private static create(numerator: bigint, denominator: bigint): Rational {
-    if (denominator === 0n) throw RationalError.divisionByZero();
+    if (denominator === 0n) throw NumericError.divisionByZero();
     if (denominator < 0n) {
       numerator = -numerator;
       denominator = -denominator;
@@ -76,14 +89,11 @@ export class Rational implements Operand<Rational> {
   }
 
   //#endregion
-  //#region Rational functions
+  //#region Numeric value
 
   get isInteger(): boolean {
     return this.denominator === 1n;
   }
-
-  //#endregion
-  //#region Operand functions
 
   get isNegative(): boolean {
     return this.numerator < 0n;
@@ -97,53 +107,68 @@ export class Rational implements Operand<Rational> {
     return this.numerator === 0n;
   }
 
-  add(other: Rational): Rational {
+  add(other: NumericValue): NumericValue {
+    if (!other.isRational()) return this.asIrrational().add(other);
     const numerator = this.numerator * other.denominator + other.numerator * this.denominator;
-    const denominator = this.denominator * other.denominator;
-    return Rational.create(numerator, denominator);
+    return Rational.create(numerator, this.denominator * other.denominator);
   }
 
-  subtract(other: Rational): Rational {
+  subtract(other: NumericValue): NumericValue {
     return this.add(other.negate());
   }
 
-  multiply(other: Rational): Rational {
-    const numerator = this.numerator * other.numerator;
-    const denominator = this.denominator * other.denominator;
-    return Rational.create(numerator, denominator);
+  multiply(other: NumericValue): NumericValue {
+    if (!other.isRational()) return this.asIrrational().multiply(other);
+    return Rational.create(this.numerator * other.numerator, this.denominator * other.denominator);
   }
 
-  divide(other: Rational): Rational {
-    if (other.isZero) throw RationalError.divisionByZero();
-    const numerator = this.numerator * other.denominator;
-    const denominator = this.denominator * other.numerator;
-    return Rational.create(numerator, denominator);
+  divide(other: NumericValue): NumericValue {
+    if (other.isZero) throw NumericError.divisionByZero();
+    if (!other.isRational()) return this.asIrrational().divide(other);
+    return this.divideExactly(other);
   }
 
   negate(): Rational {
-    return new Rational(-1n * this.numerator, this.denominator);
+    return this.isZero ? this : new Rational(-this.numerator, this.denominator);
   }
 
   absolute(): Rational {
     return this.isNegative ? this.negate() : this;
   }
 
-  sign(): Sign {
-    return compareSign(this.numerator, 0n);
-  }
-
   inverse(): Rational {
     return Rational.create(this.denominator, this.numerator);
   }
 
-  compareTo(other: Rational): Sign {
-    const left = this.numerator * other.denominator;
-    const right = this.denominator * other.numerator;
-    return compareSign(left, right);
+  sign(): Sign {
+    return compareSign(this.numerator, 0n);
   }
 
-  equalTo(other: Rational): boolean {
-    return this.numerator === other.numerator && this.denominator === other.denominator;
+  compareTo(other: NumericValue): Sign {
+    if (!other.isRational()) return this.asIrrational().compareTo(other);
+    return compareSign(this.numerator * other.denominator, this.denominator * other.numerator);
+  }
+
+  /**
+   * Raise to a rational power. The result stays rational as long as the root of the power
+   * comes out whole — `8^(2/3)` is `4`, while `2^(1/2)` has to give up the exact form.
+   */
+  power(exponent: NumericValue): NumericValue {
+    if (!exponent.isRational()) {
+      throw NumericError.unsupported('Exponent muss eine rationale Zahl sein');
+    }
+    if (exponent.isZero) {
+      if (this.isZero) throw NumericError.indeterminate('Null hoch null ist unbestimmt');
+      return Rational.ONE;
+    }
+    if (this.isZero) {
+      if (exponent.isNegative) throw NumericError.divisionByZero('Null hoch negativer Zahl');
+      return Rational.ZERO;
+    }
+
+    const rooted = this.exactRoot(exponent.denominator);
+    if (rooted !== null) return rooted.integerPower(exponent.numerator);
+    return this.asIrrational().power(exponent);
   }
 
   floor(): bigint {
@@ -152,62 +177,69 @@ export class Rational implements Operand<Rational> {
     return overflow ? quotient - 1n : quotient;
   }
 
+  isRational(): this is Rational {
+    return true;
+  }
+
+  isIrrational(): this is Irrational {
+    return false;
+  }
+
+  asRational(): Rational {
+    return this;
+  }
+
+  asIrrational(): Irrational {
+    return Irrational.fromFraction(this.numerator, this.denominator);
+  }
+
   //#endregion
+  //#region Exact arithmetic
+
+  private divideExactly(other: Rational): Rational {
+    if (other.isZero) throw NumericError.divisionByZero();
+    return Rational.create(this.numerator * other.denominator, this.denominator * other.numerator);
+  }
+
+  /** The n-th root, as long as it is a fraction of whole numbers itself */
+  private exactRoot(degree: bigint): null | Rational {
+    if (degree === 1n) return this;
+    if (degree > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+
+    const numerator = exactNthRoot(this.numerator, Number(degree));
+    const denominator = exactNthRoot(this.denominator, Number(degree));
+    if (numerator === null || denominator === null) return null;
+    return Rational.create(numerator, denominator);
+  }
+
+  private integerPower(power: bigint): Rational {
+    if (power === 0n) return Rational.ONE;
+    if (power < 0n) return this.inverse().integerPower(-power);
+    if (power > MAX_INTEGER_POWER) throw NumericError.unsupported(`Exponent ist zu groß: ${power}`);
+
+    const digits = Math.max(bigDigits(this.numerator), bigDigits(this.denominator)) * Number(power);
+    if (digits > MAX_RESULT_DIGITS) throw NumericError.unsupported('Ergebnis der Potenz ist zu groß');
+
+    return Rational.create(this.numerator ** power, this.denominator ** power);
+  }
+
+  //#endregion
+  //#region Display
 
   toString(): string {
-    if (this.denominator === 1n) return this.numerator.toString();
-    else return `${this.numerator}/${this.denominator}`;
+    if (this.denominator === 1n) return this.numerator.toString(10);
+    return `${this.numerator}/${this.denominator}`;
   }
 
   toDecimalString(digits: number, dropTrailingZeros: boolean = true): string {
     if (digits < 0) throw new RangeError('toDecimalString: digits must be >= 0');
-    const scale = bigPow10(digits);
-    const negative = this.isNegative;
-    const n = bigAbs(this.numerator) * scale;
-    const d = this.denominator;
-
-    let scaled = n / d;
-    if ((n % d) * 2n >= d) scaled += 1n;
-
-    let text = scaled.toString().padStart(digits + 1, '0');
-    let integerPart = digits === 0 ? text : text.slice(0, text.length - digits);
-    let fractionPart = digits === 0 ? '' : text.slice(text.length - digits);
-    if (dropTrailingZeros && fractionPart.length > 0) {
-      fractionPart = fractionPart.replace(/0+$/, '');
-    }
-    text = fractionPart.length > 0 ? `${integerPart}.${fractionPart}` : integerPart;
-    return negative && /[1-9]/.test(text) ? `-${text}` : text;
+    const scaled = bigDivideRounded(this.numerator * bigPow10(digits), this.denominator);
+    return decimalText(scaled, digits, dropTrailingZeros);
   }
 
   valueOf(): number {
     return Number(this.toDecimalString(20, true));
   }
-}
 
-export const enum RationalErrorCode {
-  SyntaxError = 'syntaxError',
-  NonFinite = 'nonFinite',
-  DivisionByZero = 'divisionByZero',
-}
-
-export class RationalError extends Error {
-  readonly code: RationalErrorCode;
-
-  private constructor(code: RationalErrorCode, cause: Error) {
-    super(cause.message, { cause });
-    this.name = 'RationalError';
-    this.code = code;
-  }
-
-  static syntaxError(message: string): RationalError {
-    return new RationalError(RationalErrorCode.SyntaxError, new SyntaxError(message));
-  }
-
-  static nonFinite(offendingValue: number): RationalError {
-    return new RationalError(RationalErrorCode.NonFinite, new RangeError(`Non-finite value: ${offendingValue}`));
-  }
-
-  static divisionByZero(): RationalError {
-    return new RationalError(RationalErrorCode.DivisionByZero, new RangeError('Division by zero'));
-  }
+  //#endregion
 }

@@ -1,19 +1,31 @@
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideDummyVeronaWidgetService, VeronaModuleMetadata, VeronaWidgetConfiguration } from 'verona-widget';
 import { DisplayEditSequence } from './display-edit-sequence';
-import { CaretContext } from './caret-context';
-import { EditSequence, sequence, token } from '../../models';
+import { CalculatorService } from '../../services/calculator-service';
+import { EditSequence, EditTokenId, sequence, token } from '../../models';
 
 @Component({
   selector: 'app-edit-sequence-host',
   imports: [DisplayEditSequence],
-  providers: [CaretContext],
   template: `<math><mrow [appEditSequence]="tree()" [interactive]="interactive()"></mrow></math>`,
 })
 class EditSequenceHost {
   readonly tree = signal<EditSequence>(sequence());
   readonly interactive = signal<boolean>(true);
 }
+
+const DUMMY_WIDGET = {
+  testConfig: { sessionId: 'spec', parameters: {}, sharedParameters: {} } satisfies VeronaWidgetConfiguration,
+  testMetadata: {
+    type: 'WIDGET_CALC',
+    id: 'spec',
+    name: [],
+    version: '0.0.0',
+    specVersion: '1.0',
+    metadataVersion: '1.0',
+  } satisfies VeronaModuleMetadata,
+};
 
 /**
  * The rendered MathML is read back as a single line, in the same notation the model specs
@@ -23,17 +35,38 @@ class EditSequenceHost {
 describe('DisplayEditSequence', () => {
   let fixture: ComponentFixture<EditSequenceHost>;
   let host: EditSequenceHost;
-  let caret: CaretContext;
+  let caret: CaretHandle;
+
+  // The caret lives in the calculator service, which addresses it by token ID
+  interface CaretHandle {
+    placeInside(part: EditSequence): void;
+    placeBehind(item: { readonly id: EditTokenId }): void;
+    remove(): void;
+    position(): null | EditTokenId;
+    isPlaced(): boolean;
+  }
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [EditSequenceHost],
-      providers: [provideZonelessChangeDetection()],
+      providers: [
+        provideZonelessChangeDetection(),
+        ...provideDummyVeronaWidgetService(DUMMY_WIDGET),
+        CalculatorService,
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(EditSequenceHost);
     host = fixture.componentInstance;
-    caret = fixture.debugElement.injector.get(CaretContext);
+    const service = TestBed.inject(CalculatorService);
+    caret = {
+      placeInside: (part) => service.placeCaret(part.id),
+      placeBehind: (item) => service.placeCaret(item.id),
+      remove: () => service.caretTokenId.set(null),
+      position: () => service.caretTokenId(),
+      isPlaced: () => service.caretTokenId() !== null,
+    };
+    caret.remove(); // the service places it on the restored sequence, the specs place it themselves
     fixture.detectChanges();
   });
 
@@ -232,25 +265,15 @@ describe('DisplayEditSequence', () => {
   it('addresses a caret position by token ID', () => {
     const item = literal('1');
     const tree = sequence(item);
-    const context = new CaretContext();
+    const service = TestBed.inject(CalculatorService);
 
-    expect(context.isPlaced()).toBeFalse();
+    service.placeCaret(item.id);
+    expect(service.isCaretOn(item)).toBeTrue();
+    expect(service.isCaretOn(tree)).toBeFalse();
 
-    context.placeBehind(item);
-    expect(context.position()).toBe(item.id);
-    expect(context.isBehind(item)).toBeTrue();
-    expect(context.isAtStartOf(tree)).toBeFalse();
-
-    context.placeInside(tree);
-    expect(context.isAtStartOf(tree)).toBeTrue();
-    expect(context.isBehind(item)).toBeFalse();
-
-    context.placeAt(item.id);
-    expect(context.isBehind(item)).toBeTrue();
-
-    context.remove();
-    expect(context.isPlaced()).toBeFalse();
-    expect(context.isBehind(item)).toBeFalse();
+    service.placeCaret(tree.id);
+    expect(service.isCaretOn(tree)).toBeTrue();
+    expect(service.isCaretOn(item)).toBeFalse();
   });
 
   //#endregion

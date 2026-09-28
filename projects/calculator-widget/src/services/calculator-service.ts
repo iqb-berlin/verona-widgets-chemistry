@@ -21,7 +21,7 @@ import {
   EditTokenId,
   EditTraversal,
   evaluateFormula,
-  exactToFormulaOutput,
+  numericToFormulaOutput,
   formatToLatex,
   FormulaEvalIssueCode,
   FormulaNode,
@@ -341,16 +341,12 @@ export class CalculatorService implements OnDestroy {
       return Result.issue({ message, tokenId: sourceTokenId });
     }
 
-    const outputFormula = exactToFormulaOutput(evaluationResult.value, { digits: 12 });
-    console.log(
-      FormulaNode.asLispString(compileResult.value),
-      '=>',
-      outputFormula.value.toString(),
-      '~>',
-      outputFormula.decimal,
-    );
+    // an exact evaluation shows a rational result as a fraction, a decimal one always as a decimal
+    const preferDecimal = mode === 'decimal';
+    const output = numericToFormulaOutput(evaluationResult.value, { digits: 12, preferDecimal });
+    console.log(FormulaNode.asLispString(compileResult.value), '=>', output.value.toString(), '~>', output.decimal);
 
-    const outputSequence = tokenizeFormula(outputFormula.exact);
+    const outputSequence = tokenizeFormula(output.formula);
     return Result.ok({ inputSequence, outputSequence });
   }
 

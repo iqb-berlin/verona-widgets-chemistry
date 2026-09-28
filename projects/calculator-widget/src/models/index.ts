@@ -1,8 +1,9 @@
 export * from './types';
 
 export * from './constants.model';
+export * from './numeric.model';
 export * from './rational.model';
-export * from './exact.model';
+export * from './irrational.model';
 
 export * from './formula.ast';
 export * from './formula.factory';

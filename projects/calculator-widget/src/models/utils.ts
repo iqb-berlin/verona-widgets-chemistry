@@ -117,3 +117,37 @@ export function extractNthPower(
 export function compareSign<T extends string | number | bigint>(a: T, b: T) {
   return a < b ? -1 : a > b ? +1 : 0;
 }
+
+// Number of decimal digits of a whole number, ignoring its sign
+export function bigDigits(value: bigint): number {
+  return bigAbs(value).toString(10).length;
+}
+
+// Integer division, rounding halves away from zero
+export function bigDivideRounded(numerator: bigint, denominator: bigint): bigint {
+  if (denominator === 0n) throw new RangeError('bigDivideRounded: division by zero');
+  const negative = numerator < 0n !== denominator < 0n;
+  const n = bigAbs(numerator);
+  const d = bigAbs(denominator);
+  const quotient = n / d;
+  const rounded = (n % d) * 2n >= d ? quotient + 1n : quotient;
+  return negative ? -rounded : rounded;
+}
+
+/**
+ * Render `scaled * 10^-digits` as a decimal number, which is how both kinds of numeric
+ * value reach the display once they are scaled to a whole number of decimal places.
+ */
+export function decimalText(scaled: bigint, digits: number, dropTrailingZeros: boolean): string {
+  const negative = scaled < 0n;
+  const text = bigAbs(scaled)
+    .toString(10)
+    .padStart(digits + 1, '0');
+
+  const integerPart = digits === 0 ? text : text.slice(0, text.length - digits);
+  let fractionPart = digits === 0 ? '' : text.slice(text.length - digits);
+  if (dropTrailingZeros) fractionPart = fractionPart.replace(/0+$/, '');
+
+  const magnitude = fractionPart.length > 0 ? `${integerPart}.${fractionPart}` : integerPart;
+  return negative && /[1-9]/.test(magnitude) ? `-${magnitude}` : magnitude; // a rounded zero has no sign
+}

@@ -110,7 +110,12 @@ describe('Editing', () => {
   function renderDisplay(tree: EditSequence, focusId: EditTokenId): string {
     const caret = EditTraversal.caretAt(tree, focusId);
     const host = EditTraversal.caretSequence(caret);
-    const caretMarkerToken = { kind: 'literal', id: 'caret' as EditTokenId, literal: CARET } as const;
+    const caretMarkerToken = {
+      sourceTokenId: null,
+      kind: 'literal',
+      id: 'caret' as EditTokenId,
+      literal: CARET,
+    } as const;
     const marked = EditTraversal.updateSequence(tree, host.id, (items) => {
       const withCaret = items.slice();
       withCaret.splice(caret.index, 0, caretMarkerToken);
@@ -434,6 +439,36 @@ describe('Editing', () => {
     expect(session.display).toBe('[7|/_]'); // the dividend is the first blank to fill in
   });
 
+  it('takes a closing fence only where an open one waits for it', () => {
+    const session = edit().type('1+2');
+
+    expect(session.type(')').display).toBe('1+2|'); // nothing to close
+    expect(session.lastChanged).toBeFalse();
+    expect(session.type('(3)').display).toBe('1+2(3)|'); // one which has its opening fence is taken
+    expect(session.type(')').display).toBe('1+2(3)|'); // and it closed the only open one
+  });
+
+  /**
+   * A fence cannot reach into a slot or out of one, as every slot holds a formula of its own.
+   * Taking a closing fence into a slot would draw `4π²` as `(4π)²` while the opening fence
+   * sits outside the exponent, where it can never match.
+   */
+  it('keeps a fence out of a slot its counterpart cannot reach', () => {
+    const session = edit().type('4');
+    session.run('typeInput', { input: ConstantSymbol.Pi }).run('applyExponent', { square: true });
+
+    expect(session.move('left', 3).display).toBe('4[pi|^2]'); // between the base and the exponent
+    expect(session.type(')').display).toBe('4[pi|^2]'); // the open fence would have to sit outside
+    expect(session.lastChanged).toBeFalse();
+
+    // the way to that formula is fencing the operand first, so that it is what gets squared
+    const fenced = edit().type('(4');
+    fenced.run('typeInput', { input: ConstantSymbol.Pi });
+    expect(fenced.type(')').display).toBe('(4pi)|');
+    expect(fenced.run('applyExponent', { square: true }).display).toBe('[(4pi)^2]|');
+    expect(fenced.formula).toBe('(pow (multiply 4 pi) 2)');
+  });
+
   //#endregion
   //#region Applying structure
 
@@ -444,10 +479,10 @@ describe('Editing', () => {
     expect(session.formula).toBe('(add 1 (pow 23 2))');
   });
 
-  it('takes a whole group as the operand and drops its now redundant fences', () => {
+  it('takes a whole group as the operand, fences and all', () => {
     const session = edit().type('2*(3+4)').run('applyExponent', { square: false });
 
-    expect(session.display).toBe('2*[3+4^|]'); // the caret waits in the exponent
+    expect(session.display).toBe('2*[(3+4)^|]'); // the caret waits in the exponent
     expect(session.type('2').formula).toBe('(multiply 2 (pow (add 3 4) 2))');
   });
 
@@ -675,7 +710,7 @@ describe('Editing', () => {
   it('fences unwrapped content again when it lands next to other tokens', () => {
     const session = edit().type('3*(1+2)').run('applyExponent', { square: false });
 
-    expect(session.display).toBe('3*[1+2^|]'); // the fences went into the base
+    expect(session.display).toBe('3*[(1+2)^|]'); // the fences went into the base
     expect(session.run('backspace', {}).display).toBe('3*(1+2)|'); // and come back out with it
     expect(session.formula).toBe('(multiply 3 (add 1 2))');
   });
@@ -683,8 +718,8 @@ describe('Editing', () => {
   it('needs no fences for content standing on its own', () => {
     const session = edit().type('(1+2)').run('applyExponent', { square: false });
 
-    expect(session.display).toBe('[1+2^|]');
-    expect(session.run('backspace', {}).display).toBe('1+2|');
+    expect(session.display).toBe('[(1+2)^|]');
+    expect(session.run('backspace', {}).display).toBe('(1+2)|');
   });
 
   it('takes a square apart in two steps, because it filled in the exponent', () => {
@@ -821,9 +856,9 @@ describe('Editing', () => {
   it('reports an issue for incomplete input instead of looping', () => {
     expect(edit().type('1+').formula).toBe('issue:unexpectedEnd');
     expect(edit().type('(1+2').formula).toBe('issue:unexpectedEnd');
-    expect(edit().type('1+2)').formula).toBe('issue:unexpectedToken');
-    expect(edit().run('applyFraction', { composite: false }).formula).toBe('issue:incomplete');
-    expect(edit().formula).toBe('issue:incomplete');
+    expect(compileToFormula(parseFromLatex('1+2)')).ok).toBeFalse(); // a surplus fence can only come from outside
+    expect(edit().run('applyFraction', { composite: false }).formula).toBe('issue:empty');
+    expect(edit().formula).toBe('issue:empty');
   });
 
   //#endregion
@@ -890,7 +925,7 @@ describe('Editing', () => {
   );
   it(
     'stores a whole group as the base',
-    storesAs((s) => s.type('(1+2)').run('applyExponent', { square: false }).type('3'), '{1+2}^{3}'),
+    storesAs((s) => s.type('(1+2)').run('applyExponent', { square: false }).type('3'), '{(1+2)}^{3}'),
   );
   it(
     'stores a square root without an index',
@@ -1008,40 +1043,68 @@ describe('Editing', () => {
     };
   }
 
-  const one: FormulaNode = { kind: 'literal', literal: '1' };
-  const two: FormulaNode = { kind: 'literal', literal: '2' };
-  const three: FormulaNode = { kind: 'literal', literal: '3' };
+  const one: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '1' };
+  const two: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '2' };
+  const three: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '3' };
 
-  it('keeps a negation', roundTrips({ kind: 'unary', operator: 'negate', operand: two }, '-2'));
+  it('keeps a negation', roundTrips({ sourceTokenId: null, kind: 'unary', operator: 'negate', operand: two }, '-2'));
   it(
     'keeps a negated group',
     roundTrips(
-      { kind: 'unary', operator: 'negate', operand: { kind: 'binary', operator: 'add', left: one, right: two } },
+      {
+        sourceTokenId: null,
+        kind: 'unary',
+        operator: 'negate',
+        operand: { sourceTokenId: null, kind: 'binary', operator: 'add', left: one, right: two },
+      },
       '-(1+2)',
     ),
   );
   it(
     'keeps a negated factor',
     roundTrips(
-      { kind: 'binary', operator: 'multiply', left: three, right: { kind: 'unary', operator: 'negate', operand: two } },
+      {
+        sourceTokenId: null,
+        kind: 'binary',
+        operator: 'multiply',
+        left: three,
+        right: { sourceTokenId: null, kind: 'unary', operator: 'negate', operand: two },
+      },
       '3*(-2)',
     ),
   );
   it(
     'writes a square root without an index',
-    roundTrips({ kind: 'root', radicand: { kind: 'literal', literal: '16' }, degree: two }, '[R16]'),
+    roundTrips(
+      {
+        sourceTokenId: null,
+        kind: 'root',
+        radicand: { sourceTokenId: null, kind: 'literal', literal: '16' },
+        degree: two,
+      },
+      '[R16]',
+    ),
   );
   it(
     'keeps the index of an nth root',
-    roundTrips({ kind: 'root', radicand: { kind: 'literal', literal: '27' }, degree: three }, '[3R27]'),
+    roundTrips(
+      {
+        sourceTokenId: null,
+        kind: 'root',
+        radicand: { sourceTokenId: null, kind: 'literal', literal: '27' },
+        degree: three,
+      },
+      '[3R27]',
+    ),
   );
   it(
     'parenthesizes a sum inside a product',
     roundTrips(
       {
+        sourceTokenId: null,
         kind: 'binary',
         operator: 'multiply',
-        left: { kind: 'binary', operator: 'add', left: one, right: two },
+        left: { sourceTokenId: null, kind: 'binary', operator: 'add', left: one, right: two },
         right: three,
       },
       '(1+2)*3',
@@ -1050,7 +1113,7 @@ describe('Editing', () => {
   it(
     'keeps a composite fraction',
     roundTrips(
-      { kind: 'composite', integerPart: two, numerator: one, denominator: three },
+      { sourceTokenId: null, kind: 'composite', integerPart: two, numerator: one, denominator: three },
       '[2&1/3]',
       '(add 2 (divide 1 3))',
     ),
