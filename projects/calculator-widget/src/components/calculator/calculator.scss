@@ -51,6 +51,12 @@
   math {
     padding: .25rem;
   }
+
+  .error-message {
+    display: block;
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
 }
 
 @mixin resize-icon-button($size) {

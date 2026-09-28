@@ -20,9 +20,12 @@ const STYLE_PROPS = [
   'text-align',
 ];
 
-function inlineStyles(source: Element, target: Element): void {
+function inlineStyles(source: Element, target: Element, overrideStyles: Record<string, undefined | string>): void {
   const computed = getComputedStyle(source);
-  const style = STYLE_PROPS.map((p) => `${p}:${computed.getPropertyValue(p)}`).join(';');
+  const style = STYLE_PROPS.map((property) => {
+    const styleValue = overrideStyles[property] ?? computed.getPropertyValue(property);
+    return `${property}:${styleValue}`;
+  }).join(';');
 
   target.setAttribute('style', style);
 
@@ -35,7 +38,7 @@ function inlineStyles(source: Element, target: Element): void {
   const s = source.children;
   const t = target.children;
   for (let i = 0; i < s.length; i++) {
-    inlineStyles(s[i], t[i]);
+    inlineStyles(s[i], t[i], overrideStyles);
   }
 }
 
@@ -48,6 +51,8 @@ export interface MathToPngOptions {
   padding?: number;
   /** Fill color; omit for a transparent PNG. */
   background?: string;
+  /** Text color; omit for current font color. */
+  foreground?: string;
 }
 
 export async function mathToPng(el: Element, options: MathToPngOptions = {}): Promise<string> {
@@ -61,7 +66,7 @@ export async function mathToPng(el: Element, options: MathToPngOptions = {}): Pr
   const ph = Math.max(1, Math.round(h * s));
 
   const clone = el.cloneNode(true) as Element;
-  inlineStyles(el, clone);
+  inlineStyles(el, clone, { color: options.foreground });
   clone.setAttribute('style', clone.getAttribute('style') + ';margin:0');
   clone.setAttribute('display', 'inline');
 
@@ -89,7 +94,8 @@ export async function mathToPng(el: Element, options: MathToPngOptions = {}): Pr
   foreignObject.appendChild(foreignDiv);
 
   const img = new Image();
-  const svgXml = xmlSerializer.serializeToString(svg)
+  const svgXml = xmlSerializer.serializeToString(svg);
+  //console.log('SVG XML =', svgXml);
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgXml)}`;
   await img.decode();
 

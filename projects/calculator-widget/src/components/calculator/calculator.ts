@@ -42,7 +42,7 @@ export class Calculator implements OnInit, JournalImageSource {
   async snapshotJournalImage(config: JournalImageConfig): Promise<null | string> {
     const mathElement = this.mathView()?.nativeElement;
     return mathElement
-      ? await mathToPng(mathElement, { imageWidth: config.imageWidthPx, background: '#ffffff' })
+      ? await mathToPng(mathElement, { imageWidth: config.imageWidthPx, background: '#ffffff', foreground: '#000000' })
       : null;
   }
 }

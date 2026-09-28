@@ -40,8 +40,8 @@ export class MoleculeEditorImageService {
   private async renderAsImage(view: MoleculeEditorView): Promise<MoleculeEditorImage> {
     const svgRoot = await this.renderer.renderSvgTree(view);
     const svgContent = this.xmlSerializer.serializeToString(svgRoot);
-    console.log('SVG root =', svgRoot);
-    console.log('SVG content =', svgContent);
+    //console.log('SVG root =', svgRoot);
+    //console.log('SVG content =', svgContent);
 
     const { width, height } = svgRoot.viewBox.baseVal;
     const canvas = await this.renderSvgToCanvas(svgContent, Math.ceil(width), Math.ceil(height));
