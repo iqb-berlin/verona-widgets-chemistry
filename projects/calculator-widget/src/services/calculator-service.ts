@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, OnDestroy, Signal, signal } from '@angular/core';
+import { computed, inject, Injectable, OnDestroy, Signal, signal, WritableSignal } from '@angular/core';
 import { castDraft, produce } from 'immer';
 import { historySignal, HistorySignal, VeronaWidgetService } from 'verona-widget';
 import {
@@ -32,7 +32,7 @@ export interface HistoryEntry {
 
 export interface JournalEntry {
   readonly asLatex: string;
-  readonly asImage: null | string;
+  readonly asImage?: null | string;
 }
 
 export type EvaluationMode = 'rational' | 'decimal';
@@ -122,7 +122,7 @@ export class CalculatorService implements OnDestroy {
     return result === null || result.ok ? null : result.issue.tokenId;
   });
 
-  readonly historyEntries = signal<ReadonlyArray<HistoryEntry>>([]);
+  readonly historyEntries: WritableSignal<ReadonlyArray<HistoryEntry>>;
   private journalImageSource: null | JournalImageSource = null;
 
   // Bound to service lifecycle
@@ -132,9 +132,10 @@ export class CalculatorService implements OnDestroy {
     // Setup lifecycle abort signal
     const abortSignal = this.abortController.signal;
 
-    // Initialize edit-sequence
-    const initSequence = this.restoreInitialSequence() ?? sequence();
+    // Initialize edit-sequence and history
+    const [initSequence, initHistoryEntries] = this.restoreInitialState() ?? [sequence(), []];
     this.editSequence = historySignal(initSequence, { capacity: 100, debugName: 'editSequence' });
+    this.historyEntries = signal<ReadonlyArray<HistoryEntry>>(initHistoryEntries);
 
     // Place caret at end of initial edit-sequence
     this.caretTokenId.set(lastTokenIdOf(initSequence));
@@ -436,30 +437,51 @@ export class CalculatorService implements OnDestroy {
     );
   }
 
-  private restoreInitialSequence(): null | EditSequence {
+  private readStateDataArray(): null | Array<JournalEntry> {
     try {
       // State-data must not be empty
       const stateDataJson = this.widgetService.stateData();
       if (!stateDataJson) return null;
 
       // State-data must encode an array
-      const stateData = JSON.parse(stateDataJson);
+      const stateData: unknown = JSON.parse(stateDataJson);
       if (!Array.isArray(stateData)) return null;
 
-      // Latest entry at end of array, must be an object
-      const latestEntry = stateData.at(-1);
-      if (latestEntry === null || typeof latestEntry !== 'object') return null;
+      // State-data entries must contain journal-entry objects
+      return stateData.filter((entry: unknown): entry is JournalEntry => {
+        return (
+          entry !== null &&
+          typeof entry === 'object' && // entry must be an object
+          'asLatex' in entry &&
+          typeof entry.asLatex === 'string' && // "asLatex" string must be in object
+          (!('asImage' in entry) || entry.asImage === null || typeof entry.asImage === 'string')
+        ); // "asImage" must be absent, null, or a string
+      });
+    } catch (error: unknown) {
+      console.warn('Reading initial state-data failed:', error);
+      return null;
+    }
+  }
 
-      // Get LaTeX representation of last entry
-      const inputAndOutputLatex = latestEntry['asLatex'];
-      if (typeof inputAndOutputLatex !== 'string') return null;
+  private restoreInitialState(): null | readonly [EditSequence, HistoryEntry[]] {
+    try {
+      // Restore journal-entries from state-data
+      const journalEntries = this.readStateDataArray();
+      if (journalEntries === null) return null;
 
-      // Discard output LaTeX after "=", must not be empty
-      const [inputLatex] = inputAndOutputLatex.split('=', 2);
-      if (inputLatex.length === 0) return null;
+      // Map journal-entries back into history-entries
+      const historyEntries = journalEntries.map((journalEntry): HistoryEntry => {
+        const [inputLatex, outputLatex] = journalEntry.asLatex.split('=', 2);
+        const input = parseFromLatex(inputLatex);
+        const output = parseFromLatex(outputLatex);
+        const journalEntryPromise = Promise.resolve(journalEntry);
+        return { id: nextHistoryEntryId(), input, output, journalEntryPromise };
+      });
 
-      // Parse sequence from input LaTeX
-      return parseFromLatex(inputLatex);
+      // Restore input edit-sequence from latest entry
+      const latestHistoryEntry = historyEntries.at(-1);
+      const editSequence = latestHistoryEntry?.input ?? sequence();
+      return [editSequence, historyEntries];
     } catch (error: unknown) {
       console.warn('Restoring initial edit-sequence failed:', error);
       return null;

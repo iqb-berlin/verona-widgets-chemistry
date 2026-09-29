@@ -44,7 +44,7 @@ export function evaluateFormula(node: FormulaNode): FormulaEvalResult {
     return Result.ok(evaluateNode(node));
   } catch (error: unknown) {
     if (error instanceof FormulaEvalError) return Result.issue(error.issue);
-    if (error instanceof NumericError) return Result.issue(errorIssue(error));
+    if (error instanceof NumericError) return Result.issue(numericErrorIssue(error));
     console.error('Unexpected evaluate formula', node, 'error:', error);
     throw error;
   }
@@ -111,7 +111,7 @@ function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, mes
   throw new FormulaEvalError({ code, detail, sourceTokenId });
 }
 
-function errorIssue(error: NumericError): FormulaEvalIssue {
+function numericErrorIssue(error: NumericError): FormulaEvalIssue {
   return { code: error.code, detail: error.message, sourceTokenId: null };
 }
 

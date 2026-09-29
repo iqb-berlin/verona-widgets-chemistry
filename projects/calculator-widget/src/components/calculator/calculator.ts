@@ -1,12 +1,12 @@
 import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
-import { MatActionList, MatListItem } from '@angular/material/list';
+import { MatActionList, MatDivider, MatListItem } from '@angular/material/list';
 import { MatIcon } from '@angular/material/icon';
 import { MatFabButton, MatIconButton } from '@angular/material/button';
 import { MatMenu, MatMenuContent, MatMenuTrigger } from '@angular/material/menu';
 import { DisplayEditSequence } from '../display-edit-sequence/display-edit-sequence';
 import { CalculatorService, JournalImageConfig, JournalImageSource } from '../../services/calculator-service';
-import { ConstantSymbol } from '../../models';
 import { mathToPng } from '../../services/math-to-png';
+import { ConstantSymbol } from '../../models';
 
 @Component({
   selector: 'app-calculator',
@@ -24,6 +24,7 @@ import { mathToPng } from '../../services/math-to-png';
     DisplayEditSequence,
     MatListItem,
     MatActionList,
+    MatDivider,
   ],
 })
 export class Calculator implements OnInit, JournalImageSource {

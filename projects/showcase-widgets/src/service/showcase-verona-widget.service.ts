@@ -59,7 +59,7 @@ export class ShowcaseVeronaWidgetConfig {
 }
 
 @Injectable()
-export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
+export class ShowcaseVeronaWidgetService extends EventTarget implements VeronaWidgetService {
   readonly showcase = inject(ShowcaseVeronaWidgetConfig);
   readonly snackbar = inject(MatSnackBar);
 
@@ -86,6 +86,7 @@ export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
     this.snackbar.open(`Widget ready: ${metadata.type}`, 'OK', { duration: 2_000 });
     this.internalMetadata.set(metadata);
     this.internalState.set('running'); // skips "ready" state, immediately go to "running"
+    this.dispatchEvent(new CustomEvent('ready', { detail: metadata }));
   }
 
   sendReturn(result: VeronaWidgetService.ReturnResult): void {
@@ -96,6 +97,7 @@ export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
         : `Widget return requested, state not saved"`;
 
     this.snackbar.open(message, 'OK', { duration: 5_000 });
+    this.dispatchEvent(new CustomEvent('return', { detail: result }));
   }
 }
 

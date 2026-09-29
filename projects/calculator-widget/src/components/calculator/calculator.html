@@ -235,13 +235,17 @@
   <ng-template matMenuContent>
     <mat-action-list>
       @for (entry of service.historyEntries(); track entry.id) {
-        <button mat-list-item [title]="`Eintrag #${$index}`" (click)="service.restoreFromHistory(entry)">
+        <button mat-list-item [title]="`Eintrag #${entry.id}`" (click)="service.restoreFromHistory(entry)">
+          <span>{{ entry.id }})&nbsp;</span>
           <math display="inline">
             <mrow [appEditSequence]="entry.input" [topLevel]="true"></mrow>
             <mo>=</mo>
             <mrow [appEditSequence]="entry.output" [topLevel]="true"></mrow>
           </math>
         </button>
+        @if (!$last) {
+          <mat-divider></mat-divider>
+        }
       }
     </mat-action-list>
   </ng-template>

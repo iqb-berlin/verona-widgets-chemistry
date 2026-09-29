@@ -1,5 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 import {
   provideShowcaseVeronaWidgetService,
   ShowcaseVeronaWidgetConfig,
@@ -8,11 +10,10 @@ import {
 import { intParam } from '../widget-page-common/param-converters';
 import { ShowcaseVeronaWidgetDirective } from '../service/showcase-verona-widget.directive';
 import { Calculator } from '../../../calculator-widget/src/components/calculator/calculator';
-import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 
 @Component({
   selector: 'app-calculator-page',
-  imports: [ShowcaseVeronaWidgetDirective, Calculator, FormsModule, MatFormField, MatInput, MatLabel],
+  imports: [ShowcaseVeronaWidgetDirective, Calculator, FormsModule, MatFormField, MatInput, MatLabel, MatCheckbox],
   templateUrl: './calculator-page.html',
   styleUrls: ['./calculator-page.scss', '../widget-page-common/widget-page.scss'],
   providers: [
@@ -23,11 +24,13 @@ import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
     }),
   ],
 })
-export class CalculatorPage {
+export class CalculatorPage implements OnInit, OnDestroy {
   readonly config = inject(ShowcaseVeronaWidgetConfig);
   readonly service = inject(ShowcaseVeronaWidgetService);
 
+  readonly calculatorActive = signal<boolean>(true);
   readonly imageWidthParam = this.config.parameterSignal('MAX_IMAGE_WIDTH_PX', intParam);
+  readonly journalLinesParam = this.config.parameterSignal('JOURNAL_LINES', intParam);
 
   readonly decodedStateData = computed(() => {
     try {
@@ -39,7 +42,21 @@ export class CalculatorPage {
     }
   });
 
+  private abortController?: AbortController;
+
   constructor() {
     this.imageWidthParam.set(400);
+    this.journalLinesParam.set(3);
+  }
+
+  ngOnInit() {
+    this.abortController = new AbortController();
+    const abortSignal = this.abortController.signal;
+    this.service.addEventListener('return', () => this.calculatorActive.set(false), { signal: abortSignal });
+  }
+
+  ngOnDestroy() {
+    this.abortController?.abort('ngOnDestroy');
+    delete this.abortController;
   }
 }
