@@ -6,6 +6,22 @@ export function bigIsEven(value: bigint): boolean {
   return value % 2n === 0n;
 }
 
+const LOG2_10 = Math.log2(10);
+
+export function bigIsPow10(value: bigint): boolean {
+  // Cheap trivial cases
+  if (value < 10n) return value === 1n;
+  if (value % 10n !== 0n) return false;
+
+  // Conversion to base 2^n (like 16) is significantly cheaper than to base 10
+  const hex = value.toString(16);
+  const bits = 4 * (hex.length - 1) + (32 - Math.clz32(parseInt(hex[0], 16)));
+
+  // 10^k has floor(k * log2(10)) + 1 bits, so only one k can match
+  const k = Math.round((bits - 0.5) / LOG2_10);
+  return value === 10n ** BigInt(k);
+}
+
 // Greatest Common Divisor
 export function bigGcd(left: bigint, right: bigint): bigint {
   let p = bigAbs(left);
@@ -16,12 +32,6 @@ export function bigGcd(left: bigint, right: bigint): bigint {
     q = t;
   }
   return p;
-}
-
-// Least Common Multiple
-export function bigLcm(a: bigint, b: bigint): bigint {
-  if (a === 0n || b === 0n) return 0n;
-  return bigAbs(a * b) / bigGcd(a, b);
 }
 
 export function bigPow(value: bigint, exponent: bigint): bigint {

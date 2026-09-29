@@ -11,6 +11,7 @@ import {
   EditTokenId,
   EditTraversal,
   evaluateFormula,
+  FormatToFormulaOptions,
   formatToLatex,
   FormulaEvalIssueCode,
   numericToFormulaOutput,
@@ -87,12 +88,14 @@ function formatEvaluationOutput(
   inputSequence: EditSequence,
   numericValue: NumericValue,
   mode: EvaluationMode,
+  options: FormatToFormulaOptions,
 ): EvaluationOutput {
   // A rational-number evaluation shows the result as a fraction if possible, a decimal one always as a decimal
-  const preferDecimal = mode === 'decimal';
-  const output = numericToFormulaOutput(numericValue, { digits: 12, preferDecimal });
+  const output = numericToFormulaOutput(numericValue, { ...options, digits: 12 });
   const outputSequence = tokenizeFormula(output.formula);
-  return { mode, numericValue, inputSequence, outputSequence } as const;
+  const actualMode =
+    mode === 'decimal' ? 'decimal' : options.forceFraction || !output.isExactlyDecimal ? 'rational' : 'decimal';
+  return { mode: actualMode, numericValue, inputSequence, outputSequence } as const;
 }
 
 function lastTokenIdOf(sequence: EditSequence): EditTokenId {
@@ -222,7 +225,9 @@ export class CalculatorService implements OnDestroy {
     // Toggle and re-interpret previous result with opposite mode
     const { inputSequence, numericValue, mode: previousMode } = previousResult.value;
     const oppositeMode: EvaluationMode = previousMode === 'rational' ? 'decimal' : 'rational';
-    const output = formatEvaluationOutput(inputSequence, numericValue, oppositeMode);
+    const preferDecimal = oppositeMode === 'decimal';
+    const forceFraction = oppositeMode === 'rational';
+    const output = formatEvaluationOutput(inputSequence, numericValue, oppositeMode, { preferDecimal, forceFraction });
     this.evaluationResult.set(Result.ok(output));
   }
 
@@ -398,7 +403,9 @@ export class CalculatorService implements OnDestroy {
       return Result.issue({ message, tokenId: sourceTokenId });
     }
 
-    return Result.ok(formatEvaluationOutput(inputSequence, evaluationResult.value, mode));
+    const preferDecimal = mode === 'decimal';
+    const output = formatEvaluationOutput(inputSequence, evaluationResult.value, mode, { preferDecimal });
+    return Result.ok(output);
   }
 
   private amendHistory(

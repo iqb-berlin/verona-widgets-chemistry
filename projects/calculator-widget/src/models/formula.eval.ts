@@ -4,7 +4,7 @@ import { Rational } from './rational.model';
 import { Irrational } from './irrational.model';
 import { compositeFraction, decimal, fraction, int, negate } from './formula.factory';
 import { EnumLiteral, Result } from './types';
-import { bigIsEven } from './utils';
+import { bigIsEven, bigIsPow10 } from './utils';
 import { EditTokenId } from './editing.ast';
 
 //#region Evaluation public API
@@ -65,6 +65,8 @@ export interface FormatToFormulaOptions {
   readonly preferMixedFractions?: boolean;
   /** Write every number as a decimal, even a rational one */
   readonly preferDecimal?: boolean;
+  /** Always display rational numbers as fractions, even if they are exact decimals (i.e. denominator is power of 10) */
+  readonly forceFraction?: boolean;
   /** Decimal places a decimal number is rounded to */
   readonly digits?: number;
 }
@@ -76,7 +78,7 @@ export interface FormatToFormulaOptions {
 export function numericToFormula(value: NumericValue, options: FormatToFormulaOptions = {}): FormulaNode {
   const rational = value.asRational();
   if (rational !== null && options.preferDecimal !== true) return rationalToFormula(rational, options);
-  return decimalToFormula(value, options.digits ?? DEFAULT_DIGITS);
+  return decimalToFormula(value, options.digits);
 }
 
 /**
@@ -91,7 +93,7 @@ export function numericToFormulaOutput(value: NumericValue, options: FormatToFor
     value,
     formula: numericToFormula(value, { ...options, digits }),
     decimal: decimalText,
-    isExactlyDecimal: saysTheSame(value, decimalText, options),
+    isExactlyDecimal: isSameDecimal(value, decimalText, options),
   };
 }
 
@@ -207,6 +209,8 @@ function rationalToFormula(value: Rational, options: FormatToFormulaOptions): Fo
     const whole = magnitude.floor();
     const remainder = magnitude.numerator - whole * magnitude.denominator;
     node = compositeFraction(int(whole), int(remainder), int(magnitude.denominator));
+  } else if (!options.forceFraction && bigIsPow10(value.denominator)) {
+    node = decimalToFormula(magnitude, options.digits);
   } else {
     node = fraction(int(magnitude.numerator), int(magnitude.denominator));
   }
@@ -214,13 +218,13 @@ function rationalToFormula(value: Rational, options: FormatToFormulaOptions): Fo
   return value.isNegative ? negate(node) : node;
 }
 
-function decimalToFormula(value: NumericValue, digits: number): FormulaNode {
+function decimalToFormula(value: NumericValue, digits: number = DEFAULT_DIGITS): FormulaNode {
   const magnitude = decimal(value.absolute().toDecimalString(digits, true));
   return value.isNegative ? negate(magnitude) : magnitude;
 }
 
 // True when the rounded decimal holds the whole value, so that an exact line adds nothing
-function saysTheSame(value: NumericValue, decimalText: string, options: FormatToFormulaOptions): boolean {
+function isSameDecimal(value: NumericValue, decimalText: string, options: FormatToFormulaOptions): boolean {
   if (options.preferDecimal === true) return true;
   const rational = value.asRational();
   if (rational === null) return true; // an irrational number has no exact form to compare against
