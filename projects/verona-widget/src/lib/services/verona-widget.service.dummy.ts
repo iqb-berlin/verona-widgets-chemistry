@@ -30,5 +30,5 @@ export class DummyVeronaWidgetService implements VeronaWidgetService {
     this.state.set({ state: 'running', config: this.options.testConfig, metadata });
   }
 
-  sendReturn(saveState?: boolean): void {}
+  sendReturn(): void {}
 }

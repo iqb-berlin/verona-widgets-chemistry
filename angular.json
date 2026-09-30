@@ -78,9 +78,7 @@
                 "input": "projects/periodic-system-select-widget/public"
               }
             ],
-            "styles": [
-              "projects/periodic-system-select-widget/src/styles.scss"
-            ]
+            "styles": ["projects/periodic-system-select-widget/src/styles.scss"]
           },
           "configurations": {
             "production": {
@@ -132,9 +130,7 @@
                 "input": "projects/periodic-system-select-widget/public"
               }
             ],
-            "styles": [
-              "projects/periodic-system-select-widget/src/styles.scss"
-            ]
+            "styles": ["projects/periodic-system-select-widget/src/styles.scss"]
           }
         }
       }
@@ -162,9 +158,7 @@
                 "input": "projects/molecule-editor-widget/public"
               }
             ],
-            "styles": [
-              "projects/molecule-editor-widget/src/styles.scss"
-            ],
+            "styles": ["projects/molecule-editor-widget/src/styles.scss"],
             "loader": {
               ".svg": "text"
             }
@@ -222,9 +216,90 @@
             "loader": {
               ".svg": "text"
             },
-            "styles": [
-              "projects/molecule-editor-widget/src/styles.scss"
-            ]
+            "styles": ["projects/molecule-editor-widget/src/styles.scss"]
+          }
+        }
+      }
+    },
+    "calculator-widget": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/calculator-widget",
+      "sourceRoot": "projects/calculator-widget/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "projects/calculator-widget/src/main.ts",
+            "tsConfig": "projects/calculator-widget/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/calculator-widget/public"
+              }
+            ],
+            "loader": {
+              ".svg": "text"
+            },
+            "styles": ["projects/calculator-widget/src/styles.scss"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1MB",
+                  "maximumError": "2MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "calculator-widget:build:production"
+            },
+            "development": {
+              "buildTarget": "calculator-widget:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n"
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "tsConfig": "projects/calculator-widget/tsconfig.spec.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/calculator-widget/public"
+              }
+            ],
+            "styles": ["projects/calculator-widget/src/styles.scss"]
           }
         }
       }
@@ -252,9 +327,7 @@
                 "input": "projects/showcase-widgets/public"
               }
             ],
-            "styles": [
-              "projects/showcase-widgets/src/styles.scss"
-            ],
+            "styles": ["projects/showcase-widgets/src/styles.scss"],
             "loader": {
               ".svg": "text"
             }
@@ -309,9 +382,7 @@
                 "input": "projects/showcase-widgets/public"
               }
             ],
-            "styles": [
-              "projects/showcase-widgets/src/styles.scss"
-            ]
+            "styles": ["projects/showcase-widgets/src/styles.scss"]
           }
         }
       }

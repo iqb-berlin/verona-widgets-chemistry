@@ -1,0 +1,89 @@
+@let parentToken = sequence();
+@let problemId = service.problemTokenId();
+<ng-container xmlns:math="http://www.w3.org/1998/Math/MathML">
+  @if (showsCaretAtStart()) {
+    <ng-container *ngTemplateOutlet="caretMark" />
+  }
+  @if (!topLevel() && parentToken.items.length === 0) {
+    <math:mtext
+      class="placeholder"
+      [class.edited]="service.isCaretOn(parentToken)"
+      [style.cursor]="cursorStyle()"
+      (click)="handleEmptyClick(parentToken, $event)"
+    >
+      &square;
+    </math:mtext>
+  }
+  @for (token of parentToken.items; track token.id; let index = $index) {
+    <ng-container *ngTemplateOutlet="displayItem; context: { token, index }" />
+    @if (showsCaretBehind(token)) {
+      <ng-container *ngTemplateOutlet="caretMark" />
+    }
+  }
+
+  <ng-template #caretMark>
+    <math:mtext class="caret">|</math:mtext>
+  </ng-template>
+
+  <ng-template #displayItem let-unknownToken="token" let-index="index">
+    @let token = asToken(unknownToken);
+    @let isProblem = token.id === problemId;
+    @switch (token.kind) {
+      @case ('sequence') {
+        <!-- ILLEGAL NESTED SEQUENCE -->
+      }
+      @case ('literal') {
+        <math:mn [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
+          {{ token.literal.replace('.', ',') }}
+        </math:mn>
+      }
+      @case ('constant') {
+        <math:mi [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
+          {{ CONSTANTS[token.symbol].unicode }}
+        </math:mi>
+      }
+      @case ('fence') {
+        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
+          {{ token.fence }}
+        </math:mo>
+      }
+      @case ('operator') {
+        <math:mo [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
+          {{ OPERATOR_SYMBOLS[token.operator] }}
+        </math:mo>
+      }
+      @case ('fraction') {
+        <math:mfrac [class.problem]="isProblem">
+          <math:mrow [appEditSequence]="token.dividend" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.divisor" [interactive]="interactive()"></math:mrow>
+        </math:mfrac>
+      }
+      @case ('composite') {
+        <math:mrow [appEditSequence]="token.integerPart" [interactive]="interactive()" [class.problem]="isProblem">
+        </math:mrow>
+        <math:mfrac [class.problem]="isProblem">
+          <math:mrow [appEditSequence]="token.numerator" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.denominator" [interactive]="interactive()"></math:mrow>
+        </math:mfrac>
+      }
+      @case ('exponent') {
+        <math:msup [class.problem]="isProblem">
+          <math:mrow [appEditSequence]="token.base" [interactive]="interactive()"></math:mrow>
+          <math:mrow [appEditSequence]="token.exponent" [interactive]="interactive()"></math:mrow>
+        </math:msup>
+      }
+      @case ('root') {
+        @if (showsRootIndex(token)) {
+          <math:mroot [class.problem]="isProblem">
+            <math:mrow [appEditSequence]="token.radicand" [interactive]="interactive()"></math:mrow>
+            <math:mrow [appEditSequence]="token.degree" [interactive]="interactive()"></math:mrow>
+          </math:mroot>
+        } @else {
+          <math:msqrt [class.problem]="isProblem">
+            <math:mrow [appEditSequence]="token.radicand" [interactive]="interactive()"></math:mrow>
+          </math:msqrt>
+        }
+      }
+    }
+  </ng-template>
+</ng-container>

@@ -1,0 +1,176 @@
+:host {
+  --header-height: var(--calculator-header-height, 6rem);
+  --form-height: var(--calculator-form-height, 14rem);
+}
+
+.calculator {
+  max-width: 720px;
+  min-width: 120px;
+
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  gap: 0.7rem;
+
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-areas:
+    'hist undo redo .... .... exit'
+    'form form form form form form'
+    'nav0 nav1 nav2 nav3 nav4 nav5'
+    'lpar rpar pi   c    back div '
+    'pow  root num7 num8 num9 mul '
+    'pow2 sqrt num4 num5 num6 sub '
+    'comp frac num1 num2 num3 add '
+    's-d  dec  neg  num0 dot  eval';
+}
+
+.formula-area {
+  grid-area: form;
+  border: 1px solid var(--mat-sys-on-surface);
+  border-radius: var(--mat-sys-corner-small);
+  height: var(--form-height);
+  font-size: 2rem;
+
+  overflow: scroll;
+
+  &::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(155, 155, 155, 0.5);
+    border-radius: 20px;
+    border: transparent;
+  }
+
+  math {
+    padding: 0.25rem;
+  }
+
+  .error-message {
+    display: block;
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
+}
+
+@mixin resize-icon-button($size) {
+  --mat-icon-button-icon-size: $size;
+  --mat-icon-button-state-layer-size: $size;
+  ::ng-deep .mat-icon {
+    line-height: $size;
+    font-size: $size;
+    width: $size;
+    height: $size;
+  }
+}
+
+.close {
+  --mat-icon-color: var(--mat-sys-error);
+}
+
+.history,
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  @include resize-icon-button($size: 2.5rem);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+
+  ::ng-deep .mat-icon {
+    line-height: 2.5rem;
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .mdc-fab {
+    width: 100%;
+    --mat-fab-container-shape: 32px;
+  }
+
+  &.expand {
+    @include resize-icon-button($size: 3rem);
+  }
+}
+
+.control {
+  aspect-ratio: 1 / 1;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+  --mat-fab-foreground-color: var(--mat-sys-on-surface);
+  --mat-fab-container-shape: 50%;
+
+  .mdc-fab {
+    width: 100%;
+    height: 100%;
+    font-size: 42px;
+    font-weight: bold;
+  }
+
+  &.clear {
+    --mat-fab-container-color: var(--mat-sys-error);
+    --mat-fab-foreground-color: var(--mat-sys-on-error);
+  }
+
+  &.numpad {
+    --mat-fab-container-color: var(--mat-sys-surface-variant);
+    --mat-fab-foreground-color: var(--mat-sys-on-surface-variant);
+  }
+
+  &.backspace {
+    @include resize-icon-button($size: 3rem);
+  }
+
+  &.operation {
+    --mat-fab-container-color: var(--mat-sys-on-surface);
+    --mat-fab-foreground-color: var(--mat-sys-surface);
+  }
+
+  &.operator {
+    --mat-fab-container-color: var(--mat-sys-surface);
+
+    .mat-mdc-fab {
+      border: 1px solid var(--mat-sys-inverse-on-surface);
+    }
+  }
+
+  .composite {
+    font-size: 80%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .fraction {
+    font-size: 60%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+
+    :first-child {
+      margin-bottom: 4px;
+    }
+
+    :last-child {
+      border-top: 4px solid var(--mat-sys-on-surface);
+    }
+  }
+}

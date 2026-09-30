@@ -4,7 +4,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDrawer, MatDrawerContainer } from '@angular/material/sidenav';
 import { PsService, PsTable, PsTableInteractionsDirective } from 'periodic-system-common';
-import { MoleculeEditorModel } from '../../services/molecule-editor.model';
+import { debounceSignal } from 'verona-widget';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer';
 import { MoleculeEditorPickerService } from '../../services/molecule-editor-picker.service';
@@ -13,7 +13,6 @@ import { MoleculeEditorImageRenderer } from '../../services/molecule-editor-imag
 import { CustomIconsService, registerCustomIcons } from '../../services/custom-icons.service';
 import { EditorCanvas } from '../editor-canvas/editor-canvas';
 import { EditorControls } from '../editor-controls/editor-controls';
-import { debounceSignal } from '../../util/debounce-signal';
 import IqbIcons from '../../assets/iqb-icons.svg';
 
 @Component({
@@ -57,7 +56,8 @@ export class MoleculeEditor {
     // On (debounced) model update, send state-data to API
     effect(() => {
       const model = this.debouncedModel();
-      this.sendStateData(model);
+      const modelJson = JSON.stringify(model);
+      this.service.widgetService.stateData.set(modelJson);
     });
   }
 
@@ -79,12 +79,7 @@ export class MoleculeEditor {
     const modelWithImage = await this.imageService.createModelWithImage(model, view);
 
     // Send state and return-request to API
-    this.sendStateData(modelWithImage); //TODO: Replace with finalState in return-request, once available
-    this.service.widgetService.sendReturn(true);
-  }
-
-  private sendStateData(model: MoleculeEditorModel): void {
-    const modelJson = JSON.stringify(model);
-    this.service.widgetService.stateData.set(modelJson);
+    const modelJson = JSON.stringify(modelWithImage);
+    this.service.widgetService.sendReturn({ finalState: modelJson, saveState: true });
   }
 }

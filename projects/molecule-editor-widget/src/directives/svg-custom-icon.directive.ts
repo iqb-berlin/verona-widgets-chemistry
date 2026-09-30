@@ -1,7 +1,7 @@
 import { Directive, effect, ElementRef, inject, input } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { take } from 'rxjs';
-import { copySvgIconToSymbol } from '../util/svg-icon-symbol';
+import { copySvgIconToSymbol } from 'verona-widget';
 
 /** Directive to copy a custom SVG icon from the MatIconRegistry into a <symbol> element */
 @Directive({ selector: 'symbol[appCustomSvgIcon]' })

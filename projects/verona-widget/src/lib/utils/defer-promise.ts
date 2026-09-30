@@ -1,19 +1,14 @@
-interface Resolver<T> {
-  (value: T | PromiseLike<T>): void;
-}
-
-interface Rejecter {
-  (reason?: unknown): void;
-}
+type ResolveFn<T> = (value: T | PromiseLike<T>) => void;
+type RejectFn = (reason?: unknown) => void;
 
 export interface DeferredPromise<T> extends Promise<T> {
-  readonly resolve: Resolver<T>;
-  readonly reject: Rejecter;
+  readonly resolve: ResolveFn<T>;
+  readonly reject: RejectFn;
 }
 
 export function deferPromise<T>(): DeferredPromise<T> {
-  let resolve!: Resolver<T>;
-  let reject!: Rejecter;
+  let resolve!: ResolveFn<T>;
+  let reject!: RejectFn;
   const promise = new Promise<T>((_resolve, _reject) => {
     resolve = _resolve;
     reject = _reject;
