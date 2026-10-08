@@ -50,7 +50,7 @@ export class PsSelectService implements PsService {
       [PeriodicSystemSelectParam.showInfoSymbol]: showInfoSymbol = 'true',
       [PeriodicSystemSelectParam.showInfoName]: showInfoName = 'true',
       [PeriodicSystemSelectParam.showInfoENeg]: showInfoENeg = 'false',
-      [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'false',
+      [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'true',
       [PeriodicSystemSelectParam.showInfoLabels]: showInfoLabels = 'true',
       [PeriodicSystemSelectParam.highlightBlocks]: highlightBlocks = 'false',
     } = config.parameters;

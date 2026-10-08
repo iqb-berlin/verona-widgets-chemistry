@@ -59,6 +59,16 @@ describe('PsSelect', () => {
     expect(component).toBeTruthy();
   });
 
+  it('shows the atomic mass by default', async () => {
+    await setup({});
+    expect(component.psService.appearance().showMass).toBeTrue();
+  });
+
+  it('hides the atomic mass with SHOW_INFO_A_MASS = "0"', async () => {
+    await setup({ SHOW_INFO_A_MASS: '0' });
+    expect(component.psService.appearance().showMass).toBeFalse();
+  });
+
   describe('MAX_NUMBER_OF_SELECTIONS = "0"', () => {
     beforeEach(() => setup({ MAX_NUMBER_OF_SELECTIONS: '0' }));
 
