@@ -22,9 +22,6 @@ export const enum MoleculeEditorParam {
   showInfoName = 'SHOW_INFO_NAME',
   showInfoOrder = 'SHOW_INFO_ORDER',
   highlightBlocks = 'HIGHLIGHT_BLOCKS',
-}
-
-export const enum MoleculeEditorSharedParam {
   bondingType = 'BONDING_TYPE',
 }
 
@@ -800,7 +797,7 @@ function computeMoleculeEditorAppearance(widgetService: VeronaWidgetService): Si
   return computed((): MoleculeEditorAppearance => {
     const config = widgetService.configuration();
 
-    const { [MoleculeEditorSharedParam.bondingType]: bondingType = defaultBondingType } = config.sharedParameters;
+    const { [MoleculeEditorParam.bondingType]: bondingType = defaultBondingType } = config.parameters;
 
     return {
       bondingType: parseBondingType(bondingType),
@@ -818,7 +815,7 @@ function parseBondingType(value: string): MoleculeEditorBondingType {
     case 'ELECTRONS':
       return 'ELECTRONS';
     default:
-      console.warn(`Received unknown ${MoleculeEditorSharedParam.bondingType} parameter:`, value);
+      console.warn(`Received unknown ${MoleculeEditorParam.bondingType} parameter:`, value);
       return defaultBondingType;
   }
 }
