@@ -7,10 +7,15 @@ export interface VeronaWidgetService {
   readonly state: Signal<VeronaWidgetState>;
   readonly stateData: WritableSignal<string>;
   readonly configuration: Signal<VeronaWidgetConfiguration>;
-
   sendReady(metadata: VeronaModuleMetadata): void;
+  sendReturn(result: VeronaWidgetService.ReturnResult): void;
+}
 
-  sendReturn(saveState?: boolean): void;
+export namespace VeronaWidgetService {
+  export interface ReturnResult {
+    readonly finalState?: string;
+    readonly saveState?: boolean;
+  }
 }
 
 export type VeronaWidgetState = VeronaWidgetInitializing | VeronaWidgetReady | VeronaWidgetRunning;

@@ -1,0 +1,40 @@
+<div class="params-container">
+  <div class="params-column">
+    <mat-form-field>
+      <mat-label>Image width (px)</mat-label>
+      <input matInput type="number" step="1" [(ngModel)]="imageWidthParam" />
+    </mat-form-field>
+  </div>
+  <div class="params-column">
+    <mat-form-field>
+      <mat-label>Journal lines</mat-label>
+      <input matInput type="number" step="1" [(ngModel)]="journalLinesParam" />
+    </mat-form-field>
+  </div>
+  <div class="params-column">
+    <mat-checkbox [(ngModel)]="calculatorActive">Show calculator</mat-checkbox>
+  </div>
+</div>
+
+<div class="widget-container">
+  <section class="widget" *showcaseVeronaWidget="['WIDGET_CALC', 'calculator']">
+    @if (calculatorActive()) {
+      <app-calculator></app-calculator>
+    }
+  </section>
+  <div>
+    State:
+    <ul>
+      @for (item of decodedStateData(); track $index) {
+        <li>
+          <div>
+            LaTeX: <code>$$ {{ item.asLatex }} $$</code>
+          </div>
+          <div>
+            <img [alt]="item.asLatex" [src]="item.asImage" />
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+</div>
