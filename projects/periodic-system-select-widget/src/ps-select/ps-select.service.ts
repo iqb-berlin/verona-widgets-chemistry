@@ -81,6 +81,7 @@ class PsSelectInteraction implements PsInteraction {
   readonly highlightedElement: WritableSignal<undefined | PsElementNumber>;
   readonly selectedElementList: WritableSignal<ReadonlyArray<PsElementNumber>>;
   readonly showMaxSelectionAlert: WritableSignal<boolean>;
+  readonly initialSelectionCount: number;
 
   constructor(private readonly widgetService: VeronaWidgetService) {
     this.highlightedElement = signal(undefined);
@@ -88,7 +89,9 @@ class PsSelectInteraction implements PsInteraction {
 
     // Deserialize initial state received by widget
     const initialSerializedElementSymbols = this.widgetService.stateData();
-    this.selectedElementList = signal(parseSerializedElements(initialSerializedElementSymbols));
+    const initialSelection = parseSerializedElements(initialSerializedElementSymbols);
+    this.selectedElementList = signal(initialSelection);
+    this.initialSelectionCount = initialSelection.length;
 
     // Serialize selection state to widget on change
     changeEffect(this.selectedElementList, (selectedElementList) => {
@@ -96,11 +99,12 @@ class PsSelectInteraction implements PsInteraction {
       this.widgetService.stateData.set(serializedElementSymbols);
     });
 
-    // Request close on selection if configured accordingly
-    changeEffect(this.selectedElementList, (selectedElementList) => {
+    // Request close on selection if configured accordingly. Only a click that selects counts: deselecting
+    // part of a previous answer must not close the widget, or the answer could never be cleared.
+    changeEffect(this.selectedElementList, (selectedElementList, previousElementList) => {
       const { closeOnSelection } = untracked(this.interactionConfig);
-      const firstSelectedElement = selectedElementList[0];
-      if (closeOnSelection && firstSelectedElement) {
+      const elementAdded = selectedElementList.some((element) => !previousElementList.includes(element));
+      if (closeOnSelection && elementAdded) {
         this.widgetService.sendReturn(true);
       }
     });
@@ -191,7 +195,9 @@ function changeEffect<T>(source: Signal<T>, onChange: (newValue: T, oldValue: T)
   return effect(() => {
     const newValue = source();
     if (!Object.is(oldValue, newValue)) {
-      onChange(newValue, oldValue);
+      const previousValue = oldValue;
+      oldValue = newValue;
+      onChange(newValue, previousValue);
     }
   });
 }

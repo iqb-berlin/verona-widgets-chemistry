@@ -18,14 +18,19 @@ export class PsSelect {
   readonly widgetService = inject(VeronaWidgetService);
 
   readonly showSubmitButton = computed(() => {
-    const { closeOnSelection, selectable } = this.psService.interaction.interactionConfig();
-    return selectable && !closeOnSelection;
+    const { interaction } = this.psService;
+    const { closeOnSelection, selectable } = interaction.interactionConfig();
+    // Close-on-selection returns only on a click that selects, so what is left after deselecting part or all of a
+    // previous answer can only be saved with the button
+    return selectable && (!closeOnSelection || this.selectionCount() < interaction.initialSelectionCount);
   });
 
   readonly disableSubmitButton = computed(() => {
-    const selectedElements = this.psService.interaction.selectedElements();
-    return selectedElements.size < 1;
+    // An empty selection is saved only to clear a previous answer; with no previous answer there is nothing to save
+    return this.selectionCount() < 1 && this.psService.interaction.initialSelectionCount < 1;
   });
+
+  private readonly selectionCount = computed(() => this.psService.interaction.selectedElementList().length);
 
   doSubmit() {
     this.widgetService.sendReturn(true);

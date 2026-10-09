@@ -98,4 +98,72 @@ describe('PsSelect', () => {
     click('Cl');
     expect(selectedSymbols()).toBe('Cl');
   });
+
+  describe('save button without previous answer', () => {
+    beforeEach(() => setup({ MAX_NUMBER_OF_SELECTIONS: '2' }));
+
+    it('is disabled while nothing is selected', () => {
+      expect(component.disableSubmitButton()).toBeTrue();
+      click('Na');
+      expect(component.disableSubmitButton()).toBeFalse();
+      click('Na');
+      expect(component.disableSubmitButton()).toBeTrue();
+    });
+  });
+
+  describe('save button with previous answer', () => {
+    beforeEach(() => setup({ MAX_NUMBER_OF_SELECTIONS: '2' }, 'Na Cl'));
+
+    it('stays enabled when all elements are deselected, so the answer can be cleared', () => {
+      click('Na');
+      click('Cl');
+      expect(selectedSymbols()).toBe('');
+      expect(component.disableSubmitButton()).toBeFalse();
+    });
+  });
+
+  describe('CLOSE_ON_SELECTION', () => {
+    it('shows no save button without previous answer', async () => {
+      await setup({ CLOSE_ON_SELECTION: '1' });
+      expect(component.showSubmitButton()).toBeFalse();
+    });
+
+    it('shows the save button once a previous answer is deselected', async () => {
+      await setup({ CLOSE_ON_SELECTION: '1' }, 'Na');
+      expect(component.showSubmitButton()).toBeFalse();
+      click('Na');
+      expect(selectedSymbols()).toBe('');
+      expect(component.showSubmitButton()).toBeTrue();
+      expect(component.disableSubmitButton()).toBeFalse();
+    });
+
+    it('does not close while a previous answer of several elements is deselected', async () => {
+      await setup({ CLOSE_ON_SELECTION: '1', MAX_NUMBER_OF_SELECTIONS: '2' }, 'Na Cl');
+      const sendReturn = spyOn(widgetService, 'sendReturn');
+      click('Na');
+      expect(sendReturn).not.toHaveBeenCalled();
+      click('Cl');
+      expect(sendReturn).not.toHaveBeenCalled();
+      expect(selectedSymbols()).toBe('');
+      expect(component.showSubmitButton()).toBeTrue();
+    });
+
+    it('shows the save button once part of a previous answer is deselected, so the shorter answer can be saved', async () => {
+      await setup({ CLOSE_ON_SELECTION: '1', MAX_NUMBER_OF_SELECTIONS: '2' }, 'Na Cl');
+      expect(component.showSubmitButton()).toBeFalse();
+      click('Na');
+      expect(selectedSymbols()).toBe('Cl');
+      expect(component.showSubmitButton()).toBeTrue();
+      expect(component.disableSubmitButton()).toBeFalse();
+    });
+
+    it('closes on a selection, also of an element deselected before', async () => {
+      await setup({ CLOSE_ON_SELECTION: '1' }, 'Na');
+      const sendReturn = spyOn(widgetService, 'sendReturn');
+      click('Na');
+      expect(sendReturn).not.toHaveBeenCalled();
+      click('Na');
+      expect(sendReturn).toHaveBeenCalledWith(true);
+    });
+  });
 });
