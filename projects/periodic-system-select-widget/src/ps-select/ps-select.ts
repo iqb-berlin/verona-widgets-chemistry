@@ -18,8 +18,8 @@ export class PsSelect {
   readonly widgetService = inject(VeronaWidgetService);
 
   readonly showSubmitButton = computed(() => {
-    const { closeOnSelection } = this.psService.interaction.interactionConfig();
-    return !closeOnSelection;
+    const { closeOnSelection, selectable } = this.psService.interaction.interactionConfig();
+    return selectable && !closeOnSelection;
   });
 
   readonly disableSubmitButton = computed(() => {

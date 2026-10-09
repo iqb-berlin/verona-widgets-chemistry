@@ -118,18 +118,21 @@ class PsSelectInteraction implements PsInteraction {
       [PeriodicSystemSelectParam.closeOnSelection]: closeOnSelection = 'false',
     } = config.parameters;
 
-    const maxSelectCount = flagAsInt(maxNumberOfSelections, 1);
+    // "0" allows no selection at all (view only); negative values are invalid and fall back to the default
+    const parsedMaxSelectCount = flagAsInt(maxNumberOfSelections, 1);
+    const maxSelectCount = parsedMaxSelectCount < 0 ? 1 : parsedMaxSelectCount;
     return {
       maxSelectCount,
-      multiSelect: maxSelectCount !== 1,
+      selectable: maxSelectCount > 0,
+      multiSelect: maxSelectCount > 1,
       closeOnSelection: flagAsBool(closeOnSelection),
     } as const;
   });
 
   readonly elementClickBlocked = computed(() => {
-    const { multiSelect, maxSelectCount } = this.interactionConfig();
+    const { selectable, multiSelect, maxSelectCount } = this.interactionConfig();
     const selectedElements = this.selectedElementList();
-    return multiSelect && maxSelectCount > 0 && selectedElements.length >= maxSelectCount;
+    return !selectable || (multiSelect && selectedElements.length >= maxSelectCount);
   });
 
   highlightElement(element: undefined | PsElement): void {
@@ -137,11 +140,14 @@ class PsSelectInteraction implements PsInteraction {
   }
 
   clickElement(element: PsElement): void {
-    const { multiSelect, maxSelectCount } = this.interactionConfig();
+    const { selectable, multiSelect, maxSelectCount } = this.interactionConfig();
     const selected = this.selectedElementList();
     const alreadyIncluded = selected.includes(element.number);
 
-    if (!multiSelect) {
+    if (!selectable) {
+      // view only: no selection, but still highlight clicked element to show information
+      this.highlightedElement.set(element.number);
+    } else if (!multiSelect) {
       // single-select toggle
       if (alreadyIncluded) {
         this.selectedElementList.set([]);
@@ -156,8 +162,8 @@ class PsSelectInteraction implements PsInteraction {
       this.selectedElementList.set(selected.filter((x) => x !== element.number));
       this.highlightedElement.set(undefined);
       this.showMaxSelectionAlert.set(false);
-    } else if (maxSelectCount < 1 || selected.length < maxSelectCount) {
-      // multi-select add click (either no max select count, or still below max select count)
+    } else if (selected.length < maxSelectCount) {
+      // multi-select add click (still below max select count)
       this.selectedElementList.set(selected.concat(element.number));
       this.highlightedElement.set(element.number);
       this.showMaxSelectionAlert.set(false);
