@@ -26,11 +26,6 @@ export const enum PeriodicSystemSelectParam {
   closeOnSelection = 'CLOSE_ON_SELECTION',
 }
 
-export const enum PeriodicSystemSharedParam {
-  textColor = 'TEXT_COLOR',
-  backgroundColor = 'BACKGROUND_COLOR',
-}
-
 @Injectable()
 export class PsSelectService implements PsService {
   private readonly widgetService = inject(VeronaWidgetService);
@@ -39,11 +34,7 @@ export class PsSelectService implements PsService {
 
   readonly appearance = computed((): PsAppearance => {
     const config = this.widgetService.configuration();
-    const {
-      [PeriodicSystemSharedParam.textColor]: defaultTextColor = '#ffffff',
-      [PeriodicSystemSharedParam.backgroundColor]: defaultBaseColor = '#6b369a',
-    } = config.sharedParameters;
-
+    // The specification knows no shared parameters for this widget, so its colours are fixed
     const {
       [PeriodicSystemSelectParam.language]: language = 'de',
       [PeriodicSystemSelectParam.showInfoOrder]: showInfoOrder = 'true',
@@ -64,8 +55,8 @@ export class PsSelectService implements PsService {
       showENeg: flagAsBool(showInfoENeg),
       showLabels: flagAsBool(showInfoLabels),
       enableBlockColors: flagAsBool(highlightBlocks),
-      defaultTextColor,
-      defaultBaseColor,
+      defaultTextColor: '#ffffff',
+      defaultBaseColor: '#6b369a',
       blockColors: {
         [PsElementBlock.S]: '#cd2f2f',
         [PsElementBlock.P]: '#559955',

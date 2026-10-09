@@ -10,7 +10,11 @@ describe('PsSelect', () => {
   let fixture: ComponentFixture<PsSelect>;
   let widgetService: VeronaWidgetService;
 
-  async function setup(parameters: Record<string, string>, initialState = '') {
+  async function setup(
+    parameters: Record<string, string>,
+    initialState = '',
+    sharedParameters: Record<string, string> = {},
+  ) {
     await TestBed.configureTestingModule({
       imports: [PsSelect],
       providers: [
@@ -27,7 +31,7 @@ describe('PsSelect', () => {
           testConfig: {
             sessionId: 'test-session',
             parameters,
-            sharedParameters: {},
+            sharedParameters,
           },
         }),
       ],
@@ -67,6 +71,12 @@ describe('PsSelect', () => {
   it('hides the atomic mass with SHOW_INFO_A_MASS = "0"', async () => {
     await setup({ SHOW_INFO_A_MASS: '0' });
     expect(component.psService.appearance().showMass).toBeFalse();
+  });
+
+  it('ignores colours passed as shared parameters', async () => {
+    await setup({}, '', { TEXT_COLOR: '#000000', BACKGROUND_COLOR: '#ffff00' });
+    expect(component.psService.appearance().defaultTextColor).toBe('#ffffff');
+    expect(component.psService.appearance().defaultBaseColor).toBe('#6b369a');
   });
 
   describe('MAX_NUMBER_OF_SELECTIONS = "0"', () => {
