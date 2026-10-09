@@ -26,11 +26,6 @@ export const enum PeriodicSystemSelectParam {
   closeOnSelection = 'CLOSE_ON_SELECTION',
 }
 
-export const enum PeriodicSystemSharedParam {
-  textColor = 'TEXT_COLOR',
-  backgroundColor = 'BACKGROUND_COLOR',
-}
-
 @Injectable()
 export class PsSelectService implements PsService {
   private readonly widgetService = inject(VeronaWidgetService);
@@ -39,18 +34,14 @@ export class PsSelectService implements PsService {
 
   readonly appearance = computed((): PsAppearance => {
     const config = this.widgetService.configuration();
-    const {
-      [PeriodicSystemSharedParam.textColor]: defaultTextColor = '#ffffff',
-      [PeriodicSystemSharedParam.backgroundColor]: defaultBaseColor = '#6b369a',
-    } = config.sharedParameters;
-
+    // The specification knows no shared parameters for this widget, so its colours are fixed
     const {
       [PeriodicSystemSelectParam.language]: language = 'de',
       [PeriodicSystemSelectParam.showInfoOrder]: showInfoOrder = 'true',
       [PeriodicSystemSelectParam.showInfoSymbol]: showInfoSymbol = 'true',
       [PeriodicSystemSelectParam.showInfoName]: showInfoName = 'true',
       [PeriodicSystemSelectParam.showInfoENeg]: showInfoENeg = 'false',
-      [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'false',
+      [PeriodicSystemSelectParam.showInfoAMass]: showInfoAMass = 'true',
       [PeriodicSystemSelectParam.showInfoLabels]: showInfoLabels = 'true',
       [PeriodicSystemSelectParam.highlightBlocks]: highlightBlocks = 'false',
     } = config.parameters;
@@ -64,8 +55,8 @@ export class PsSelectService implements PsService {
       showENeg: flagAsBool(showInfoENeg),
       showLabels: flagAsBool(showInfoLabels),
       enableBlockColors: flagAsBool(highlightBlocks),
-      defaultTextColor,
-      defaultBaseColor,
+      defaultTextColor: '#ffffff',
+      defaultBaseColor: '#6b369a',
       blockColors: {
         [PsElementBlock.S]: '#cd2f2f',
         [PsElementBlock.P]: '#559955',
@@ -81,6 +72,7 @@ class PsSelectInteraction implements PsInteraction {
   readonly highlightedElement: WritableSignal<undefined | PsElementNumber>;
   readonly selectedElementList: WritableSignal<ReadonlyArray<PsElementNumber>>;
   readonly showMaxSelectionAlert: WritableSignal<boolean>;
+  readonly initialSelectionCount: number;
 
   constructor(private readonly widgetService: VeronaWidgetService) {
     this.highlightedElement = signal(undefined);
@@ -88,7 +80,9 @@ class PsSelectInteraction implements PsInteraction {
 
     // Deserialize initial state received by widget
     const initialSerializedElementSymbols = this.widgetService.stateData();
-    this.selectedElementList = signal(parseSerializedElements(initialSerializedElementSymbols));
+    const initialSelection = parseSerializedElements(initialSerializedElementSymbols);
+    this.selectedElementList = signal(initialSelection);
+    this.initialSelectionCount = initialSelection.length;
 
     // Serialize selection state to widget on change
     changeEffect(this.selectedElementList, (selectedElementList) => {
@@ -96,11 +90,12 @@ class PsSelectInteraction implements PsInteraction {
       this.widgetService.stateData.set(serializedElementSymbols);
     });
 
-    // Request close on selection if configured accordingly
-    changeEffect(this.selectedElementList, (selectedElementList) => {
+    // Request close on selection if configured accordingly. Only a click that selects counts: deselecting
+    // part of a previous answer must not close the widget, or the answer could never be cleared.
+    changeEffect(this.selectedElementList, (selectedElementList, previousElementList) => {
       const { closeOnSelection } = untracked(this.interactionConfig);
-      const firstSelectedElement = selectedElementList[0];
-      if (closeOnSelection && firstSelectedElement) {
+      const elementAdded = selectedElementList.some((element) => !previousElementList.includes(element));
+      if (closeOnSelection && elementAdded) {
         this.widgetService.sendReturn(true);
       }
     });
@@ -118,18 +113,21 @@ class PsSelectInteraction implements PsInteraction {
       [PeriodicSystemSelectParam.closeOnSelection]: closeOnSelection = 'false',
     } = config.parameters;
 
-    const maxSelectCount = flagAsInt(maxNumberOfSelections, 1);
+    // "0" allows no selection at all (view only); negative values are invalid and fall back to the default
+    const parsedMaxSelectCount = flagAsInt(maxNumberOfSelections, 1);
+    const maxSelectCount = parsedMaxSelectCount < 0 ? 1 : parsedMaxSelectCount;
     return {
       maxSelectCount,
-      multiSelect: maxSelectCount !== 1,
+      selectable: maxSelectCount > 0,
+      multiSelect: maxSelectCount > 1,
       closeOnSelection: flagAsBool(closeOnSelection),
     } as const;
   });
 
   readonly elementClickBlocked = computed(() => {
-    const { multiSelect, maxSelectCount } = this.interactionConfig();
+    const { selectable, multiSelect, maxSelectCount } = this.interactionConfig();
     const selectedElements = this.selectedElementList();
-    return multiSelect && maxSelectCount > 0 && selectedElements.length >= maxSelectCount;
+    return !selectable || (multiSelect && selectedElements.length >= maxSelectCount);
   });
 
   highlightElement(element: undefined | PsElement): void {
@@ -137,11 +135,14 @@ class PsSelectInteraction implements PsInteraction {
   }
 
   clickElement(element: PsElement): void {
-    const { multiSelect, maxSelectCount } = this.interactionConfig();
+    const { selectable, multiSelect, maxSelectCount } = this.interactionConfig();
     const selected = this.selectedElementList();
     const alreadyIncluded = selected.includes(element.number);
 
-    if (!multiSelect) {
+    if (!selectable) {
+      // view only: no selection, but still highlight clicked element to show information
+      this.highlightedElement.set(element.number);
+    } else if (!multiSelect) {
       // single-select toggle
       if (alreadyIncluded) {
         this.selectedElementList.set([]);
@@ -156,8 +157,8 @@ class PsSelectInteraction implements PsInteraction {
       this.selectedElementList.set(selected.filter((x) => x !== element.number));
       this.highlightedElement.set(undefined);
       this.showMaxSelectionAlert.set(false);
-    } else if (maxSelectCount < 1 || selected.length < maxSelectCount) {
-      // multi-select add click (either no max select count, or still below max select count)
+    } else if (selected.length < maxSelectCount) {
+      // multi-select add click (still below max select count)
       this.selectedElementList.set(selected.concat(element.number));
       this.highlightedElement.set(element.number);
       this.showMaxSelectionAlert.set(false);
@@ -185,7 +186,9 @@ function changeEffect<T>(source: Signal<T>, onChange: (newValue: T, oldValue: T)
   return effect(() => {
     const newValue = source();
     if (!Object.is(oldValue, newValue)) {
-      onChange(newValue, oldValue);
+      const previousValue = oldValue;
+      oldValue = newValue;
+      onChange(newValue, previousValue);
     }
   });
 }
