@@ -57,74 +57,62 @@ export class CalculatorImageRenderer {
   }
 
   renderSequenceSvg(input: CalculatorSvgInput, options: CalculatorSvgOptions): CalculatorSvgOutput {
-    const { imageWidth, padding = 4, foreground = '', background = '' } = options;
-    const contentWidth = Math.max(1, imageWidth - 2 * padding);
+    const { imageWidth, padding = 4, foreground = '' } = options;
 
     const math = this.renderMath(input);
     math.setAttribute('display', 'inline');
     math.setAttribute('displaystyle', 'true');
-    math.style.width = `${contentWidth}px`;
-    math.style.height = 'auto';
-    if (foreground) math.style.color = foreground;
+    math.style.fontSize = '16px'; // independent of page styles, which do not apply inside the image
     math.style.margin = '0';
     math.style.textAlign = 'left';
+    if (foreground) math.style.color = foreground;
 
-    const [mathWidth, mathHeight] = this.measureMathElement(math);
-    const paddedWidth = Math.ceil(mathWidth + 2 * padding);
-    const width = Math.max(1, Math.round(imageWidth));
-    const height = Math.max(1, Math.ceil(mathHeight + 2 * padding));
-
+    // The formula at its natural size, which is neither wrapped nor squeezed
     const foreignDiv = this.document.createElementNS(NS_XHTML, 'div');
     foreignDiv.style.padding = `${padding}px`;
     foreignDiv.style.display = 'inline-block';
+    foreignDiv.style.width = 'max-content';
     foreignDiv.appendChild(math);
+    const [contentWidth, contentHeight] = this.measureElement(foreignDiv);
 
     const foreignObject = this.document.createElementNS(NS_SVG, 'foreignObject');
     foreignObject.setAttribute('x', '0');
     foreignObject.setAttribute('y', '0');
-    foreignObject.setAttribute('width', paddedWidth.toString());
-    foreignObject.setAttribute('height', height.toString());
+    foreignObject.setAttribute('width', contentWidth.toString());
+    foreignObject.setAttribute('height', contentHeight.toString());
     foreignObject.appendChild(foreignDiv);
 
-    // Content is drawn at 1:1 scale, and clipped at the image width
+    // Scale the formula down to fit the image width, but never up; the height follows
+    const viewWidth = Math.max(contentWidth, imageWidth);
+    const scale = imageWidth / viewWidth;
+    const width = Math.max(1, Math.round(imageWidth));
+    const height = Math.max(1, Math.ceil(contentHeight * scale));
+
     const svg = this.document.createElementNS(NS_SVG, 'svg');
     svg.setAttribute('width', width.toString());
     svg.setAttribute('height', height.toString());
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('viewBox', `0 0 ${viewWidth} ${contentHeight}`);
+    svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
     svg.appendChild(foreignObject);
-
-    // Handle overflow: If math element is wider than image, draw a "..." at the clipped end of the image
-    if (mathWidth > contentWidth) {
-      const middleY = height / 2;
-      for (const offset of [5, 15, 25]) {
-        const dot = this.document.createElementNS(NS_SVG, 'circle');
-        dot.setAttribute('cx', (width - offset).toString());
-        dot.setAttribute('cy', middleY.toString());
-        dot.setAttribute('r', '4');
-        dot.setAttribute('fill', foreground || 'currentColor');
-        if (background) {
-          dot.setAttribute('stroke', background);
-          dot.setAttribute('stroke-width', '2.5');
-        }
-        svg.appendChild(dot);
-      }
-    }
 
     const svgXml = this.serializer.serializeToString(svg);
     return { svgXml, width, height };
   }
 
-  private measureMathElement(math: MathMLElement): readonly [width: number, height: number] {
-    const previousDisplay = math.style.display;
+  // Size of the element as laid out on its own, rounded up to whole pixels
+  private measureElement(element: HTMLElement): readonly [width: number, height: number] {
+    const { position, left, top, visibility } = element.style;
     try {
-      math.style.display = 'block';
-      math.style.visibility = 'hidden';
-      this.document.body.appendChild(math);
-      return [math.scrollWidth, math.scrollHeight] as const;
+      element.style.position = 'absolute';
+      element.style.left = '0';
+      element.style.top = '0';
+      element.style.visibility = 'hidden';
+      this.document.body.appendChild(element);
+      const bounds = element.getBoundingClientRect();
+      return [Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height))] as const;
     } finally {
-      math.remove();
-      math.style.display = previousDisplay;
-      math.style.visibility = '';
+      element.remove();
+      Object.assign(element.style, { position, left, top, visibility });
     }
   }
 
@@ -147,14 +135,14 @@ export class CalculatorImageRenderer {
       this.mathNode('mtable', null, [
         this.mathNode('mtr', applyAlignLeft, [
           // input row
-          this.mathNode('mtd', null, [
+          this.mathNode('mtd', applyAlignLeft, [
             // input sequence
             this.renderMrow(input.inputSequence, null),
           ]),
         ]),
         this.mathNode('mtr', applyAlignLeft, [
           // output row
-          this.mathNode('mtd', null, [
+          this.mathNode('mtd', applyAlignLeft, [
             // result separator, output sequence
             this.renderResultSeparator(input.isApproximation),
             this.renderMrow(input.outputSequence, (mrow) => (mrow.style.fontSize = '150%')),
