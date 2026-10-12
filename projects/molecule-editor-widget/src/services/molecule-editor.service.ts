@@ -244,6 +244,11 @@ export class MoleculeEditorService {
       this.model.update((model1) => {
         const [model2, targetAtomId] = MoleculeEditorModel.createOrMergeAtom(model1, elementNr, snap.snapPos);
         atomId = targetAtomId;
+        // Merged into an atom that is already bonded to the snap target: keep that bond,
+        // unless in bonding-mode, where the multiplicity is chosen instead of being the default
+        if (mode.mode !== 'bonding' && MoleculeEditorModel.hasBond(model2, targetAtomId, snap.targetId)) {
+          return model2;
+        }
         return MoleculeEditorModel.addBond(model2, bondId, targetAtomId, snap.targetId, multiplicity);
       }, true);
       return { atomId, elementNr, nextPosition: snap.snapPos } as const;
@@ -443,8 +448,8 @@ export class MoleculeEditorService {
     // stop implicit bubbling
     pointerEvent.stopPropagation();
 
-    // immediately bubble up to canvas for temporary atoms (itemId is not present in model)
-    if (this.isTemporaryItem(atomId)) {
+    // immediately bubble up to canvas for temporary atoms, or while placing a new item (see bubblesToCanvas)
+    if (this.bubblesToCanvas(atomId)) {
       this.handleCanvasEvent(pointerEvent);
       return;
     }
@@ -565,8 +570,8 @@ export class MoleculeEditorService {
     // stop implicit bubbling
     pointerEvent.stopPropagation();
 
-    // bubble up to canvas for temporary bonds (itemId not present in model)
-    if (this.isTemporaryItem(bondId)) {
+    // bubble up to canvas for temporary bonds, or while placing a new item (see bubblesToCanvas)
+    if (this.bubblesToCanvas(bondId)) {
       this.handleCanvasEvent(pointerEvent);
       return;
     }
@@ -618,8 +623,8 @@ export class MoleculeEditorService {
     // stop implicit bubbling
     pointerEvent.stopPropagation();
 
-    // immediately bubble up to canvas for temporary atoms (itemId is not present in model)
-    if (this.isTemporaryItem(symbolId)) {
+    // immediately bubble up to canvas for temporary symbols, or while placing a new item (see bubblesToCanvas)
+    if (this.bubblesToCanvas(symbolId)) {
       this.handleCanvasEvent(pointerEvent);
       return;
     }
@@ -686,8 +691,8 @@ export class MoleculeEditorService {
     // stop implicit bubbling
     pointerEvent.stopPropagation();
 
-    // immediately bubble up to canvas for temporary partial-charges (itemId is not present in model)
-    if (this.isTemporaryItem(partialId)) {
+    // immediately bubble up to canvas for temporary partial-charges, or while placing a new item (see bubblesToCanvas)
+    if (this.bubblesToCanvas(partialId)) {
       this.handleCanvasEvent(pointerEvent);
       return;
     }
@@ -785,6 +790,27 @@ export class MoleculeEditorService {
     return (
       !(itemId in model.atoms) && !(itemId in model.bonds) && !(itemId in model.symbols) && !(itemId in model.partials)
     );
+  }
+
+  /**
+   * Pointer events on an item go straight to the canvas if the item is temporary (not present in model),
+   * or if a new item is being placed. Otherwise, clicking an existing item close to the placement preview
+   * would select or move that item and discard the new one.
+   * Not in duplicate- and bonding-mode: there, new atoms follow the cursor after each placement, and
+   * clicking an existing item picks it for duplication or starts a bond from it.
+   */
+  private bubblesToCanvas(itemId: ItemId) {
+    if (this.isTemporaryItem(itemId)) return true;
+    const { mode } = this.toolMode();
+    if (mode === 'duplicate' || mode === 'bonding') return false;
+    switch (this.editorState().state) {
+      case 'addingAtom':
+      case 'addingPartialCharge':
+      case 'addingFormulaSymbol':
+        return true;
+      default:
+        return false;
+    }
   }
 
   private searchSnap<S extends EditorState.Substate<'addingAtom' | 'movingAtom'>>(state: S): S {

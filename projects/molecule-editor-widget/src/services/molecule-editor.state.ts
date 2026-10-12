@@ -254,9 +254,10 @@ export namespace EditorState {
     // Find snapping position on horizontal/vertical axis
     const [deltaX, deltaY] = Vector2.sub(position, targetAtom.position);
     const horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    // (exactly on the target atom, snap below it instead of onto it, which would bond the atom to itself)
     const snapOffset = horizontal
       ? ([Math.sign(deltaX) * snapRadius, 0] as const)
-      : ([0, Math.sign(deltaY) * snapRadius] as const);
+      : ([0, (Math.sign(deltaY) || 1) * snapRadius] as const);
 
     // Snap to x/y axis
     return {
