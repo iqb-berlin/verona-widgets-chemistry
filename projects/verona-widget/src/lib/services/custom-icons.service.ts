@@ -13,6 +13,9 @@ export function registerCustomIcons(customIcons: ReadonlyArray<CustomIcons>): Ar
   return [CustomIconsService, { provide: CUSTOM_ICONS, useValue: customIcons }];
 }
 
+// Icon sets already added to a registry; the registry appends a set each time it is added
+const REGISTERED_ICONS = new WeakMap<MatIconRegistry, Set<string>>();
+
 @Injectable()
 export class CustomIconsService {
   private readonly customIcons = inject(CUSTOM_ICONS);
@@ -20,7 +23,17 @@ export class CustomIconsService {
   private readonly domSanitizer = inject(DomSanitizer);
 
   registerIcons() {
+    let registered = REGISTERED_ICONS.get(this.iconRegistry);
+    if (registered === undefined) {
+      registered = new Set<string>();
+      REGISTERED_ICONS.set(this.iconRegistry, registered);
+    }
+
     for (const { namespace, svg } of this.customIcons) {
+      const key = `${namespace}:${svg}`;
+      if (registered.has(key)) continue;
+      registered.add(key);
+
       const safeSvg = this.domSanitizer.bypassSecurityTrustHtml(svg);
       this.iconRegistry.addSvgIconSetLiteralInNamespace(namespace, safeSvg);
     }

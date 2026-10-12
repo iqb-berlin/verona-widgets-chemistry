@@ -2,7 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MoleculeEditor } from './molecule-editor';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { provideDummyVeronaWidgetService } from 'verona-widget';
+import { provideDummyVeronaWidgetService, registerCustomIcons } from 'verona-widget';
+import IqbIcons from '../../assets/iqb-icons.svg';
 
 describe('MoleculeBuilder', () => {
   let component: MoleculeEditor;
@@ -28,6 +29,7 @@ describe('MoleculeBuilder', () => {
             sharedParameters: {},
           },
         }),
+        registerCustomIcons([{ namespace: 'iqb', svg: IqbIcons }]),
       ],
     }).compileComponents();
 

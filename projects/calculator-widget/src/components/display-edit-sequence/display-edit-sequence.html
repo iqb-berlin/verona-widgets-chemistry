@@ -1,5 +1,5 @@
 @let parentToken = sequence();
-@let problemId = service.problemTokenId();
+@let problemId = problemTokenId();
 <ng-container xmlns:math="http://www.w3.org/1998/Math/MathML">
   @if (showsCaretAtStart()) {
     <ng-container *ngTemplateOutlet="caretMark" />
@@ -7,7 +7,7 @@
   @if (!topLevel() && parentToken.items.length === 0) {
     <math:mtext
       class="placeholder"
-      [class.edited]="service.isCaretOn(parentToken)"
+      [class.edited]="interactive() && service.isCaretOn(parentToken)"
       [style.cursor]="cursorStyle()"
       (click)="handleEmptyClick(parentToken, $event)"
     >

@@ -1,5 +1,17 @@
 import { FormulaNode } from './formula.ast';
-import { compositeFraction, decimal, fraction, int, negate, sqrt, square } from './formula.factory';
+import {
+  compositeFraction,
+  decimal,
+  exponential,
+  fraction,
+  int,
+  multiply,
+  negate,
+  sqrt,
+  square,
+} from './formula.factory';
+import { compileToFormula } from './editing.compile';
+import { tokenizeFormula } from './editing.tokenize';
 import { evaluateFormula } from './formula.eval';
 import { FormatToFormulaOptions, formatNumericToFormula } from './formula.format';
 import { NumericValue } from './numeric.model';
@@ -44,6 +56,11 @@ describe('Formula formatting', () => {
     formats(rational(2, 3), { digits: 2 }, decimal('0.67'), true);
   });
 
+  it('writes a value which rounds to zero without a sign', () => {
+    formats(rational(-1, 1000), { digits: 2 }, decimal('0'), true);
+    formats(Irrational.parse('-0.001'), { digits: 2 }, decimal('0'), true);
+  });
+
   it('writes an irrational number as a rounded decimal', () => {
     formats(pi, {}, decimal('3.14159265359'), true);
     formats(pi.negate(), { digits: 2 }, negate(decimal('3.14')), true);
@@ -64,6 +81,59 @@ describe('Formula formatting', () => {
   });
 
   //#endregion
+  //#region In scientific notation
+
+  const scientific = (mantissa: string, power: number) =>
+    multiply(decimal(mantissa), exponential(int(10), power < 0 ? negate(int(-power)) : int(power)));
+  const big = (digits: string) => Rational.parse(digits);
+
+  it('writes a plain decimal up to just below 10^12, and down to 10^-6', () => {
+    formats(big('999999999999'), {}, int('999999999999'), false);
+    formats(big('0.000001'), {}, decimal('0.000001'), false);
+  });
+
+  it('writes a large rational number in scientific notation, exact when no digits are lost', () => {
+    formats(big('1000000000000'), {}, scientific('1', 12), false);
+    formats(big('-1234500000000000'), {}, negate(scientific('1.2345', 15)), false);
+    formats(Rational.of(2n ** 100n), {}, scientific('1.26765060023', 30), true);
+  });
+
+  it('writes a small rational number in scientific notation, exact when no digits are lost', () => {
+    formats(big('0.0000001'), {}, scientific('1', -7), false);
+    formats(rational(-1, 3).multiply(big('0.0000001')), {}, negate(scientific('3.33333333333', -8)), true);
+  });
+
+  it('rounds the mantissa up to the next power', () => {
+    formats(big('9999999999999.6'), {}, scientific('1', 13), true);
+  });
+
+  it('writes a large or small irrational number in scientific notation', () => {
+    formats(pi.multiply(big('1' + '0'.repeat(20))), {}, scientific('3.14159265359', 20), true);
+    formats(pi.divide(big('1' + '0'.repeat(20))), {}, scientific('3.14159265359', -20), true);
+    formats(
+      pi.multiply(big('1' + '0'.repeat(20))),
+      { requireFraction: true },
+      fraction(scientific('3.14159265359', 20), int(1)),
+      true,
+    );
+  });
+
+  it('writes no scientific notation for an exact fraction', () => {
+    formats(Rational.of(2n ** 100n, 3n), { requireFraction: true }, fraction(int(2n ** 100n), int(3)), false);
+  });
+
+  it('writes scientific notation which can be edited and worked out again', () => {
+    for (const value of [Rational.of(2n ** 100n), big('-0.0000001234')]) {
+      const { formula } = formatNumericToFormula(value, {});
+      const compiled = compileToFormula(tokenizeFormula(formula));
+      const evaluated = compiled.ok ? evaluateFormula(compiled.value) : null;
+      const reformatted = evaluated?.ok ? formatNumericToFormula(evaluated.value, {}).formula : null;
+
+      expect(reformatted && FormulaNode.asLispString(reformatted)).toBe(FormulaNode.asLispString(formula));
+    }
+  });
+
+  //#endregion
   //#region As a fraction
 
   it('writes a rational number as an exact fraction when one is required', () => {
@@ -76,6 +146,7 @@ describe('Formula formatting', () => {
     const options = { requireFraction: true, preferCompositeFraction: true };
     formats(rational(7, 2), options, compositeFraction(int(3), int(1), int(2)), false);
     formats(rational(1, 2), options, fraction(int(1), int(2)), false); // nothing whole to split off
+    formats(rational(3), options, fraction(int(3), int(1)), false); // nothing fractional to split off
     formats(rational(-7, 2), options, negate(compositeFraction(int(3), int(1), int(2))), false);
   });
 

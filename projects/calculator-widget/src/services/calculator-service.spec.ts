@@ -1,4 +1,4 @@
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   provideDummyVeronaWidgetService,
@@ -107,6 +107,11 @@ describe('CalculatorService', () => {
     }
   }
 
+  function configure(parameters: Record<string, string>): void {
+    const configuration = widgetService.configuration as WritableSignal<VeronaWidgetConfiguration>;
+    configuration.set({ ...DUMMY_WIDGET.testConfig, parameters });
+  }
+
   // The caret must always sit on something the current input holds, or it cannot be shown
   function caretIsInPlace(): boolean {
     const caretTokenId = service.caretTokenId();
@@ -168,10 +173,33 @@ describe('CalculatorService', () => {
     service.handleEvaluation('decimal');
     expect(output()).toBe('0.333333333333');
     expect(isApproximation()).toBeTrue();
+    expect(service.historyEntries().at(-1)?.isApproximation).toBeTrue();
 
     service.handleEvaluation('fraction');
     expect(output()).toBe('[1/3]');
     expect(isApproximation()).toBeFalse();
+  });
+
+  it('writes a large result in scientific notation, which can be edited further', async () => {
+    calculator();
+    type('10000000*1000000');
+    service.handleEvaluation('decimal');
+    expect(output()).toBe('1*[10^13]');
+    expect(isApproximation()).toBeFalse();
+
+    type('+1'); // carry on with the result
+    expect(input()).toBe('1*[10^13]+1');
+    service.handleEvaluation('decimal');
+    expect(output()).toBe('1*[10^13]');
+    expect(isApproximation()).toBeTrue(); // the 1 is lost in the rounded mantissa
+  });
+
+  it('reads a result in scientific notation back out of the state data', () => {
+    widgetService.stateData.set(JSON.stringify([{ asLatex: '1\\cdot{10}^{13}+1\\approx1\\cdot{10}^{13}' }]));
+    calculator();
+
+    expect(input()).toBe('1*[10^13]+1');
+    expect(render(service.historyEntries()[0].output)).toBe('1*[10^13]');
   });
 
   it('writes a whole number as a fraction when one is asked for', () => {
@@ -345,6 +373,36 @@ describe('CalculatorService', () => {
     expect(output()).toBe('[1/4]');
   });
 
+  it('takes the circumflex dead key as exponent, but no other dead key', () => {
+    calculator();
+    type('2');
+
+    press('Dead', { code: 'Equal' }); // an accent on a German keyboard
+    expect(input()).toBe('2');
+
+    press('Dead', { code: 'Backquote' }); // the circumflex on a German keyboard
+    expect(input()).toBe('[2^□]');
+  });
+
+  it('leaves keys to open menus', () => {
+    calculator();
+    type('1+2');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'cdk-overlay-container';
+    const menuItem = overlay.appendChild(document.createElement('button'));
+    document.body.appendChild(overlay);
+    try {
+      menuItem.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      menuItem.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    } finally {
+      overlay.remove();
+    }
+
+    expect(output()).toBe('none');
+    expect(input()).toBe('1+2');
+  });
+
   it('takes both a point and a comma as the decimal separator', () => {
     calculator();
     press('1');
@@ -400,6 +458,56 @@ describe('CalculatorService', () => {
 
     expect(input()).toBe('[1/3]');
     expect(render(service.historyEntries()[0].output)).toBe('0.333');
+    expect(service.historyEntries()[0].isApproximation).toBeTrue();
+  });
+
+  it('skips an entry of the state data it does not understand, and keeps the others', () => {
+    widgetService.stateData.set(
+      JSON.stringify([
+        { asLatex: 'no separator', asImage: null },
+        { asLatex: '1+2=3', asImage: null },
+      ]),
+    );
+    calculator();
+
+    expect(service.historyEntries().map((entry) => render(entry.input))).toEqual(['1+2']);
+    expect(service.historyEntries()[0].isApproximation).toBeFalse();
+    expect(input()).toBe('1+2');
+  });
+
+  it('reads no more history out of the state data than the journal shows', () => {
+    const stateData = ['1+1=2', '2+2=4', '3+3=6', '4+4=8'].map((asLatex) => ({ asLatex, asImage: null }));
+    widgetService.stateData.set(JSON.stringify(stateData));
+    calculator();
+
+    expect(service.historyEntries().map((entry) => render(entry.input))).toEqual(['2+2', '3+3', '4+4']);
+  });
+
+  it('reads no history out of the state data when the journal shows none', () => {
+    configure({ JOURNAL_LINES: '0' });
+    widgetService.stateData.set(JSON.stringify([{ asLatex: '1+2=3', asImage: null }]));
+    calculator();
+
+    expect(service.historyEntries().length).toBe(0);
+  });
+
+  it('keeps the parameters in a sensible range', () => {
+    configure({ JOURNAL_LINES: '-1', MAX_IMAGE_WIDTH_PX: '-5' });
+    calculator();
+
+    expect(service.journalLineCount()).toBe(0);
+    expect(service.imageWidthPx()).toBe(1);
+  });
+
+  it('writes what was worked out into the state data, even without an image', async () => {
+    calculator();
+    spyOn(TestBed.inject(CalculatorImageRenderer), 'renderSequenceImage').and.rejectWith(new Error('spec'));
+    type('1+2');
+    service.handleEvaluation('decimal');
+
+    await until(() => widgetService.stateData().length > 0);
+
+    expect(JSON.parse(widgetService.stateData())).toEqual([{ asLatex: '1+2=3', asImage: null }]);
   });
 
   it('starts empty when the state data holds nothing it understands', () => {

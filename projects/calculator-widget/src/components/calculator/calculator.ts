@@ -22,7 +22,6 @@ import { ConstantSymbol } from '../../models';
   imports: [
     DisplayEditSequence,
     MatFabButton,
-    MatFabButton,
     MatIconButton,
     MatIcon,
     MatMenu,

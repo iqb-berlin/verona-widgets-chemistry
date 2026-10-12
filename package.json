@@ -13,6 +13,7 @@
     "test:project:molecule-editor-widget": "ng test molecule-editor-widget",
     "test:project:calculator-widget": "ng test calculator-widget",
     "test:all": "run-p test:project:*",
+    "test:ci": "run-s \"test:project:!(verona-widget) -- --watch=false --browsers=ChromeHeadless\"",
     "watch:project:verona-widget": "ng build verona-widget --watch",
     "watch:project:periodic-system-common": "ng build periodic-system-common --watch",
     "watch:all": "run-p watch:project:*",

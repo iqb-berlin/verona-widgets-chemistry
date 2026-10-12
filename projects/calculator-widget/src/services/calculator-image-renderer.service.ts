@@ -15,7 +15,6 @@ export interface CalculatorSvgOutput {
 
 export interface CalculatorSvgOptions {
   readonly imageWidth: number;
-  readonly scale?: number;
   readonly padding?: number;
   readonly background?: string;
   readonly foreground?: string;
@@ -58,24 +57,22 @@ export class CalculatorImageRenderer {
   }
 
   renderSequenceSvg(input: CalculatorSvgInput, options: CalculatorSvgOptions): CalculatorSvgOutput {
-    const defaultScale = window.devicePixelRatio || 1;
-    const { imageWidth, scale = defaultScale, padding = 4, foreground = '', background = '' } = options;
+    const { imageWidth, padding = 4, foreground = '', background = '' } = options;
+    const contentWidth = Math.max(1, imageWidth - 2 * padding);
 
     const math = this.renderMath(input);
     math.setAttribute('display', 'inline');
     math.setAttribute('displaystyle', 'true');
-    math.style.width = `${imageWidth}px`;
+    math.style.width = `${contentWidth}px`;
     math.style.height = 'auto';
-    math.style.color = foreground;
+    if (foreground) math.style.color = foreground;
     math.style.margin = '0';
     math.style.textAlign = 'left';
 
     const [mathWidth, mathHeight] = this.measureMathElement(math);
     const paddedWidth = Math.ceil(mathWidth + 2 * padding);
-    const paddedHeight = Math.ceil(mathHeight + 2 * padding);
-    const rootScale = imageWidth / paddedWidth;
-    const width = Math.round(imageWidth);
-    const height = Math.max(1, Math.round(paddedHeight * rootScale));
+    const width = Math.max(1, Math.round(imageWidth));
+    const height = Math.max(1, Math.ceil(mathHeight + 2 * padding));
 
     const foreignDiv = this.document.createElementNS(NS_XHTML, 'div');
     foreignDiv.style.padding = `${padding}px`;
@@ -86,26 +83,29 @@ export class CalculatorImageRenderer {
     foreignObject.setAttribute('x', '0');
     foreignObject.setAttribute('y', '0');
     foreignObject.setAttribute('width', paddedWidth.toString());
-    foreignObject.setAttribute('height', paddedHeight.toString());
+    foreignObject.setAttribute('height', height.toString());
     foreignObject.appendChild(foreignDiv);
 
+    // Content is drawn at 1:1 scale, and clipped at the image width
     const svg = this.document.createElementNS(NS_SVG, 'svg');
     svg.setAttribute('width', width.toString());
     svg.setAttribute('height', height.toString());
-    svg.setAttribute('viewBox', `0 0 ${paddedWidth} ${paddedHeight}`);
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     svg.appendChild(foreignObject);
 
-    // Handle overflow: If math element is wider than image, append a "..." box at the end of the SVG view
-    if (mathWidth > imageWidth) {
-      const middleY = Math.round(height / 2);
+    // Handle overflow: If math element is wider than image, draw a "..." at the clipped end of the image
+    if (mathWidth > contentWidth) {
+      const middleY = height / 2;
       for (const offset of [5, 15, 25]) {
         const dot = this.document.createElementNS(NS_SVG, 'circle');
-        dot.setAttribute('cx', (paddedWidth - offset).toString());
+        dot.setAttribute('cx', (width - offset).toString());
         dot.setAttribute('cy', middleY.toString());
-        dot.setAttribute('r', '5');
-        dot.setAttribute('fill', foreground);
-        dot.setAttribute('stroke', background);
-        dot.setAttribute('stroke-width', '2.5');
+        dot.setAttribute('r', '4');
+        dot.setAttribute('fill', foreground || 'currentColor');
+        if (background) {
+          dot.setAttribute('stroke', background);
+          dot.setAttribute('stroke-width', '2.5');
+        }
         svg.appendChild(dot);
       }
     }
@@ -122,7 +122,7 @@ export class CalculatorImageRenderer {
       this.document.body.appendChild(math);
       return [math.scrollWidth, math.scrollHeight] as const;
     } finally {
-      this.document.body.removeChild(math);
+      math.remove();
       math.style.display = previousDisplay;
       math.style.visibility = '';
     }

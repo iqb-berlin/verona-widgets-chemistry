@@ -83,7 +83,7 @@ export namespace FormulaNode {
       case 'fraction':
         return `(frac ${asLispString(node.dividend)} ${asLispString(node.divisor)})`;
       case 'composite':
-        return `(composite ${asLispString(node.integerPart)} ${asLispString(node.numerator)}) ${asLispString(node.denominator)})`;
+        return `(composite ${asLispString(node.integerPart)} ${asLispString(node.numerator)} ${asLispString(node.denominator)})`;
       case 'exponential':
         return `(pow ${asLispString(node.base)} ${asLispString(node.exponent)})`;
       case 'root':

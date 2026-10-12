@@ -7,7 +7,6 @@
       linebreakstyle="after"
       linebreakmultchar="&times;"
       style="font-family: sans-serif"
-      aria-label="Eingabebereich"
     >
       <mtable>
         <mtr>
@@ -217,7 +216,11 @@
           <!--<span>{{ entry.id }})&nbsp;</span>-->
           <math display="inline">
             <mrow [appEditSequence]="entry.input" [topLevel]="true"></mrow>
-            <mo>=</mo>
+            @if (entry.isApproximation) {
+              <mo>&approx;</mo>
+            } @else {
+              <mo>&equals;</mo>
+            }
             <mrow [appEditSequence]="entry.output" [topLevel]="true"></mrow>
           </math>
         </button>

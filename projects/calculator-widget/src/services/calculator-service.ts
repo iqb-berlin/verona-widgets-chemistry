@@ -10,6 +10,7 @@ export interface HistoryEntry {
   readonly id: number;
   readonly input: M.EditSequence;
   readonly output: M.EditSequence;
+  readonly isApproximation: boolean;
   readonly journalEntryPromise: Promise<JournalEntry>;
 }
 
@@ -56,10 +57,17 @@ const ISSUE_MESSAGES = {
 const DEFAULT_JOURNAL_LINES = 3;
 const DEFAULT_IMAGE_WIDTH_PX = 200;
 
-function toIntOrDefault(value: string, defaultInt: number): number {
+function toIntOrDefault(value: string, defaultInt: number, minInt: number): number {
   const int = Number.parseInt(value);
-  return Number.isNaN(int) ? defaultInt : int;
+  return Number.isNaN(int) ? defaultInt : Math.max(minInt, int);
 }
+
+// Splits a journal-entry LaTeX string into input, separator ('=', '≡' or '≈') and output
+const LATEX_INPUT_SEPARATOR_OUTPUT = /^(.*?)(=|\\equiv|\\approx)(.*)$/s;
+
+// Keyboard events from these elements are left to them, e.g. Enter on a focused button
+const KEYBOARD_EXEMPT_SELECTOR = '.cdk-overlay-container, input, textarea, select, [contenteditable]';
+const KEYBOARD_PRESSABLE_SELECTOR = 'button, a[href]';
 
 function lastTokenIdOf(sequence: M.EditSequence): M.EditTokenId {
   const lastToken = sequence.items.at(-1) ?? sequence;
@@ -72,8 +80,12 @@ function lastTokenIdOf(sequence: M.EditSequence): M.EditTokenId {
 export class CalculatorService implements OnDestroy {
   readonly widgetService = inject(VeronaWidgetService);
   readonly svgRenderer = inject(CalculatorImageRenderer);
-  readonly journalLineCount = this.computeParameter('JOURNAL_LINES', DEFAULT_JOURNAL_LINES, toIntOrDefault);
-  readonly imageWidthPx = this.computeParameter('MAX_IMAGE_WIDTH_PX', DEFAULT_IMAGE_WIDTH_PX, toIntOrDefault);
+  readonly journalLineCount = this.computeParameter('JOURNAL_LINES', DEFAULT_JOURNAL_LINES, (value, defaultInt) =>
+    toIntOrDefault(value, defaultInt, 0),
+  );
+  readonly imageWidthPx = this.computeParameter('MAX_IMAGE_WIDTH_PX', DEFAULT_IMAGE_WIDTH_PX, (value, defaultInt) =>
+    toIntOrDefault(value, defaultInt, 1),
+  );
 
   readonly editSequence: HistorySignal<M.EditSequence>;
   readonly caretTokenId = signal<null | M.EditTokenId>(null);
@@ -144,11 +156,7 @@ export class CalculatorService implements OnDestroy {
     const previousResult = this.evaluationResult();
     if (previousResult !== null && previousResult.ok) {
       const { inputSequence: previousInput, mode: previousMode } = previousResult.value;
-      if (
-        previousInput !== null &&
-        previousMode === mode &&
-        M.EditTraversal.structurallyEqual(previousInput, inputSequence)
-      ) {
+      if (previousMode === mode && M.EditTraversal.structurallyEqual(previousInput, inputSequence)) {
         return; // nothing changed -> skip evaluation
       }
     }
@@ -159,7 +167,7 @@ export class CalculatorService implements OnDestroy {
     this.caretTokenId.set(null);
     this.caretMoved.emit();
 
-    // If evaluation was successful, snapshot an image and add entry to journal *after* next render update
+    // If evaluation was successful, render an image and add entry to journal
     const journalLineCount = this.journalLineCount();
     if (result.ok && journalLineCount > 0) {
       // Convert input/output to LaTeX syntax, delimited by '=' or '≈'
@@ -168,8 +176,12 @@ export class CalculatorService implements OnDestroy {
       const splitInputOutputLatex = result.value.isApproximation ? '\\approx' : '=';
       const asLatex = inputLatex + splitInputOutputLatex + outputLatex;
 
-      // Initiate process of creating a snapshot of the rendered formula; when finished, send state-data to widget host
+      // Initiate rendering of the formula image; when finished, send state-data to widget host
       const journalEntryPromise = this.snapshotJournalImage(result.value)
+        .catch((error: unknown) => {
+          console.warn('Rendering journal image failed:', error);
+          return null; // keep the journal-entry, without an image
+        })
         .then((asImage) => ({ asLatex, asImage }))
         .finally(() => this.sendStateData());
 
@@ -240,6 +252,9 @@ export class CalculatorService implements OnDestroy {
     if (event.ctrlKey || event.altKey || event.metaKey) {
       return; // ignore keys with modifiers
     }
+    if (this.isKeyboardExempt(event)) {
+      return; // leave keys to open menus and focused form controls
+    }
     if (event.key === 'Enter') {
       consumeEvent();
       this.handleEvaluation('decimal');
@@ -279,8 +294,9 @@ export class CalculatorService implements OnDestroy {
       case ',':
         return this.editCommand('typeInput', { input: '.' });
       case '^':
-      case 'Dead': // Circumflex is a "dead key" on Linux
         return this.editCommand('applyExponent', { square: false });
+      case 'Dead': // Circumflex may be a "dead key", but so are accents: only accept the circumflex key
+        return this.isCircumflexKey(event) ? this.editCommand('applyExponent', { square: false }) : null;
       case 'q':
       case 'Q':
         return this.editCommand('applyRoot', { sqrt: true });
@@ -302,6 +318,21 @@ export class CalculatorService implements OnDestroy {
       default:
         return null;
     }
+  }
+
+  private isKeyboardExempt(event: KeyboardEvent): boolean {
+    const target = event.target;
+    if (!(target instanceof Element)) return false;
+    if (target.closest(KEYBOARD_EXEMPT_SELECTOR) !== null) return true;
+
+    // Enter and Space on a keyboard-focused button press that button; a mouse-clicked button shows no focus
+    const isPressKey = event.key === 'Enter' || event.key === ' ';
+    return isPressKey && target.matches(KEYBOARD_PRESSABLE_SELECTOR) && target.matches(':focus-visible');
+  }
+
+  private isCircumflexKey(event: KeyboardEvent): boolean {
+    // German layout: key left of '1'; US-international layout: Shift+6
+    return (event.code === 'Backquote' && !event.shiftKey) || (event.code === 'Digit6' && event.shiftKey);
   }
 
   private editCommand<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): M.EditCommand.OfName<N> {
@@ -376,13 +407,14 @@ export class CalculatorService implements OnDestroy {
   }
 
   private amendHistory(
-    { inputSequence, outputSequence }: EvaluationOutput,
+    { inputSequence, outputSequence, isApproximation }: EvaluationOutput,
     journalEntryPromise: Promise<JournalEntry>,
   ): void {
     const historyEntry: HistoryEntry = {
       id: this.nextHistoryEntryId(),
       input: inputSequence,
       output: outputSequence,
+      isApproximation,
       journalEntryPromise,
     };
     const journalLineCount = this.journalLineCount();
@@ -438,30 +470,35 @@ export class CalculatorService implements OnDestroy {
   }
 
   private restoreInitialState(): null | readonly [M.EditSequence, HistoryEntry[]] {
-    const LATEX_SPLIT_INPUT_OUTPUT = /=|\\equiv|\\approx/g; // split on '=', '≡', and '≈'
-    try {
-      // Restore journal-entries from state-data
-      const journalEntries = this.readStateDataArray();
-      if (journalEntries === null) return null;
+    // Restore journal-entries from state-data, keeping no more than the journal shows
+    const storedJournalEntries = this.readStateDataArray();
+    if (storedJournalEntries === null) return null;
+    const journalEntries = storedJournalEntries.slice(
+      Math.max(0, storedJournalEntries.length - this.journalLineCount()),
+    );
 
-      // Map journal-entries back into history-entries
-      const historyEntries = journalEntries.map((journalEntry): HistoryEntry => {
-        const [inputLatex, outputLatex] = journalEntry.asLatex.split(LATEX_SPLIT_INPUT_OUTPUT, 2);
+    // Map journal-entries back into history-entries; skip those which cannot be restored
+    const historyEntries = journalEntries.flatMap((journalEntry): HistoryEntry[] => {
+      try {
+        const match = journalEntry.asLatex.match(LATEX_INPUT_SEPARATOR_OUTPUT);
+        if (match === null) throw new Error(`No separator in journal-entry: ${journalEntry.asLatex}`);
+
+        const [, inputLatex, separatorLatex, outputLatex] = match;
         const input = M.parseFromLatex(inputLatex);
         const output = M.parseFromLatex(outputLatex);
+        const isApproximation = separatorLatex === '\\approx';
         const journalEntryPromise = Promise.resolve(journalEntry);
-        const nextId = this.nextHistoryEntryId();
-        return { id: nextId, input, output, journalEntryPromise };
-      });
+        return [{ id: this.nextHistoryEntryId(), input, output, isApproximation, journalEntryPromise }];
+      } catch (error: unknown) {
+        console.warn('Restoring journal-entry failed:', error);
+        return [];
+      }
+    });
 
-      // Restore input edit-sequence from latest entry
-      const latestHistoryEntry = historyEntries.at(-1);
-      const editSequence = latestHistoryEntry?.input ?? M.sequence();
-      return [editSequence, historyEntries];
-    } catch (error: unknown) {
-      console.warn('Restoring initial edit-sequence failed:', error);
-      return null;
-    }
+    // Restore input edit-sequence from latest entry
+    const latestHistoryEntry = historyEntries.at(-1);
+    const editSequence = latestHistoryEntry?.input ?? M.sequence();
+    return [editSequence, historyEntries];
   }
 
   private nextHistoryEntryId(): number {

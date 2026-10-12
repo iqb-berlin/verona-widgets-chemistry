@@ -17,10 +17,13 @@ export class DisplayEditSequence {
   readonly interactive = input<boolean>(false);
   readonly topLevel = input<boolean>(false);
 
+  // Caret and problem state belong to the edited input, not to non-interactive displays which share its token ids
+  readonly problemTokenId = computed(() => (this.interactive() ? this.service.problemTokenId() : null));
+
   readonly hostProblem = computed(() => {
     const sequence = this.sequence();
     const topLevel = this.topLevel();
-    const problemTokenId = this.service.problemTokenId();
+    const problemTokenId = this.problemTokenId();
     return (!topLevel || sequence.items.length > 0) && problemTokenId === sequence.id;
   });
 
@@ -47,7 +50,7 @@ export class DisplayEditSequence {
   // A root without a degree is a square root, written without an index — unless the empty
   // degree is the one being edited, which needs its placeholder to be visible
   showsRootIndex(token: EditToken.Root): boolean {
-    return token.degree.items.length > 0 || this.service.isCaretOn(token.degree);
+    return token.degree.items.length > 0 || (this.interactive() && this.service.isCaretOn(token.degree));
   }
 
   // Put the caret where the token was clicked: Behind it, or in front of it when the click
