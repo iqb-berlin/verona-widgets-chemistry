@@ -76,7 +76,6 @@ export class CalculatorImageRenderer {
     const rootScale = imageWidth / paddedWidth;
     const width = Math.round(imageWidth);
     const height = Math.max(1, Math.round(paddedHeight * rootScale));
-    console.log('math width =', mathWidth, '; image width =', imageWidth);
 
     const foreignDiv = this.document.createElementNS(NS_XHTML, 'div');
     foreignDiv.style.padding = `${padding}px`;
@@ -112,7 +111,6 @@ export class CalculatorImageRenderer {
     }
 
     const svgXml = this.serializer.serializeToString(svg);
-    console.log(svgXml);
     return { svgXml, width, height };
   }
 

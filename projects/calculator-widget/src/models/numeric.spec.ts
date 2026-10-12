@@ -68,6 +68,16 @@ describe('Numeric', () => {
     expect(rational(-1, 3).toDecimalString(0)).toBe('0'); // a rounded zero carries no sign
   });
 
+  it('tells whether a decimal of as many places as asked for is exact', () => {
+    expect(rational(3).toDecimalStringExact(12)).toEqual(['3', true]);
+    expect(rational(3, 10).toDecimalStringExact(12)).toEqual(['0.3', true]);
+    expect(rational(-1, 8).toDecimalStringExact(12)).toEqual(['-0.125', true]);
+    expect(rational(1, 3).toDecimalStringExact(12)).toEqual(['0.333333333333', false]);
+    expect(rational(1, 6).toDecimalStringExact(4)).toEqual(['0.1667', false]);
+    expect(rational(1, 1024).toDecimalStringExact(4)).toEqual(['0.001', false]); // too few places
+    expect(rational(1, 1024).toDecimalStringExact(10)).toEqual(['0.0009765625', true]);
+  });
+
   //#endregion
   //#region Irrational numbers
 
@@ -134,6 +144,7 @@ describe('Numeric', () => {
     expect(two.isRational()).toBeFalse();
     expect(two.asRational()).toBeNull(); // there is no fraction to hand out
     expect(two.isInteger).toBeTrue(); // it may well look whole
+    expect(irrational('1000').asRational()).toBeNull();
   });
 
   it('hands out the other kind on request', () => {

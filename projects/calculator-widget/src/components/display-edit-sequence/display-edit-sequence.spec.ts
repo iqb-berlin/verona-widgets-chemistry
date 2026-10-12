@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideDummyVeronaWidgetService, VeronaModuleMetadata, VeronaWidgetConfiguration } from 'verona-widget';
 import { DisplayEditSequence } from './display-edit-sequence';
 import { CalculatorService } from '../../services/calculator-service';
+import { CalculatorImageRenderer } from '../../services/calculator-image-renderer.service';
 import { EditSequence, EditTokenId, sequence, token } from '../../models';
 
 @Component({
@@ -53,6 +54,7 @@ describe('DisplayEditSequence', () => {
         provideZonelessChangeDetection(),
         ...provideDummyVeronaWidgetService(DUMMY_WIDGET),
         CalculatorService,
+        CalculatorImageRenderer,
       ],
     }).compileComponents();
 

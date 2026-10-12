@@ -31,55 +31,36 @@ const DEFAULT_DIGITS = 12;
 export function formatNumericToFormula(value: NumericValue, options: FormatToFormulaOptions = {}): FormulaFormatOutput {
   const { requireFraction = false, preferCompositeFraction = false, digits = DEFAULT_DIGITS } = options;
 
-  // If value is irrational, always return an approximation
-  const rational = value.asRational();
-  if (rational === null) {
+  // If value is irrational, always return an approximation, even if it looks whole
+  if (!value.isRational()) {
     const irrational = value.asIrrational();
-    const [formula, isApproximation] = requireFraction
+    const formula = requireFraction
       ? irrationalToFractionalFormula(irrational, digits)
       : irrationalToDecimalFormula(irrational, digits);
 
-    return { value, formula, isApproximation };
+    return { value, formula, isApproximation: true };
   }
 
   // If a fraction is requested, always return a fractional representation
   if (requireFraction) {
-    const formula = rationalToFractionalFormula(rational, preferCompositeFraction);
+    const formula = rationalToFractionalFormula(value, preferCompositeFraction);
     return { value, formula, isApproximation: false };
   }
 
   // If a decimal number is requested, check if the rational is integral, or exactly decimal
-  const [formula, isApproximation] = rationalToDecimalFormula(rational, digits);
+  const [formula, isApproximation] = rationalToDecimalFormula(value, digits);
   return { value, formula, isApproximation };
 }
 
 type FormulaAndIsApproximation = readonly [FormulaNode, isApproximation: boolean];
 
-function irrationalToDecimalFormula(value: Irrational, digits: number): FormulaAndIsApproximation {
-  const magnitude = value.absolute();
-
-  // Special case: Irrational can be represented as a rational after all
-  const rationalAfterAll = magnitude.asRational();
-  if (rationalAfterAll !== null) {
-    if (rationalAfterAll.isInteger) {
-      const formula = magnitudeToFormula(value, int(rationalAfterAll.numerator));
-      return [formula, true];
-    }
-    const [rationalMagnitude, exactRational] = rationalAfterAll.toDecimalStringExact(digits);
-    if (exactRational) {
-      const formula = magnitudeToFormula(value, decimal(rationalMagnitude));
-      return [formula, true];
-    }
-  }
-
-  // Convert irrational to decimal approximation
-  const decimalMagnitude = magnitude.toDecimalString(digits, true);
-  return [magnitudeToFormula(value, decimal(decimalMagnitude)), true];
+function irrationalToDecimalFormula(value: Irrational, digits: number): FormulaNode {
+  const decimalMagnitude = value.absolute().toDecimalString(digits, true);
+  return magnitudeToFormula(value, decimal(decimalMagnitude));
 }
 
-function irrationalToFractionalFormula(value: Irrational, digits: number): FormulaAndIsApproximation {
-  const [formula, isApproximation] = irrationalToDecimalFormula(value, digits);
-  return [fraction(formula, int(1)), isApproximation];
+function irrationalToFractionalFormula(value: Irrational, digits: number): FormulaNode {
+  return fraction(irrationalToDecimalFormula(value, digits), int(1));
 }
 
 function rationalToDecimalFormula(value: Rational, digits: number): FormulaAndIsApproximation {
@@ -99,9 +80,11 @@ function rationalToFractionalFormula(value: Rational, preferComposite: boolean):
   if (preferComposite && magnitude.compareTo(Rational.ONE) > 0) {
     const integerPart = magnitude.floor();
     const fractionalPart = magnitude.numerator - integerPart * magnitude.denominator;
-    return compositeFraction(int(integerPart), int(fractionalPart), int(magnitude.denominator));
+    const formula = compositeFraction(int(integerPart), int(fractionalPart), int(magnitude.denominator));
+    return magnitudeToFormula(value, formula);
   } else {
-    return fraction(int(magnitude.numerator), int(magnitude.denominator));
+    const formula = fraction(int(magnitude.numerator), int(magnitude.denominator));
+    return magnitudeToFormula(value, formula);
   }
 }
 

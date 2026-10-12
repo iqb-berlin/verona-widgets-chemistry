@@ -1,7 +1,7 @@
 import { DECIMAL_PATTERN, NumericError, NumericValue, Sign } from './numeric.model';
-import { Rational } from './rational.model';
-import { CONSTANTS, ConstantSymbol } from './constants.model';
+import type { Rational } from './rational.model';
 import { bigDigits, bigDivideRounded, bigPow10, compareSign, decimalText, floorNthRoot } from './utils';
+import { CONSTANTS, ConstantSymbol } from './constants.model';
 
 /** Significant digits an irrational number is kept at */
 export const IRRATIONAL_PRECISION = 30;
@@ -221,14 +221,8 @@ export class Irrational extends NumericValue {
     return true;
   }
 
-  asRational(): null | Rational {
-    // Special case: If the exponent is positive (i.e. integer number), this irrational is actually rational.
-    if (this.isInteger) {
-      return Rational.of(this.mantissa, 1n);
-    }
-
-    // Otherwise, no irrational (a decimal of limited precision) can be *guaranteed* to be *exactly* rational
-    return null;
+  asRational(): null {
+    return null; // a decimal of limited precision is no fraction, however whole it may look
   }
 
   asIrrational(): Irrational {

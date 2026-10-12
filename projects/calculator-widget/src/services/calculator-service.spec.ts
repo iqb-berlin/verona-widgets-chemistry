@@ -7,6 +7,7 @@ import {
   VeronaWidgetService,
 } from 'verona-widget';
 import { CalculatorService, HistoryEntry } from './calculator-service';
+import { CalculatorImageRenderer } from './calculator-image-renderer.service';
 import { EditToken, EditTraversal } from '../models';
 
 const DUMMY_WIDGET = {
@@ -35,6 +36,7 @@ describe('CalculatorService', () => {
         provideZonelessChangeDetection(),
         ...provideDummyVeronaWidgetService(DUMMY_WIDGET),
         CalculatorService,
+        CalculatorImageRenderer,
       ],
     });
     widgetService = TestBed.inject(VeronaWidgetService);
@@ -81,6 +83,11 @@ describe('CalculatorService', () => {
     const result = service.evaluationResult();
     if (result === null) return 'none';
     return result.ok ? render(result.value.outputSequence) : `issue: ${result.issue.message}`;
+  }
+
+  function isApproximation(): null | boolean {
+    const result = service.evaluationResult();
+    return result !== null && result.ok ? result.value.isApproximation : null;
   }
 
   function type(text: string): void {
@@ -144,43 +151,45 @@ describe('CalculatorService', () => {
   //#endregion
   //#region Evaluating
 
-  it('works out a result as a fraction, and as a decimal on demand', () => {
+  it('works out a result as a decimal, or as a fraction on demand', () => {
     calculator();
     type('0.1+0.2');
 
-    service.handleEvaluation('rational');
-    expect(output()).toBe('[3/10]');
-
-    service.toggleEvaluationMode();
+    service.handleEvaluation('decimal');
     expect(output()).toBe('0.3');
 
-    service.toggleEvaluationMode();
+    service.handleEvaluation('fraction');
     expect(output()).toBe('[3/10]');
   });
 
-  it('works out a decimal straight away when asked for one', () => {
+  it('marks a rounded decimal as an approximation, but not an exact one', () => {
     calculator();
-    type('1+2');
+    type('1/3');
     service.handleEvaluation('decimal');
+    expect(output()).toBe('0.333333333333');
+    expect(isApproximation()).toBeTrue();
 
-    expect(output()).toBe('3');
-    expect(service.historyEntries().length).toBe(1);
+    service.handleEvaluation('fraction');
+    expect(output()).toBe('[1/3]');
+    expect(isApproximation()).toBeFalse();
   });
 
-  it('has nothing to toggle without a result', () => {
+  it('writes a whole number as a fraction when one is asked for', () => {
     calculator();
     type('1+2');
-    service.toggleEvaluationMode();
 
-    expect(output()).toBe('none');
+    service.handleEvaluation('decimal');
+    expect(output()).toBe('3');
+    service.handleEvaluation('fraction');
+    expect(output()).toBe('[3/1]');
   });
 
   it('works out the same input in the same way only once', () => {
     calculator();
     type('1+2');
 
-    service.handleEvaluation('rational');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
+    service.handleEvaluation('decimal');
 
     expect(service.historyEntries().length).toBe(1);
   });
@@ -190,17 +199,18 @@ describe('CalculatorService', () => {
     calculator();
     type('1+2');
 
-    service.handleEvaluation('rational');
     service.handleEvaluation('decimal');
+    service.handleEvaluation('fraction');
 
     expect(service.historyEntries().length).toBe(2);
-    expect(service.historyEntries().map((entry) => render(entry.output))).toEqual(['3', '3']);
+    expect(service.historyEntries().map((entry) => render(entry.output))).toEqual(['3', '[3/1]']);
+    expect(service.historyEntries().map((entry) => entry.id)).toEqual([1, 2]);
   });
 
   it('reports input which does not work out, and journals nothing', () => {
     calculator();
     type('1+');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
 
     expect(output()).toBe('issue: Unerwartetes Ende der Eingabe');
     expect(service.problemTokenId()).not.toBeNull();
@@ -210,7 +220,7 @@ describe('CalculatorService', () => {
   it('carries on with the result as the next input', () => {
     calculator();
     type('1+2');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
     expect(service.caretTokenId()).toBeNull(); // the caret steps aside while the result is shown
 
     type('+4');
@@ -219,10 +229,41 @@ describe('CalculatorService', () => {
     expect(caretIsInPlace()).toBeTrue();
   });
 
+  it('goes on editing the input, not the result, when backspace is pressed after evaluation', () => {
+    calculator();
+    type('1+2');
+    service.handleEvaluation('decimal');
+
+    press('Backspace');
+
+    expect(input()).toBe('1+');
+    expect(output()).toBe('none');
+  });
+
+  it('tells when the caret moved', () => {
+    calculator();
+    let moves = 0;
+    const subscription = service.caretMoved.subscribe(() => moves++);
+
+    type('1+2');
+    expect(moves).toBe(3);
+
+    service.handleEvaluation('decimal');
+    expect(moves).toBe(4); // the caret steps aside for the result
+
+    service.placeCaret(service.editSequence().items[0].id);
+    expect(moves).toBe(5);
+
+    service.undo();
+    expect(moves).toBe(6);
+
+    subscription.unsubscribe();
+  });
+
   it('puts the result aside as soon as the caret is placed', () => {
     calculator();
     type('1+2');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
 
     service.placeCaret(service.editSequence().items[0].id);
 
@@ -249,7 +290,7 @@ describe('CalculatorService', () => {
   it('puts a result aside when its input is undone', () => {
     calculator();
     type('1+2');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
     expect(output()).toBe('3');
 
     service.undo();
@@ -261,9 +302,9 @@ describe('CalculatorService', () => {
   it('takes an input back out of the history', () => {
     calculator();
     type('1+2');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
     type('7*8'); // carry on with something else
-    service.handleEvaluation('rational');
+    service.handleEvaluation('decimal');
 
     const [first] = service.historyEntries();
     expect(render(first.input)).toBe('1+2');
@@ -281,7 +322,7 @@ describe('CalculatorService', () => {
     for (const formula of ['1+1', '2+2', '3+3', '4+4']) {
       service.handleButton('clearAll', {});
       type(formula);
-      service.handleEvaluation('rational');
+      service.handleEvaluation('decimal');
     }
 
     expect(service.journalLineCount()).toBe(3); // the default
@@ -298,10 +339,23 @@ describe('CalculatorService', () => {
     type('4');
 
     press('Enter');
-    expect(output()).toBe('[1/4]');
+    expect(output()).toBe('0.25');
 
     press('#');
-    expect(output()).toBe('0.25');
+    expect(output()).toBe('[1/4]');
+  });
+
+  it('takes both a point and a comma as the decimal separator', () => {
+    calculator();
+    press('1');
+    press('.');
+    press('5');
+    press('+');
+    press('2');
+    press(',');
+    press('5');
+
+    expect(input()).toBe('1.5+2.5');
   });
 
   it('writes what was worked out into the state data', async () => {
@@ -309,13 +363,27 @@ describe('CalculatorService', () => {
     type('1');
     service.handleButton('applyFraction', { composite: false });
     type('2');
-    service.handleEvaluation('rational');
+    service.handleEvaluation('fraction');
 
     await until(() => widgetService.stateData().length > 0);
 
     const stateData: ReadonlyArray<{ asLatex: string }> = JSON.parse(widgetService.stateData());
     expect(stateData.length).toBe(1);
     expect(stateData[0].asLatex).toBe('\\frac{1}{2}=\\frac{1}{2}');
+  });
+
+  it('writes an approximate result into the state data as such', async () => {
+    calculator();
+    type('1');
+    service.handleButton('applyFraction', { composite: false });
+    type('3');
+    service.handleEvaluation('decimal');
+
+    await until(() => widgetService.stateData().length > 0);
+
+    const stateData: ReadonlyArray<{ asLatex: string }> = JSON.parse(widgetService.stateData());
+    expect(stateData.length).toBe(1);
+    expect(stateData[0].asLatex).toBe('\\frac{1}{3}\\approx0.333333333333');
   });
 
   it('reads the input back out of the state data', () => {
@@ -326,6 +394,14 @@ describe('CalculatorService', () => {
     expect(caretIsInPlace()).toBeTrue();
   });
 
+  it('reads an approximate result back out of the state data', () => {
+    widgetService.stateData.set(JSON.stringify([{ asLatex: '\\frac{1}{3}\\approx0.333', asImage: null }]));
+    calculator();
+
+    expect(input()).toBe('[1/3]');
+    expect(render(service.historyEntries()[0].output)).toBe('0.333');
+  });
+
   it('starts empty when the state data holds nothing it understands', () => {
     for (const stateData of ['', 'null', '{}', '[]', '[{"asLatex":42}]', 'not json at all']) {
       TestBed.resetTestingModule();
@@ -334,6 +410,7 @@ describe('CalculatorService', () => {
           provideZonelessChangeDetection(),
           ...provideDummyVeronaWidgetService(DUMMY_WIDGET),
           CalculatorService,
+          CalculatorImageRenderer,
         ],
       });
       const dummy = TestBed.inject(VeronaWidgetService);

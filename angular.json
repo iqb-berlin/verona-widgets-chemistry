@@ -299,6 +299,9 @@
                 "input": "projects/calculator-widget/public"
               }
             ],
+            "loader": {
+              ".svg": "text"
+            },
             "styles": ["projects/calculator-widget/src/styles.scss"]
           }
         }
