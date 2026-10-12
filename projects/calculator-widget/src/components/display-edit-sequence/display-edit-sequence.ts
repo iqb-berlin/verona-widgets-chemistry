@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { CalculatorService } from '../../services/calculator-service';
-import { CONSTANTS, EditSequence, EditToken } from '../../models';
+import { CONSTANTS, EditSequence, EditToken, OPERATOR_SYMBOLS } from '../../models';
 
 @Component({
   selector: 'math:mrow[appEditSequence]',
@@ -25,12 +25,7 @@ export class DisplayEditSequence {
   });
 
   protected readonly CONSTANTS = CONSTANTS;
-  protected readonly OPERATOR_SYMBOLS = {
-    '+': '\u002B', // &plus;
-    '-': '\u2212', // &minus;
-    '/': '\u00F7', // &divide;
-    '*': '\u00D7', // &times;
-  } as const satisfies Record<EditToken.Operator['operator'], string>;
+  protected readonly OPERATOR_SYMBOLS = OPERATOR_SYMBOLS;
 
   protected asToken(unknownToken: unknown): EditToken {
     return unknownToken as EditToken;

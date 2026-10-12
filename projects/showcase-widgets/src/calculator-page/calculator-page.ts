@@ -35,6 +35,7 @@ export class CalculatorPage implements OnInit, OnDestroy {
   readonly decodedStateData = computed(() => {
     try {
       const stateData = this.service.stateData();
+      if (!stateData) return [];
       return JSON.parse(stateData);
     } catch (error: unknown) {
       console.warn('Failed to decode widget state-data:', error);

@@ -70,6 +70,13 @@ export namespace EditToken {
   export type OfKind<K> = Extract<EditToken, { readonly kind: K }>;
 }
 
+export const OPERATOR_SYMBOLS = {
+  '+': '\u002B', // &plus;
+  '-': '\u2212', // &minus;
+  '/': '\u00F7', // &divide;
+  '*': '\u00D7', // &times;
+} as const satisfies Record<EditToken.Operator['operator'], string>;
+
 type EditTokenKey<K extends EditToken.Kind> = keyof EditToken.OfKind<K>;
 type EditTokenKeys<T extends EditToken.Kind> = ReadonlyArray<EditTokenKey<T>>;
 type EditTokenSlotsDictionary = { readonly [K in EditToken.Kind]: EditTokenKeys<K> };

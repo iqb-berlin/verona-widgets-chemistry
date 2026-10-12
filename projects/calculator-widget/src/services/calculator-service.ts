@@ -1,33 +1,15 @@
-import { computed, inject, Injectable, OnDestroy, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, EventEmitter, inject, Injectable, OnDestroy, Signal, signal, WritableSignal } from '@angular/core';
 import { castDraft, produce } from 'immer';
 import { historySignal, HistorySignal, VeronaWidgetService } from 'verona-widget';
-import {
-  compileToFormula,
-  CompileToFormulaIssueCode,
-  dispatchEditCommand,
-  EditCommand,
-  EditSequence,
-  EditToken,
-  EditTokenId,
-  EditTraversal,
-  evaluateFormula,
-  FormatToFormulaOptions,
-  formatToLatex,
-  FormulaEvalIssueCode,
-  numericToFormulaOutput,
-  NumericValue,
-  parseFromLatex,
-  Result,
-  sequence,
-  tokenizeFormula,
-} from '../models';
+import * as M from '../models';
+import { CalculatorImageRenderer } from './calculator-image-renderer.service';
 
 //#region Service data structures
 
 export interface HistoryEntry {
   readonly id: number;
-  readonly input: EditSequence;
-  readonly output: EditSequence;
+  readonly input: M.EditSequence;
+  readonly output: M.EditSequence;
   readonly journalEntryPromise: Promise<JournalEntry>;
 }
 
@@ -36,29 +18,24 @@ export interface JournalEntry {
   readonly asImage?: null | string;
 }
 
-export type EvaluationMode = 'rational' | 'decimal';
+export type EvaluationMode = 'decimal' | 'fraction';
 
 export interface EvaluationOutput {
   readonly mode: EvaluationMode;
-  readonly numericValue: NumericValue;
-  readonly inputSequence: EditSequence;
-  readonly outputSequence: EditSequence;
+  readonly numericValue: M.NumericValue;
+  readonly isApproximation: boolean;
+  readonly inputSequence: M.EditSequence;
+  readonly outputSequence: M.EditSequence;
 }
 
 export interface EvaluationIssue {
   readonly message: string;
-  readonly tokenId: null | EditTokenId;
+  readonly tokenId: null | M.EditTokenId;
 }
 
-export type EditCommandDetails<N extends EditCommand.Name> = Omit<EditCommand.OfName<N>, 'name' | 'targetId'>;
+export type EvaluationResult = M.Result<EvaluationOutput, EvaluationIssue>;
 
-export interface JournalImageSource {
-  snapshotJournalImage(config: JournalImageConfig): Promise<null | string>;
-}
-
-export interface JournalImageConfig {
-  readonly imageWidthPx: number;
-}
+export type EditCommandDetails<N extends M.EditCommand.Name> = Omit<M.EditCommand.OfName<N>, 'name' | 'targetId'>;
 
 //#endregion
 //#region Helpers
@@ -74,7 +51,7 @@ const ISSUE_MESSAGES = {
   nonFinite: 'Ergebnis ist keine endliche Zahl',
   complexResult: 'Komplexe Zahl nicht berechenbar',
   unsupported: 'Berechnung wird nicht unterstützt',
-} as const satisfies Record<CompileToFormulaIssueCode | FormulaEvalIssueCode, string>;
+} as const satisfies Record<M.CompileToFormulaIssueCode | M.FormulaEvalIssueCode, string>;
 
 const DEFAULT_JOURNAL_LINES = 3;
 const DEFAULT_IMAGE_WIDTH_PX = 200;
@@ -84,29 +61,9 @@ function toIntOrDefault(value: string, defaultInt: number): number {
   return Number.isNaN(int) ? defaultInt : int;
 }
 
-function formatEvaluationOutput(
-  inputSequence: EditSequence,
-  numericValue: NumericValue,
-  mode: EvaluationMode,
-  options: FormatToFormulaOptions,
-): EvaluationOutput {
-  // A rational-number evaluation shows the result as a fraction if possible, a decimal one always as a decimal
-  const output = numericToFormulaOutput(numericValue, { ...options, digits: 12 });
-  const outputSequence = tokenizeFormula(output.formula);
-  const actualMode =
-    mode === 'decimal' ? 'decimal' : options.forceFraction || !output.isExactlyDecimal ? 'rational' : 'decimal';
-  return { mode: actualMode, numericValue, inputSequence, outputSequence } as const;
-}
-
-function lastTokenIdOf(sequence: EditSequence): EditTokenId {
+function lastTokenIdOf(sequence: M.EditSequence): M.EditTokenId {
   const lastToken = sequence.items.at(-1) ?? sequence;
   return lastToken.id;
-}
-
-let historyEntryIdCounter = 1;
-
-function nextHistoryEntryId(): number {
-  return historyEntryIdCounter++;
 }
 
 //#endregion
@@ -114,19 +71,22 @@ function nextHistoryEntryId(): number {
 @Injectable()
 export class CalculatorService implements OnDestroy {
   readonly widgetService = inject(VeronaWidgetService);
+  readonly svgRenderer = inject(CalculatorImageRenderer);
   readonly journalLineCount = this.computeParameter('JOURNAL_LINES', DEFAULT_JOURNAL_LINES, toIntOrDefault);
   readonly imageWidthPx = this.computeParameter('MAX_IMAGE_WIDTH_PX', DEFAULT_IMAGE_WIDTH_PX, toIntOrDefault);
 
-  readonly editSequence: HistorySignal<EditSequence>;
-  readonly caretTokenId = signal<null | EditTokenId>(null);
-  readonly evaluationResult = signal<null | Result<EvaluationOutput, EvaluationIssue>>(null);
+  readonly editSequence: HistorySignal<M.EditSequence>;
+  readonly caretTokenId = signal<null | M.EditTokenId>(null);
+  readonly evaluationResult = signal<null | EvaluationResult>(null);
   readonly problemTokenId = computed(() => {
     const result = this.evaluationResult();
     return result === null || result.ok ? null : result.issue.tokenId;
   });
 
+  readonly caretMoved = new EventEmitter<void>();
+
   readonly historyEntries: WritableSignal<ReadonlyArray<HistoryEntry>>;
-  private journalImageSource: null | JournalImageSource = null;
+  private historyEntryIdCounter = 1;
 
   // Bound to service lifecycle
   private readonly abortController = new AbortController();
@@ -136,7 +96,7 @@ export class CalculatorService implements OnDestroy {
     const abortSignal = this.abortController.signal;
 
     // Initialize edit-sequence and history
-    const [initSequence, initHistoryEntries] = this.restoreInitialState() ?? [sequence(), []];
+    const [initSequence, initHistoryEntries] = this.restoreInitialState() ?? [M.sequence(), []];
     this.editSequence = historySignal(initSequence, { capacity: 100, debugName: 'editSequence' });
     this.historyEntries = signal<ReadonlyArray<HistoryEntry>>(initHistoryEntries);
 
@@ -152,21 +112,18 @@ export class CalculatorService implements OnDestroy {
     this.abortController.abort('ngOnDestroy');
   }
 
-  registerJournalImageSource(source: JournalImageSource) {
-    this.journalImageSource = source;
-  }
-
   // Caret either sits behind given token, or in front of token if token is an EditSequence
-  isCaretOn(token: EditToken): boolean {
+  isCaretOn(token: M.EditToken): boolean {
     return this.caretTokenId() === token.id;
   }
 
-  placeCaret(tokenId: EditTokenId): void {
+  placeCaret(tokenId: M.EditTokenId): void {
     this.caretTokenId.set(tokenId);
     this.evaluationResult.set(null);
+    this.caretMoved.emit();
   }
 
-  handleButton<N extends EditCommand.Name>(name: N, details: EditCommandDetails<N>): void {
+  handleButton<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): void {
     const command = this.editCommand(name, details);
     this.executeCommand(command);
   }
@@ -183,52 +140,42 @@ export class CalculatorService implements OnDestroy {
 
   handleEvaluation(mode: EvaluationMode): void {
     // Check that input has not already been evaluated
-    const input = this.editSequence();
+    const inputSequence = this.editSequence();
     const previousResult = this.evaluationResult();
     if (previousResult !== null && previousResult.ok) {
       const { inputSequence: previousInput, mode: previousMode } = previousResult.value;
-      if (previousInput !== null && previousMode === mode && EditTraversal.structurallyEqual(previousInput, input)) {
+      if (
+        previousInput !== null &&
+        previousMode === mode &&
+        M.EditTraversal.structurallyEqual(previousInput, inputSequence)
+      ) {
         return; // nothing changed -> skip evaluation
       }
     }
 
     // Execute evaluation, display result (either value or issue)
-    const result = this.executeEvaluation(input, mode);
+    const result = this.executeEvaluation(inputSequence, mode);
     this.evaluationResult.set(result);
     this.caretTokenId.set(null);
+    this.caretMoved.emit();
 
     // If evaluation was successful, snapshot an image and add entry to journal *after* next render update
     const journalLineCount = this.journalLineCount();
     if (result.ok && journalLineCount > 0) {
-      // Convert input/output to LaTeX syntax, delimited by "="
-      const inputLatex = formatToLatex(input);
-      const outputLatex = formatToLatex(result.value.outputSequence);
-      const asLatex = `${inputLatex}=${outputLatex}`;
+      // Convert input/output to LaTeX syntax, delimited by '=' or '≈'
+      const inputLatex = M.formatToLatex(inputSequence);
+      const outputLatex = M.formatToLatex(result.value.outputSequence);
+      const splitInputOutputLatex = result.value.isApproximation ? '\\approx' : '=';
+      const asLatex = inputLatex + splitInputOutputLatex + outputLatex;
 
       // Initiate process of creating a snapshot of the rendered formula; when finished, send state-data to widget host
-      const journalEntryPromise = this.snapshotJournalImage()
+      const journalEntryPromise = this.snapshotJournalImage(result.value)
         .then((asImage) => ({ asLatex, asImage }))
         .finally(() => this.sendStateData());
 
       // Immediately append entry in history, including the pending promise of the journal-entry
       this.amendHistory(result.value, journalEntryPromise);
     }
-  }
-
-  toggleEvaluationMode(): void {
-    // Evaluation must already be completed without issue
-    const previousResult = this.evaluationResult();
-    if (previousResult === null || !previousResult.ok) {
-      return;
-    }
-
-    // Toggle and re-interpret previous result with opposite mode
-    const { inputSequence, numericValue, mode: previousMode } = previousResult.value;
-    const oppositeMode: EvaluationMode = previousMode === 'rational' ? 'decimal' : 'rational';
-    const preferDecimal = oppositeMode === 'decimal';
-    const forceFraction = oppositeMode === 'rational';
-    const output = formatEvaluationOutput(inputSequence, numericValue, oppositeMode, { preferDecimal, forceFraction });
-    this.evaluationResult.set(Result.ok(output));
   }
 
   undo(): void {
@@ -245,6 +192,7 @@ export class CalculatorService implements OnDestroy {
     this.editSequence.set(entry.input);
     this.caretTokenId.set(lastTokenIdOf(entry.input));
     this.evaluationResult.set(null);
+    this.caretMoved.emit();
   }
 
   /**
@@ -254,19 +202,19 @@ export class CalculatorService implements OnDestroy {
   private recoverCaret(): void {
     const input = this.editSequence();
     const caretTokenId = this.caretTokenId();
-    const stillThere = caretTokenId !== null && EditTraversal.containsToken(input, caretTokenId);
+    const stillThere = caretTokenId !== null && M.EditTraversal.containsToken(input, caretTokenId);
     this.caretTokenId.set(stillThere ? caretTokenId : lastTokenIdOf(input));
     this.evaluationResult.set(null);
+    this.caretMoved.emit();
   }
 
-  private async snapshotJournalImage(): Promise<null | string> {
-    // Wait until immediate page-rendering finished
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Create snapshot of math-element
-    const imageWidthPx = this.imageWidthPx();
-    const imagePromise = this.journalImageSource?.snapshotJournalImage({ imageWidthPx });
-    return (await imagePromise) ?? null;
+  private async snapshotJournalImage(evaluation: EvaluationOutput): Promise<null | string> {
+    const imageWidth = this.imageWidthPx();
+    return await this.svgRenderer.renderSequenceImage(evaluation, {
+      imageWidth,
+      background: '#ffffff',
+      foreground: '#000000',
+    });
   }
 
   private sendStateData() {
@@ -284,28 +232,30 @@ export class CalculatorService implements OnDestroy {
   }
 
   handleKey(event: KeyboardEvent): void {
+    function consumeEvent() {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     if (event.ctrlKey || event.altKey || event.metaKey) {
       return; // ignore keys with modifiers
     }
     if (event.key === 'Enter') {
-      event.preventDefault();
-      event.stopPropagation();
-      this.handleEvaluation('rational');
-    } else if (event.key === '#') {
-      event.preventDefault();
-      event.stopPropagation();
+      consumeEvent();
       this.handleEvaluation('decimal');
+    } else if (event.key === '#') {
+      consumeEvent();
+      this.handleEvaluation('fraction');
     } else {
       const command = this.commandOfKeypress(event);
       if (command !== null) {
-        event.preventDefault();
-        event.stopPropagation();
+        consumeEvent();
         this.executeCommand(command);
       }
     }
   }
 
-  private commandOfKeypress(event: KeyboardEvent): null | EditCommand {
+  private commandOfKeypress(event: KeyboardEvent): null | M.EditCommand {
     const input = event.key;
     switch (input) {
       case '0':
@@ -318,7 +268,6 @@ export class CalculatorService implements OnDestroy {
       case '7':
       case '8':
       case '9':
-      case '.':
       case '(':
       case ')':
       case '+':
@@ -326,6 +275,7 @@ export class CalculatorService implements OnDestroy {
       case '*':
       case '/':
         return this.editCommand('typeInput', { input });
+      case '.':
       case ',':
         return this.editCommand('typeInput', { input: '.' });
       case '^':
@@ -354,58 +304,75 @@ export class CalculatorService implements OnDestroy {
     }
   }
 
-  private editCommand<N extends EditCommand.Name>(name: N, details: EditCommandDetails<N>): EditCommand.OfName<N> {
+  private editCommand<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): M.EditCommand.OfName<N> {
     // Edit input if caret is placed
     const caretTokenId = this.caretTokenId();
     if (caretTokenId !== null) {
-      return { targetId: caretTokenId, name, ...details } as EditCommand.OfName<N>;
+      return { targetId: caretTokenId, name, ...details } as M.EditCommand.OfName<N>;
     }
 
-    // Check if an evaluation result exists, and continue editing with result as input
+    // Check if an evaluation result exists, and continue editing with result as input unless a navigation-command is issued
     const evaluationResult = this.evaluationResult();
-    if (evaluationResult !== null && evaluationResult.ok) {
+    if (evaluationResult !== null && evaluationResult.ok && !this.isNavigationCommand(name)) {
       const { outputSequence } = evaluationResult.value;
       this.editSequence.set(outputSequence, true);
       const targetId = lastTokenIdOf(outputSequence);
-      return { targetId, name, ...details } as EditCommand.OfName<N>;
+      return { targetId, name, ...details } as M.EditCommand.OfName<N>;
     }
 
     // Continue editing at end of input
     const targetId = lastTokenIdOf(this.editSequence());
-    return { targetId, name, ...details } as EditCommand.OfName<N>;
+    return { targetId, name, ...details } as M.EditCommand.OfName<N>;
   }
 
-  private executeCommand(command: EditCommand) {
+  private isNavigationCommand(name: M.EditCommand.Name): boolean {
+    switch (name) {
+      case 'backspace':
+      case 'focus':
+      case 'move':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private executeCommand(command: M.EditCommand) {
     const input = this.editSequence();
-    const { tree, focusId, changed } = dispatchEditCommand(input, command);
+    const { tree, focusId, changed } = M.dispatchEditCommand(input, command);
     if (changed) this.editSequence.set(tree, true);
     this.caretTokenId.set(focusId);
     this.evaluationResult.set(null);
+    this.caretMoved.emit();
   }
 
-  private executeEvaluation(
-    inputSequence: EditSequence,
-    mode: EvaluationMode,
-  ): Result<EvaluationOutput, EvaluationIssue> {
-    const compileResult = compileToFormula(inputSequence);
+  private executeEvaluation(inputSequence: M.EditSequence, mode: EvaluationMode): EvaluationResult {
+    const compileResult = M.compileToFormula(inputSequence);
     if (!compileResult.ok) {
       console.warn('Compile to formula issue:', compileResult.issue);
       const { code, tokenId, sequenceId } = compileResult.issue;
       const message = ISSUE_MESSAGES[code] || 'Unbekannter Eingabefehler?';
-      return Result.issue({ message, tokenId: tokenId ?? sequenceId });
+      return M.Result.issue({ message, tokenId: tokenId ?? sequenceId });
     }
 
-    const evaluationResult = evaluateFormula(compileResult.value);
+    const evaluationResult = M.evaluateFormula(compileResult.value);
     if (!evaluationResult.ok) {
       console.warn('Evaluate formula issue:', evaluationResult.issue);
       const { code, sourceTokenId } = evaluationResult.issue;
       const message = ISSUE_MESSAGES[code] || 'Unbekannter Mathefehler?';
-      return Result.issue({ message, tokenId: sourceTokenId });
+      return M.Result.issue({ message, tokenId: sourceTokenId });
     }
 
-    const preferDecimal = mode === 'decimal';
-    const output = formatEvaluationOutput(inputSequence, evaluationResult.value, mode, { preferDecimal });
-    return Result.ok(output);
+    const requireFraction = mode === 'fraction';
+    const { value, formula, isApproximation } = M.formatNumericToFormula(evaluationResult.value, { requireFraction });
+    const outputSequence = M.tokenizeFormula(formula);
+
+    return M.Result.ok({
+      mode,
+      numericValue: value,
+      isApproximation,
+      inputSequence,
+      outputSequence,
+    });
   }
 
   private amendHistory(
@@ -413,7 +380,7 @@ export class CalculatorService implements OnDestroy {
     journalEntryPromise: Promise<JournalEntry>,
   ): void {
     const historyEntry: HistoryEntry = {
-      id: nextHistoryEntryId(),
+      id: this.nextHistoryEntryId(),
       input: inputSequence,
       output: outputSequence,
       journalEntryPromise,
@@ -470,7 +437,8 @@ export class CalculatorService implements OnDestroy {
     }
   }
 
-  private restoreInitialState(): null | readonly [EditSequence, HistoryEntry[]] {
+  private restoreInitialState(): null | readonly [M.EditSequence, HistoryEntry[]] {
+    const LATEX_SPLIT_INPUT_OUTPUT = /=|\\equiv|\\approx/g; // split on '=', '≡', and '≈'
     try {
       // Restore journal-entries from state-data
       const journalEntries = this.readStateDataArray();
@@ -478,20 +446,25 @@ export class CalculatorService implements OnDestroy {
 
       // Map journal-entries back into history-entries
       const historyEntries = journalEntries.map((journalEntry): HistoryEntry => {
-        const [inputLatex, outputLatex] = journalEntry.asLatex.split('=', 2);
-        const input = parseFromLatex(inputLatex);
-        const output = parseFromLatex(outputLatex);
+        const [inputLatex, outputLatex] = journalEntry.asLatex.split(LATEX_SPLIT_INPUT_OUTPUT, 2);
+        const input = M.parseFromLatex(inputLatex);
+        const output = M.parseFromLatex(outputLatex);
         const journalEntryPromise = Promise.resolve(journalEntry);
-        return { id: nextHistoryEntryId(), input, output, journalEntryPromise };
+        const nextId = this.nextHistoryEntryId();
+        return { id: nextId, input, output, journalEntryPromise };
       });
 
       // Restore input edit-sequence from latest entry
       const latestHistoryEntry = historyEntries.at(-1);
-      const editSequence = latestHistoryEntry?.input ?? sequence();
+      const editSequence = latestHistoryEntry?.input ?? M.sequence();
       return [editSequence, historyEntries];
     } catch (error: unknown) {
       console.warn('Restoring initial edit-sequence failed:', error);
       return null;
     }
+  }
+
+  private nextHistoryEntryId(): number {
+    return this.historyEntryIdCounter++;
   }
 }

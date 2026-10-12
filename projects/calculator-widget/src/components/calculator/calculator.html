@@ -1,18 +1,17 @@
-<!-- @let ef = evaluatedFormula(); -->
 <article class="calculator">
-  <div class="formula-area">
+  <div class="formula-area formula-right">
     <math
       #mathView
-      display="block"
       stretchy="true"
+      displaystyle="true"
       linebreakstyle="after"
       linebreakmultchar="&times;"
-      style="font-family: sans-serif; text-align: right"
+      style="font-family: sans-serif"
       aria-label="Eingabebereich"
     >
       <mtable>
         <mtr>
-          <mtd columnalign="right">
+          <mtd class="formula-right">
             <mrow [appEditSequence]="service.editSequence()" [interactive]="true" [topLevel]="true"></mrow>
           </mtd>
         </mtr>
@@ -20,9 +19,14 @@
         @let result = service.evaluationResult();
         @if (result !== null) {
           <mtr>
-            <mtd>
+            <mtd class="formula-right">
               @if (result.ok) {
-                <mrow style="font-size: 150%" [appEditSequence]="result.value.outputSequence"></mrow>
+                @if (result.value.isApproximation) {
+                  <mo>&approx;</mo>
+                } @else {
+                  <mo>&equals;</mo>
+                }
+                <mrow style="font-size: 150%" [appEditSequence]="result.value.outputSequence" data-result></mrow>
               } @else {
                 <merror class="error-message">{{ result.issue.message }}</merror>
               }
@@ -64,41 +68,34 @@
     </button>
   </div>
 
+  @let ne = isNavExpanded();
+  @let neI = ne ? 'chevron_left' : 'chevron_right';
+  @let neT = ne ? 'Navigation ausblenden' : 'Navigation einblenden';
   <div class="nav expand" style="grid-area: nav0">
-    <button
-      matIconButton
-      (click)="toggleNavExpanded()"
-      [title]="isNavExpanded() ? 'Navigation ausblenden' : 'Navigation einblenden'"
-    >
-      @if (isNavExpanded()) {
-        <mat-icon>chevron_left</mat-icon>
-      } @else {
-        <mat-icon>chevron_right</mat-icon>
-      }
+    <button matIconButton (click)="toggleNavExpanded()" [title]="neT">
+      <mat-icon>{{ neI }}</mat-icon>
     </button>
   </div>
-  @if (isNavExpanded()) {
-    <div class="nav" style="grid-area: nav1">
-      <button matFab (click)="service.handleButton('move', { direction: 'up' })" title="Navigation nach oben">
-        <mat-icon>keyboard_arrow_up</mat-icon>
-      </button>
-    </div>
-    <div class="nav" style="grid-area: nav2">
-      <button matFab (click)="service.handleButton('move', { direction: 'down' })" title="Navigation nach unten">
-        <mat-icon>keyboard_arrow_down</mat-icon>
-      </button>
-    </div>
-    <div class="nav" style="grid-area: nav3">
-      <button matFab (click)="service.handleButton('move', { direction: 'left' })" title="Navigation nach links">
-        <mat-icon>keyboard_arrow_left</mat-icon>
-      </button>
-    </div>
-    <div class="nav" style="grid-area: nav4">
-      <button matFab (click)="service.handleButton('move', { direction: 'right' })" title="Navigation nach rechts">
-        <mat-icon>keyboard_arrow_right</mat-icon>
-      </button>
-    </div>
-  }
+  <div class="nav" style="grid-area: nav1" [style.visibility]="ne ? 'visible' : 'hidden'">
+    <button matFab (click)="service.handleButton('move', { direction: 'up' })" title="Navigation nach oben">
+      <mat-icon>keyboard_arrow_up</mat-icon>
+    </button>
+  </div>
+  <div class="nav" style="grid-area: nav2" [style.visibility]="ne ? 'visible' : 'hidden'">
+    <button matFab (click)="service.handleButton('move', { direction: 'down' })" title="Navigation nach unten">
+      <mat-icon>keyboard_arrow_down</mat-icon>
+    </button>
+  </div>
+  <div class="nav" style="grid-area: nav3" [style.visibility]="ne ? 'visible' : 'hidden'">
+    <button matFab (click)="service.handleButton('move', { direction: 'left' })" title="Navigation nach links">
+      <mat-icon>keyboard_arrow_left</mat-icon>
+    </button>
+  </div>
+  <div class="nav" style="grid-area: nav4" [style.visibility]="ne ? 'visible' : 'hidden'">
+    <button matFab (click)="service.handleButton('move', { direction: 'right' })" title="Navigation nach rechts">
+      <mat-icon>keyboard_arrow_right</mat-icon>
+    </button>
+  </div>
 
   <div class="control operator" style="grid-area: lpar">
     <button matFab (click)="service.handleButton('typeInput', { input: '(' })" title="Klammer auf">
@@ -122,50 +119,41 @@
   </div>
   <div class="control operator" style="grid-area: pow">
     <button matFab (click)="service.handleButton('applyExponent', { square: false })" title="Exponent">
-      <span aria-hidden="true">x<sup style="font-size: 32px">&squ;</sup></span>
+      <span aria-hidden="true">x<sup style="font-size: 60%">&squ;</sup></span>
     </button>
   </div>
   <div class="control operator" style="grid-area: root">
     <button matFab (click)="service.handleButton('applyRoot', { sqrt: false })" title="Wurzel">
-      <span aria-hidden="true"><sup style="font-size: 32px">&squ;</sup>&radic;x</span>
+      <span aria-hidden="true"><sup style="font-size: 60%">&squ;</sup>&radic;x</span>
     </button>
   </div>
   <div class="control operator" style="grid-area: pow2">
     <button matFab (click)="service.handleButton('applyExponent', { square: true })" title="Quadrat">
-      <span aria-hidden="true">x<sup>2</sup></span>
+      <span aria-hidden="true">x<sup style="font-size: 60%">2</sup></span>
     </button>
   </div>
   <div class="control operator" style="grid-area: sqrt">
     <button matFab (click)="service.handleButton('applyRoot', { sqrt: true })" title="Quadratwurzel">
-      <span aria-hidden="true"><sup>2</sup>&radic;x</span>
+      <span aria-hidden="true"><sup style="font-size: 60%">2</sup>&radic;x</span>
     </button>
   </div>
-  <div class="control operator" style="grid-area: frac">
+  <div class="control operator svg-icon" style="grid-area: frac">
     <button matFab (click)="service.handleButton('applyFraction', { composite: false })" title="Bruchstrich">
-      <div class="fraction" aria-hidden="true">
-        <span>&#x2B1A;</span>
-        <span>&#x25A0;</span>
-      </div>
+      <mat-icon svgIcon="calc:true_fraction" />
     </button>
   </div>
-  <div class="control operator" style="grid-area: comp">
+  <div class="control operator svg-icon" style="grid-area: comp">
     <button matFab (click)="service.handleButton('applyFraction', { composite: true })" title="Ganzzahl mit Bruch">
-      <div class="composite" aria-hidden="true">
-        <span>&#x2B1A;</span>
-        <div class="fraction">
-          <span>&#x2B1A;</span>
-          <span>&#x25A0;</span>
-        </div>
-      </div>
+      <mat-icon svgIcon="calc:composite_fraction" />
     </button>
   </div>
 
-  <div class="control clear" style="grid-area: c">
+  <div class="control clear" style="grid-area: C">
     <button matFab (click)="service.handleButton('clearAll', {})" title="Lösche gesamte Eingabe">
       <span aria-hidden="true">C</span>
     </button>
   </div>
-  <div class="control numpad backspace" style="grid-area: back">
+  <div class="control numpad svg-icon" style="grid-area: back">
     <button matFab (click)="service.handleButton('backspace', {})" title="Rücktaste">
       <mat-icon>backspace</mat-icon>
     </button>
@@ -210,23 +198,13 @@
   </div>
 
   <div class="control operation" style="grid-area: eval">
-    <button matFab (click)="service.handleEvaluation('rational')" title="Berechnung ausführen">
+    <button matFab (click)="service.handleEvaluation('decimal')" title="Rechnung dezimal ausführen">
       <span aria-hidden="true">&equals;</span>
     </button>
   </div>
-  <div class="control operator" style="grid-area: dec">
-    <button matFab (click)="service.handleEvaluation('decimal')" title="Dezimalrechnung ausführen">
-      <span aria-hidden="true">&approx;</span>
-    </button>
-  </div>
-  <div class="control operator" style="grid-area: s-d">
-    <button
-      matFab
-      style="font-size: 38px"
-      (click)="service.toggleEvaluationMode()"
-      title="Wechsel zwischen Standard und Dezimal"
-    >
-      <span aria-hidden="true">S&DoubleLeftRightArrow;D</span>
+  <div class="control operation" style="grid-area: dec">
+    <button matFab (click)="service.handleEvaluation('fraction')" title="Rechnung als Bruch ausführen">
+      <span aria-hidden="true">&rArr;B</span>
     </button>
   </div>
 </article>
@@ -236,7 +214,7 @@
     <mat-action-list>
       @for (entry of service.historyEntries(); track entry.id) {
         <button mat-list-item [title]="`Eintrag #${entry.id}`" (click)="service.restoreFromHistory(entry)">
-          <span>{{ entry.id }})&nbsp;</span>
+          <!--<span>{{ entry.id }})&nbsp;</span>-->
           <math display="inline">
             <mrow [appEditSequence]="entry.input" [topLevel]="true"></mrow>
             <mo>=</mo>

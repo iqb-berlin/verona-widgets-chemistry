@@ -16,8 +16,8 @@ export function registerCustomIcons(customIcons: ReadonlyArray<CustomIcons>): Ar
 @Injectable()
 export class CustomIconsService {
   private readonly customIcons = inject(CUSTOM_ICONS);
-  private readonly domSanitizer = inject(DomSanitizer);
   private readonly iconRegistry = inject(MatIconRegistry);
+  private readonly domSanitizer = inject(DomSanitizer);
 
   registerIcons() {
     for (const { namespace, svg } of this.customIcons) {

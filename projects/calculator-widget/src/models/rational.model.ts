@@ -226,15 +226,36 @@ export class Rational extends NumericValue {
   //#endregion
   //#region Display
 
-  toString(): string {
-    if (this.denominator === 1n) return this.numerator.toString(10);
-    return `${this.numerator}/${this.denominator}`;
+  toDecimalStringExact(digits: number): readonly [decimal: string, exact: boolean] {
+    const decimal = this.toDecimalString(digits);
+
+    // Trivial case: Integral numbers are always exact
+    if (this.isInteger) return [decimal, true];
+
+    // 1. Check if the simplified denominator has 2 or 5 as its prime
+    const gcd = bigGcd(this.numerator, this.denominator);
+    let sd = this.denominator / gcd;
+    while (sd % 2n === 0n) sd /= 2n;
+    while (sd % 5n === 0n) sd /= 5n;
+    if (sd !== 1n) return [decimal, false];
+
+    // 2. Serialize to decimal, and check that parsing back yields the exact rational value
+    const parsedRational = Rational.parse(decimal);
+    const exact = this.equalTo(parsedRational);
+
+    // All checks passed: Return the decimal string and exactness
+    return [decimal, exact];
   }
 
   toDecimalString(digits: number, dropTrailingZeros: boolean = true): string {
     if (digits < 0) throw new RangeError('toDecimalString: digits must be >= 0');
     const scaled = bigDivideRounded(this.numerator * bigPow10(digits), this.denominator);
     return decimalText(scaled, digits, dropTrailingZeros);
+  }
+
+  toString(): string {
+    if (this.denominator === 1n) return this.numerator.toString(10);
+    return `${this.numerator}/${this.denominator}`;
   }
 
   valueOf(): number {

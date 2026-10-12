@@ -8,6 +8,7 @@ export * from './irrational.model';
 export * from './formula.ast';
 export * from './formula.factory';
 export * from './formula.eval';
+export * from './formula.format';
 
 export * from './editing.ast';
 export * from './editing.factory';
