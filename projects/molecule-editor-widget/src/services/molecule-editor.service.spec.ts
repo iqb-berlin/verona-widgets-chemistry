@@ -5,7 +5,7 @@ import { PsElementNumber } from 'periodic-system-common';
 import { MoleculeEditorService } from './molecule-editor.service';
 import { moleculeCanvasTransformPosition } from './molecule-editor.event';
 import { AtomId, MoleculeEditorModel, ToolMode } from './molecule-editor.model';
-import { PartialCharge, Vector2 } from './molecule-editor.shared';
+import { FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 
 const hydrogen = 1 as PsElementNumber;
 const carbon = 6 as PsElementNumber;
@@ -165,6 +165,16 @@ describe('MoleculeEditorService', () => {
       expect(service.model().bonds[bondId].multiplicity).toBe(2);
     });
 
+    it('leaves the undo history unchanged', async () => {
+      const { carbonId, bondId } = await setupCarbonylGroup();
+
+      service.addElementToCanvas(hydrogen, pointerEvent('click', [200, 200]));
+      clickAtom(carbonId, [3, 1]);
+      service.model.undo(); // undoes the double bond of the setup, not an empty step
+
+      expect(service.model().bonds[bondId].multiplicity).toBe(1);
+    });
+
     it('keeps the existing bond when clicking the bond', async () => {
       const { bondId } = await setupCarbonylGroup();
 
@@ -214,6 +224,20 @@ describe('MoleculeEditorService', () => {
       const partials = Object.values(service.model().partials);
       expect(partials.length).toBe(1);
       expect(partials[0].targetAtomId).toBe(carbonId);
+    });
+  });
+
+  describe('placing a formula symbol with a click on an existing atom', () => {
+    it('adds the formula symbol where the preview shows it', async () => {
+      const carbonId = await placeAtom(carbon, [0, 0]);
+
+      service.addFormulaSymbolToCanvas(FormulaSymbol.ReactionArrow, pointerEvent('click', [200, 200]));
+      clickAtom(carbonId, [5, 2]);
+
+      const symbols = Object.values(service.model().symbols);
+      expect(symbols.length).toBe(1);
+      expect(symbols[0].position).toEqual([5, 2]);
+      expect(atoms().length).toBe(1);
     });
   });
 

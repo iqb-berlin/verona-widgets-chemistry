@@ -238,19 +238,14 @@ export class MoleculeEditorService {
     const { elementNr, snap } = this.searchSnap({ ...state, hoverPos: position });
 
     if (snap) {
-      let atomId!: AtomId;
-      const bondId = ItemId.generate<'Bond'>();
       const multiplicity = mode.mode === 'bonding' ? mode.multiplicity : 1;
-      this.model.update((model1) => {
-        const [model2, targetAtomId] = MoleculeEditorModel.createOrMergeAtom(model1, elementNr, snap.snapPos);
-        atomId = targetAtomId;
-        // Merged into an atom that is already bonded to the snap target: keep that bond,
-        // unless in bonding-mode, where the multiplicity is chosen instead of being the default
-        if (mode.mode !== 'bonding' && MoleculeEditorModel.hasBond(model2, targetAtomId, snap.targetId)) {
-          return model2;
-        }
-        return MoleculeEditorModel.addBond(model2, bondId, targetAtomId, snap.targetId, multiplicity);
-      }, true);
+      const [model, atomId] = MoleculeEditorModel.createOrMergeAtom(this.model(), elementNr, snap.snapPos);
+      // Merged into an atom that is already bonded to the snap target: keep that bond, and leave the model
+      // and its history unchanged. Not in bonding-mode, where the multiplicity is chosen instead of a default.
+      if (mode.mode === 'bonding' || !MoleculeEditorModel.hasBond(model, atomId, snap.targetId)) {
+        const bondId = ItemId.generate<'Bond'>();
+        this.model.set(MoleculeEditorModel.addBond(model, bondId, atomId, snap.targetId, multiplicity), true);
+      }
       return { atomId, elementNr, nextPosition: snap.snapPos } as const;
     } else {
       const atomId = ItemId.generate<'Atom'>();
