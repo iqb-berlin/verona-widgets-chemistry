@@ -12,7 +12,6 @@ import { MoleculeEditor } from '../../../molecule-editor-widget/src/components/m
 import {
   MoleculeEditorBondingType,
   MoleculeEditorParam,
-  MoleculeEditorSharedParam,
 } from '../../../molecule-editor-widget/src/services/molecule-editor.service';
 import { typeCastParam } from '../widget-page-common/param-converters';
 import { FormsModule } from '@angular/forms';
@@ -27,10 +26,9 @@ import { FormsModule } from '@angular/forms';
       dummySessionId: 'molecule-builder',
       initParameters: {
         [MoleculeEditorParam.language]: PsLocale.German,
+        [MoleculeEditorParam.bondingType]: 'VALENCE' satisfies MoleculeEditorBondingType,
       },
-      initSharedParameters: {
-        [MoleculeEditorSharedParam.bondingType]: 'VALENCE' satisfies MoleculeEditorBondingType,
-      },
+      initSharedParameters: {},
     }),
   ],
 })
@@ -39,7 +37,7 @@ export class MoleculeEditorPage {
   readonly service = inject(ShowcaseVeronaWidgetService);
 
   readonly language = this.config.parameterSignal(MoleculeEditorParam.language, typeCastParam());
-  readonly bondingType = this.config.sharedParameterSignal(MoleculeEditorSharedParam.bondingType, typeCastParam());
+  readonly bondingType = this.config.parameterSignal(MoleculeEditorParam.bondingType, typeCastParam());
 
   readonly stateData = this.service.stateData;
   readonly parsedStateData = computed(() => {
