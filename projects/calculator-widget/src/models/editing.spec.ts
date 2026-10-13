@@ -497,6 +497,18 @@ describe('Editing', () => {
     expect(edit().type('9').run('applyRoot', { sqrt: true }).formula).toBe('(root 2 9)');
   });
 
+  it('takes the sign of a negated operand into a root, but not a subtraction', () => {
+    expect(edit().type('-1').run('applyRoot', { sqrt: true }).display).toBe('[R-1]|');
+    expect(edit().type('2*-1').run('applyRoot', { sqrt: true }).display).toBe('2*[R-1]|');
+    expect(edit().type('(-1').run('applyRoot', { sqrt: true }).display).toBe('([R-1]|');
+    expect(edit().type('3-1').run('applyRoot', { sqrt: true }).display).toBe('3-[R1]|');
+    expect(edit().type('-8').run('applyRoot', { sqrt: false }).type('3').formula).toBe('(root 3 (negate 8))');
+  });
+
+  it('leaves the sign outside of an exponent, as -2² is -(2²)', () => {
+    expect(edit().type('-2').run('applyExponent', { square: true }).display).toBe('-[2^2]|');
+  });
+
   it('waits in the degree of an nth root', () => {
     const session = edit().type('8').run('applyRoot', { sqrt: false });
 

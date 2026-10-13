@@ -129,8 +129,8 @@ export function compareSign<T extends string | number | bigint>(a: T, b: T) {
 }
 
 // Number of decimal digits of a whole number, ignoring its sign
-export function bigDigits(value: bigint): number {
-  return bigAbs(value).toString(10).length;
+export function bigDigits(value: bigint, radix = 10): number {
+  return bigAbs(value).toString(radix).length;
 }
 
 // Integer division, rounding halves away from zero

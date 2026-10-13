@@ -50,6 +50,7 @@ class EditSequenceCompiler {
   compile(): CompileToFormulaResult {
     try {
       const formula = this.entrypoint();
+      console.debug('compile', EditToken.asLispString(this.sequence), '=>', FormulaNode.asLispString(formula));
       return Result.ok(formula);
     } catch (error: unknown) {
       if (error instanceof CompileToFormulaError) return Result.issue(error.issue);

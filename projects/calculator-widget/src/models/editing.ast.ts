@@ -68,6 +68,31 @@ export namespace EditToken {
 
   export type Kind = EditToken['kind'];
   export type OfKind<K> = Extract<EditToken, { readonly kind: K }>;
+
+  export function asLispString(token: EditToken): string {
+    switch (token.kind) {
+      case 'sequence':
+        return `[${token.items.map((item) => asLispString(item)).join(' ')}]`;
+      case 'fence':
+        return `"${token.fence}"`;
+      case 'literal':
+        return token.literal;
+      case 'constant':
+        return token.symbol;
+      case 'operator':
+        return token.operator;
+      case 'fraction':
+        return `(frac ${asLispString(token.dividend)} ${asLispString(token.divisor)})`;
+      case 'composite':
+        return `(comp ${asLispString(token.integerPart)} ${asLispString(token.numerator)} ${asLispString(token.denominator)})`;
+      case 'exponent':
+        return `(exp ${asLispString(token.base)} ${asLispString(token.exponent)})`;
+      case 'root':
+        return token.degree.items.length === 0
+          ? `(sqrt ${asLispString(token.radicand)})`
+          : `(root ${asLispString(token.degree)} ${asLispString(token.radicand)})`;
+    }
+  }
 }
 
 export const OPERATOR_SYMBOLS = {

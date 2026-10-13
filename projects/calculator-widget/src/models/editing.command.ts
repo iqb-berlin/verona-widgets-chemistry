@@ -157,6 +157,7 @@ function applyRoot(tree: EditSequence, { targetId, sqrt }: EditCommand.ApplyRoot
       if (!sqrt) return degree.id; // the degree is the blank to fill in for an nth root
       return radicand.items.length === 0 ? radicand.id : created.id;
     },
+    true, // a root takes the sign along, e.g. turning `-1` into `√(-1)` rather than `-√1`
   );
 }
 
@@ -236,19 +237,22 @@ function appendDigit(tree: EditSequence, targetId: EditTokenId, input: EditComma
  * Wrap the operand in front of the caret into a newly created token, e.g. turning `1 + 23` into
  * `1 + 23²`. Without a preceding operand the new token is created with an empty operand slot, so
  * that editing continues inside it.
+ * With `withSign`, a sign in front of the operand is wrapped along with it.
  */
 function wrapOperand(
   tree: EditSequence,
   targetId: EditTokenId,
   create: (operand: EditSequence) => EditToken,
   focus: (created: EditToken, operand: EditSequence) => EditTokenId = focusInside,
+  withSign: boolean = false,
 ): EditResult {
   const caret = EditTraversal.caretAt(tree, targetId);
   const host = EditTraversal.caretSequence(caret);
   const span = EditTraversal.operandBefore(host, caret.index);
 
-  const start = span?.start ?? caret.index;
-  const items = span === null ? [] : host.items.slice(span.start, span.end);
+  const operandStart = span?.start ?? caret.index;
+  const start = span !== null && withSign && isSignAt(host, operandStart - 1) ? operandStart - 1 : operandStart;
+  const items = host.items.slice(start, caret.index);
   const operand = sequence(...items);
   const wrapper = create(operand);
 

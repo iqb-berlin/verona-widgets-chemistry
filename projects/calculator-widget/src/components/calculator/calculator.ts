@@ -1,8 +1,9 @@
 import { afterRenderEffect, Component, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { MatActionList, MatDivider, MatListItem } from '@angular/material/list';
-import { MatIcon } from '@angular/material/icon';
-import { MatFabButton, MatIconButton } from '@angular/material/button';
 import { MatMenu, MatMenuContent, MatMenuTrigger } from '@angular/material/menu';
+import { MatFabButton, MatIconButton } from '@angular/material/button';
+import { MatCard, MatCardContent } from '@angular/material/card';
+import { MatIcon } from '@angular/material/icon';
 import { CustomIconsService, registerCustomIcons } from 'verona-widget';
 import { DisplayEditSequence } from '../display-edit-sequence/display-edit-sequence';
 import CalcIcons from '../../assets/calc-icons.svg';
@@ -30,6 +31,8 @@ import { ConstantSymbol } from '../../models';
     MatListItem,
     MatActionList,
     MatDivider,
+    MatCard,
+    MatCardContent,
   ],
 })
 export class Calculator {

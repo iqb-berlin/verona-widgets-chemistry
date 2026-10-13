@@ -25,7 +25,9 @@ export class FormulaEvalError extends Error {
 
 export function evaluateFormula(node: FormulaNode): FormulaEvalResult {
   try {
-    return Result.ok(evaluateNode(node));
+    const value = evaluateNode(node);
+    console.debug('evaluate', FormulaNode.asLispString(node), '=>', value.toString());
+    return Result.ok(value);
   } catch (error: unknown) {
     if (error instanceof FormulaEvalError) return Result.issue(error.issue);
     if (error instanceof NumericError) return Result.issue(numericErrorIssue(error));
