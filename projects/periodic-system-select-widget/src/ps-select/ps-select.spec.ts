@@ -46,7 +46,9 @@ describe('PsSelect', () => {
   }
 
   function element(symbol: string): PsElement {
-    return PsElements.find((e) => e.symbol === symbol)!;
+    const found = PsElements.find((e) => e.symbol === symbol);
+    if (!found) throw new Error(`Unknown element symbol "${symbol}"`);
+    return found;
   }
 
   function click(symbol: string) {

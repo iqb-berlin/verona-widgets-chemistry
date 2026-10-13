@@ -67,7 +67,9 @@ describe('MoleculeEditorService', () => {
     service.addElementToCanvas(elementNr, pointerEvent('click', position));
     clickCanvas(position);
     await new Promise((resolve) => setTimeout(resolve));
-    return Object.keys(service.model().atoms).find((id) => !before.includes(id)) as AtomId;
+    const atomId = Object.keys(service.model().atoms).find((id) => !before.includes(id));
+    if (!atomId) throw new Error(`No new atom placed at [${position}]`);
+    return atomId as AtomId;
   }
 
   function atoms() {
