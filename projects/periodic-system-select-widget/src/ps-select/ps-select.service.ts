@@ -101,7 +101,7 @@ class PsSelectInteraction implements PsInteraction {
       const { closeOnSelection } = untracked(this.interactionConfig);
       const firstSelectedElement = selectedElementList[0];
       if (closeOnSelection && firstSelectedElement) {
-        this.widgetService.sendReturn(true);
+        this.widgetService.sendReturn({ saveState: true });
       }
     });
   }

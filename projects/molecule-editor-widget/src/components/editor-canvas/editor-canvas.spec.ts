@@ -1,6 +1,7 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideDummyVeronaWidgetService } from 'verona-widget';
+import { provideDummyVeronaWidgetService, registerCustomIcons } from 'verona-widget';
+import IqbIcons from '../../assets/iqb-icons.svg';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { MoleculeEditorRenderer } from '../../services/molecule-editor.renderer';
 import { MoleculeEditorImageService } from '../../services/molecule-editor-image.service';
@@ -30,6 +31,7 @@ describe('EditorCanvas', () => {
             sharedParameters: {},
           },
         }),
+        registerCustomIcons([{ namespace: 'iqb', svg: IqbIcons }]),
         MoleculeEditorService,
         MoleculeEditorRenderer,
         MoleculeEditorImageService,
