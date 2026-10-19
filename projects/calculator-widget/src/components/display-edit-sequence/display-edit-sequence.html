@@ -32,9 +32,9 @@
       @case ('sequence') {
         <!-- ILLEGAL NESTED SEQUENCE -->
       }
-      @case ('literal') {
+      @case ('digit') {
         <math:mn [style.cursor]="cursorStyle()" [class.problem]="isProblem" (click)="handleClick(token, index, $event)">
-          {{ token.literal.replace('.', ',') }}
+          {{ token.digit.replace('.', ',') }}
         </math:mn>
       }
       @case ('constant') {

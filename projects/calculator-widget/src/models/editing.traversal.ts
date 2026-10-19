@@ -155,7 +155,8 @@ export namespace EditTraversal {
   /**
    * Span of the operand directly left of `index`, which is the operand a postfix editing
    * operation (exponent, root, fraction, sign) applies to. A parenthesized group counts as
-   * one operand; an operator (or nothing at all) yields no operand.
+   * one operand, as does a number of several digits; an operator (or nothing at all) yields
+   * no operand.
    */
   export function operandBefore(sequence: EditSequence, index: number): null | EditSpan {
     if (index <= 0 || index > sequence.items.length) return null;
@@ -165,6 +166,11 @@ export namespace EditTraversal {
       if (token.fence === '(') return null; // dangling open fence, there is no operand
       const start = matchingOpenFence(sequence, index - 1);
       return start === null ? null : { start, end: index };
+    }
+    if (token.kind === 'digit') {
+      let start = index - 1;
+      while (start > 0 && sequence.items[start - 1].kind === 'digit') start--;
+      return { start, end: index };
     }
     return { start: index - 1, end: index };
   }
@@ -464,9 +470,9 @@ export namespace EditTraversal {
           if (lToken.fence !== rrToken.fence) return false;
           break;
         }
-        case 'literal': {
+        case 'digit': {
           const rrToken = rToken as typeof lToken;
-          if (lToken.literal !== rrToken.literal) return false;
+          if (lToken.digit !== rrToken.digit) return false;
           break;
         }
         case 'constant': {

@@ -46,6 +46,7 @@ const ISSUE_MESSAGES = {
   incomplete: 'Unvollständige Eingabe',
   unexpectedToken: 'Unerwartete Eingabe',
   unexpectedEnd: 'Unerwartetes Ende der Eingabe',
+  invalidNumber: 'Ungültige Zahl',
   syntaxError: 'Syntaxfehler',
   divisionByZero: 'Teilung durch Null',
   indeterminate: 'Ergebnis nicht bestimmt',

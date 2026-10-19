@@ -1,6 +1,6 @@
 import { ConstantSymbol } from './constants.model';
 import { EditSequence, EditSlot, EditToken, EditTokenId } from './editing.ast';
-import { EditCaret, EditDirection, EditTokenReplacement, EditTraversal } from './editing.traversal';
+import { EditCaret, EditDirection, EditSpan, EditTraversal } from './editing.traversal';
 import { sequence, token } from './editing.factory';
 
 export function dispatchEditCommand(tree: EditSequence, command: EditCommand): EditResult {
@@ -143,7 +143,7 @@ function clearAll(tree: EditSequence): EditResult {
 }
 
 function applyExponent(tree: EditSequence, { targetId, square }: EditCommand.ApplyExponent): EditResult {
-  const exponent = square ? sequence(literalToken(2n)) : sequence();
+  const exponent = square ? sequence(digitToken('2')) : sequence();
   return wrapOperand(tree, targetId, (base) => token('exponent', { base, exponent }));
 }
 
@@ -218,19 +218,30 @@ function appendToken(tree: EditSequence, targetId: EditTokenId, newToken: EditTo
   return edited(inserted, focusInside(newToken));
 }
 
-// Extend the literal in front of the caret, or start a new one
+// Insert a digit at the caret, which may sit anywhere within a number. A number holds only one
+// decimal point, so typing another one moves the existing point to the caret instead.
 function appendDigit(tree: EditSequence, targetId: EditTokenId, input: EditCommand.Digit): EditResult {
-  const caret = EditTraversal.caretAt(tree, targetId);
-  const before = EditTraversal.caretBefore(caret);
+  if (input !== '.') return appendToken(tree, targetId, digitToken(input));
 
-  if (before !== null && before.kind === 'literal') {
-    if (input === '.' && before.literal.includes('.')) return unchanged(tree, targetId); // only one point
-    const literal = before.literal + input;
-    return changed(tree, before.id, before.id, (existing) => ({ ...(existing as EditToken.Literal), literal }));
+  const caret = EditTraversal.caretAt(tree, targetId);
+  const host = EditTraversal.caretSequence(caret);
+  const number = numberAround(host, caret.index);
+  const digits = host.items.slice(number.start, number.end) as ReadonlyArray<EditToken.Digit>;
+
+  const existing = digits.findIndex((item) => item.digit === EditToken.DECIMAL_POINT);
+  const position = caret.index - number.start; // of the caret within the number
+  if (existing >= 0 && (existing === position || existing === position - 1)) {
+    return unchanged(tree, targetId); // the point already sits at the caret
   }
 
-  const literal = input === '.' ? '0.' : input; // a literal never starts with the decimal point
-  return appendToken(tree, targetId, token('literal', { literal }));
+  const point = existing >= 0 ? digits[existing] : digitToken(EditToken.DECIMAL_POINT);
+  const remaining = digits.filter((item) => item !== point);
+  const at = existing >= 0 && existing < position ? position - 1 : position;
+  const leading = at > 0 ? [] : [digitToken('0')]; // a number never starts with the decimal point
+  const moved = [...remaining.slice(0, at), ...leading, point, ...remaining.slice(at)];
+
+  const updated = EditTraversal.spliceSequence(tree, host.id, number.start, digits.length, moved);
+  return edited(updated, point.id);
 }
 
 /**
@@ -268,18 +279,12 @@ function removeTokenAt(tree: EditSequence, host: EditSequence, index: number): E
 }
 
 // A backspace mirrors the input before it: It takes away the last thing that was added,
-// wherever that sits. In front of the caret is a literal, whose last character goes;
-// a leaf token, which goes as a whole; or a filled token, which keeps its content — the
-// backspace then applies to the last position inside it instead.
+// wherever that sits. In front of the caret is a leaf token, e.g. a digit, which goes as a
+// whole; or a filled token, which keeps its content — the backspace then applies to the
+// last position inside it instead.
 function backspaceAt(tree: EditSequence, caret: EditCaret): EditResult {
   const before = EditTraversal.caretBefore(caret);
   if (before === null) return backspaceAtStart(tree, caret);
-
-  // shorten a multi-digit literal one character at a time
-  if (before.kind === 'literal' && before.literal.length > 1) {
-    const literal = before.literal.slice(0, -1);
-    return changed(tree, before.id, before.id, (existing) => ({ ...(existing as EditToken.Literal), literal }));
-  }
 
   // a filled token is emptied out from its end, rather than dropped with its content
   if (!EditSlot.isLeaf(before) && !EditTraversal.isEmptyContainer(before)) {
@@ -350,16 +355,6 @@ function edited(tree: EditSequence, focusId: EditTokenId): EditResult {
   return { tree, focusId, changed: true } as const;
 }
 
-function changed(
-  tree: EditSequence,
-  targetId: EditTokenId,
-  focusId: EditTokenId,
-  replace: EditTokenReplacement,
-): EditResult {
-  const updated = EditTraversal.replaceToken(tree, targetId, replace);
-  return { focusId, tree: updated, changed: true };
-}
-
 // Move the caret without touching the tree
 function moved(tree: EditSequence, caret: EditCaret, direction: EditDirection): EditResult {
   const target = EditTraversal.moveCaret(caret, direction);
@@ -371,8 +366,18 @@ function focusInside(newToken: EditToken): EditTokenId {
   return EditTraversal.firstEmptySlot(newToken)?.id ?? newToken.id;
 }
 
-function literalToken(value: bigint): EditToken.Literal {
-  return token('literal', { literal: value.toString(10) });
+function digitToken(input: EditCommand.Digit): EditToken.Digit {
+  return token('digit', { digit: input });
+}
+
+// Span of the number the caret at `index` sits in or next to, i.e. the run of digits around it
+function numberAround(host: EditSequence, index: number): EditSpan {
+  const isDigit = (at: number) => host.items[at]?.kind === 'digit';
+  let start = index;
+  let end = index;
+  while (isDigit(start - 1)) start--;
+  while (isDigit(end)) end++;
+  return { start, end };
 }
 
 // A '-' operator acts as a sign when nothing, another operator or an open fence precedes it

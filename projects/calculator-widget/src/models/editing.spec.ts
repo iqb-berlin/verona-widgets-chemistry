@@ -44,7 +44,7 @@ describe('Editing', () => {
     readonly lastChanged: null | boolean;
   }
 
-  const literal = (value: string) => token('literal', { literal: value });
+  const digit = (value: EditToken.DigitSymbol) => token('digit', { digit: value });
   const operator = (value: EditCommand.Operator) => token('operator', { operator: value });
   const fence = (value: EditCommand.Fence) => token('fence', { fence: value });
   const fraction = (dividend: EditToken, divisor: EditToken) => {
@@ -112,9 +112,9 @@ describe('Editing', () => {
     const host = EditTraversal.caretSequence(caret);
     const caretMarkerToken = {
       sourceTokenId: null,
-      kind: 'literal',
+      kind: 'digit',
       id: 'caret' as EditTokenId,
-      literal: CARET,
+      digit: CARET as EditToken.DigitSymbol,
     } as const;
     const marked = EditTraversal.updateSequence(tree, host.id, (items) => {
       const withCaret = items.slice();
@@ -130,8 +130,8 @@ describe('Editing', () => {
         const content = node.items.map(renderToken).join('');
         return content.length === 0 ? '_' : content;
       }
-      case 'literal':
-        return node.literal;
+      case 'digit':
+        return node.digit;
       case 'constant':
         return node.symbol;
       case 'operator':
@@ -155,9 +155,9 @@ describe('Editing', () => {
   //#region Traversal: looking up tokens
 
   it('finds tokens and sequences by their ID', () => {
-    const inner = literal('2');
+    const inner = digit('2');
     const divisor = sequence(inner);
-    const tree = sequence(literal('1'), token('fraction', { dividend: sequence(), divisor }));
+    const tree = sequence(digit('1'), token('fraction', { dividend: sequence(), divisor }));
 
     expect(EditTraversal.findToken(tree, inner.id)).toBe(inner);
     expect(EditTraversal.findToken(tree, divisor.id)).toBe(divisor);
@@ -168,7 +168,7 @@ describe('Editing', () => {
   });
 
   it('walks a tree, visiting every sequence and every item token', () => {
-    const tree = sequence(literal('1'), operator('+'), fraction(literal('2'), literal('3')));
+    const tree = sequence(digit('1'), operator('+'), fraction(digit('2'), digit('3')));
 
     const visited: string[] = [];
     EditTraversal.walk(tree, (visitedToken) => {
@@ -177,18 +177,18 @@ describe('Editing', () => {
 
     expect(visited).toEqual([
       'sequence', // the tree itself
-      'literal',
+      'digit',
       'operator',
       'fraction',
       'sequence', // the dividend
-      'literal',
+      'digit',
       'sequence', // the divisor
-      'literal',
+      'digit',
     ]);
   });
 
   it('cancels the walk once the seeker has found something', () => {
-    const tree = sequence(literal('1'), operator('+'), literal('2'));
+    const tree = sequence(digit('1'), operator('+'), digit('2'));
     let visits = 0;
 
     const found = EditTraversal.searchOne(tree, (visitedToken) => {
@@ -204,8 +204,8 @@ describe('Editing', () => {
   //#region Traversal: the caret
 
   it('reads a token ID as the caret behind that token', () => {
-    const second = literal('2');
-    const tree = sequence(literal('1'), second);
+    const second = digit('2');
+    const tree = sequence(digit('1'), second);
     const caret = EditTraversal.caretAt(tree, second.id);
 
     expect(caret.index).toBe(2);
@@ -215,8 +215,8 @@ describe('Editing', () => {
   });
 
   it('reads a sequence ID as the caret at the start of that sequence', () => {
-    const first = literal('1');
-    const tree = sequence(first, literal('2'));
+    const first = digit('1');
+    const tree = sequence(first, digit('2'));
     const caret = EditTraversal.caretAt(tree, tree.id);
 
     expect(caret.index).toBe(0);
@@ -226,7 +226,7 @@ describe('Editing', () => {
   });
 
   it('falls back to the end of the tree for an ID which is gone', () => {
-    const tree = sequence(literal('1'), literal('2'));
+    const tree = sequence(digit('1'), digit('2'));
     const caret = EditTraversal.caretAt(tree, 'T:gone' as EditTokenId);
 
     expect(EditTraversal.findCaret(tree, 'T:gone' as EditTokenId)).toBeNull();
@@ -234,9 +234,9 @@ describe('Editing', () => {
   });
 
   it('knows the sub-sequence the caret sits in and the token holding it', () => {
-    const divisor = sequence(literal('3'));
-    const fraction = token('fraction', { dividend: sequence(literal('2')), divisor });
-    const tree = sequence(literal('1'), fraction);
+    const divisor = sequence(digit('3'));
+    const fraction = token('fraction', { dividend: sequence(digit('2')), divisor });
+    const tree = sequence(digit('1'), fraction);
     const caret = EditTraversal.caretAt(tree, divisor.id);
 
     expect(EditTraversal.caretSequence(caret)).toBe(divisor);
@@ -250,16 +250,23 @@ describe('Editing', () => {
   //#region Traversal: operands and slots
 
   it('reads the operand in front of the caret', () => {
-    const tree = sequence(literal('1'), operator('+'), fence('('), literal('2'), fence(')'));
+    const tree = sequence(digit('1'), operator('+'), fence('('), digit('2'), fence(')'));
 
     expect(EditTraversal.operandBefore(tree, 5)).toEqual({ start: 2, end: 5 }); // the whole group
-    expect(EditTraversal.operandBefore(tree, 4)).toEqual({ start: 3, end: 4 }); // just the literal
+    expect(EditTraversal.operandBefore(tree, 4)).toEqual({ start: 3, end: 4 }); // just the number
     expect(EditTraversal.operandBefore(tree, 2)).toBeNull(); // an operator is no operand
     expect(EditTraversal.operandBefore(tree, 0)).toBeNull(); // nothing in front of the caret
   });
 
+  it('reads all digits of a number as one operand', () => {
+    const tree = sequence(digit('1'), operator('+'), digit('2'), digit('.'), digit('5'));
+
+    expect(EditTraversal.operandBefore(tree, 5)).toEqual({ start: 2, end: 5 }); // the whole number
+    expect(EditTraversal.operandBefore(tree, 3)).toEqual({ start: 2, end: 3 }); // the digits in front of the caret
+  });
+
   it('matches nested fences when reading an operand', () => {
-    const tree = sequence(fence('('), literal('1'), fence('('), literal('2'), fence(')'), fence(')'));
+    const tree = sequence(fence('('), digit('1'), fence('('), digit('2'), fence(')'), fence(')'));
 
     expect(EditTraversal.matchingOpenFence(tree, 5)).toBe(0);
     expect(EditTraversal.matchingOpenFence(tree, 4)).toBe(2);
@@ -268,12 +275,12 @@ describe('Editing', () => {
 
   it('reports empty containers and their first blank slot', () => {
     const blank = token('fraction', { dividend: sequence(), divisor: sequence() });
-    const half = token('fraction', { dividend: sequence(literal('1')), divisor: sequence() });
-    const full = token('fraction', { dividend: sequence(literal('1')), divisor: sequence(literal('2')) });
+    const half = token('fraction', { dividend: sequence(digit('1')), divisor: sequence() });
+    const full = token('fraction', { dividend: sequence(digit('1')), divisor: sequence(digit('2')) });
 
     expect(EditTraversal.isEmptyContainer(blank)).toBeTrue();
     expect(EditTraversal.isEmptyContainer(half)).toBeFalse();
-    expect(EditTraversal.isEmptyContainer(literal('1'))).toBeFalse(); // a leaf is no container
+    expect(EditTraversal.isEmptyContainer(digit('1'))).toBeFalse(); // a leaf is no container
     expect(EditTraversal.firstEmptySlot(blank)).toBe(blank.dividend);
     expect(EditTraversal.firstEmptySlot(half)).toBe(half.divisor);
     expect(EditTraversal.firstEmptySlot(full)).toBeNull();
@@ -285,7 +292,7 @@ describe('Editing', () => {
 
     expect(EditTokenColumn.columnsOf(fraction)).toEqual(['dividend', 'divisor']);
     expect(EditTokenColumn.columnsOf(exponent)).toEqual(['exponent', 'base']); // the exponent sits on top
-    expect(EditTokenColumn.columnsOf(literal('1'))).toEqual([]);
+    expect(EditTokenColumn.columnsOf(digit('1'))).toEqual([]);
     expect(EditSlot.slotsOf(exponent)).toEqual(['base', 'exponent']); // editing order, left to right
   });
 
@@ -293,12 +300,12 @@ describe('Editing', () => {
   //#region Traversal: updating
 
   it('splices a nested sequence without touching the rest of the tree', () => {
-    const divisor = sequence(literal('3'));
-    const fraction = token('fraction', { dividend: sequence(literal('2')), divisor });
-    const untouched = literal('1');
+    const divisor = sequence(digit('3'));
+    const fraction = token('fraction', { dividend: sequence(digit('2')), divisor });
+    const untouched = digit('1');
     const tree = sequence(untouched, fraction);
 
-    const updated = EditTraversal.spliceSequence(tree, divisor.id, 0, 1, [literal('4')]);
+    const updated = EditTraversal.spliceSequence(tree, divisor.id, 0, 1, [digit('4')]);
 
     expect(renderToken(updated)).toBe('1[2/4]');
     expect(renderToken(tree)).toBe('1[2/3]'); // the original tree is untouched
@@ -307,20 +314,20 @@ describe('Editing', () => {
   });
 
   it('keeps the tree identical when an update changes nothing', () => {
-    const tree = sequence(literal('1'), literal('2'));
+    const tree = sequence(digit('1'), digit('2'));
     const updated = EditTraversal.updateSequence(tree, tree.id, (items) => items);
 
     expect(updated).toBe(tree);
   });
 
   it('compares trees structurally, ignoring token IDs', () => {
-    const left = sequence(literal('1'), token('fraction', { dividend: sequence(literal('2')), divisor: sequence() }));
-    const same = sequence(literal('1'), token('fraction', { dividend: sequence(literal('2')), divisor: sequence() }));
-    const other = sequence(literal('1'), token('fraction', { dividend: sequence(literal('9')), divisor: sequence() }));
+    const left = sequence(digit('1'), token('fraction', { dividend: sequence(digit('2')), divisor: sequence() }));
+    const same = sequence(digit('1'), token('fraction', { dividend: sequence(digit('2')), divisor: sequence() }));
+    const other = sequence(digit('1'), token('fraction', { dividend: sequence(digit('9')), divisor: sequence() }));
 
     expect(EditTraversal.structurallyEqual(left, same)).toBeTrue();
     expect(EditTraversal.structurallyEqual(left, other)).toBeFalse();
-    expect(EditTraversal.structurallyEqual(left, sequence(literal('1')))).toBeFalse();
+    expect(EditTraversal.structurallyEqual(left, sequence(digit('1')))).toBeFalse();
   });
 
   //#endregion
@@ -393,29 +400,62 @@ describe('Editing', () => {
   //#endregion
   //#region Typing
 
-  it('collects typed digits in a single literal token', () => {
-    const session = edit().type('123');
+  it('types each digit as a token of its own', () => {
+    const session = edit().type('12.5');
 
-    expect(session.display).toBe('123|');
-    expect(session.tree.items.length).toBe(1);
+    expect(session.display).toBe('12.5|');
+    expect(session.tree.items.map((item) => item.kind)).toEqual(['digit', 'digit', 'digit', 'digit']);
   });
 
-  it('accepts one decimal point per literal', () => {
+  it('moves the decimal point of a number to where it is typed again', () => {
+    const session = edit().type('12.34');
+
+    expect(session.type('.').display).toBe('1234.|');
+    expect(session.lastChanged).toBeTrue();
+    expect(session.formula).toBe('1234.');
+    expect(session.move('left', 3).type('.').display).toBe('12.|34');
+    expect(session.move('left', 2).type('.').display).toBe('1.|234');
+    expect(session.move('left', 2).type('.').display).toBe('0.|1234'); // with a leading zero at the start
+    expect(session.formula).toBe('0.1234');
+    expect(session.tree.items.filter((item) => item.kind === 'digit' && item.digit === '.').length).toBe(1);
+  });
+
+  it('leaves a decimal point alone when it is typed right next to itself', () => {
     const session = edit().type('1.5');
 
-    expect(session.type('.').display).toBe('1.5|');
-    expect(session.lastChanged).toBeFalse(); // the second point is rejected, nothing to undo
+    expect(session.move('left').type('.').display).toBe('1.|5'); // behind the point
+    expect(session.lastChanged).toBeFalse();
+    expect(session.move('left').type('.').display).toBe('1|.5'); // in front of the point
+    expect(session.lastChanged).toBeFalse();
   });
 
-  it('starts a literal with a leading zero when the decimal point comes first', () => {
+  it('moves a decimal point only within its own number', () => {
+    const session = edit().type('1.5+23').move('left');
+
+    expect(session.type('.').display).toBe('1.5+2.|3');
+  });
+
+  it('starts a number with a leading zero when the decimal point comes first', () => {
     expect(edit().type('.5').display).toBe('0.5|');
+    expect(edit().type('1+.').display).toBe('1+0.|');
+
+    const session = edit().type('5');
+    expect(session.focusOn(session.tree.id).type('.').display).toBe('0.|5'); // in front of a number
   });
 
-  it('starts a new literal after an operator', () => {
+  it('inserts digits within a number', () => {
+    const session = edit().type('1234').move('left', 2);
+
+    expect(session.type('5').display).toBe('125|34');
+    expect(session.type('.').display).toBe('125.|34');
+    expect(session.formula).toBe('125.34');
+  });
+
+  it('starts a new number after an operator', () => {
     const session = edit().type('12+34');
 
     expect(session.display).toBe('12+34|');
-    expect(session.tree.items.map((item) => item.kind)).toEqual(['literal', 'operator', 'literal']);
+    expect(session.tree.items.map((item) => item.kind)).toEqual(['digit', 'digit', 'operator', 'digit', 'digit']);
   });
 
   it('inserts fences, operators and constants as tokens of their own', () => {
@@ -425,9 +465,9 @@ describe('Editing', () => {
     expect(session.display).toBe('(1+2)pi|');
     expect(session.tree.items.map((item) => item.kind)).toEqual([
       'fence',
-      'literal',
+      'digit',
       'operator',
-      'literal',
+      'digit',
       'fence',
       'constant',
     ]);
@@ -567,12 +607,28 @@ describe('Editing', () => {
   //#endregion
   //#region Deleting
 
-  it('shortens a literal character by character', () => {
+  it('shortens a number digit by digit', () => {
     const session = edit().type('123');
 
     expect(session.run('backspace', {}).display).toBe('12|');
     expect(session.run('backspace', {}).display).toBe('1|');
     expect(session.run('backspace', {}).display).toBe('|');
+  });
+
+  it('deletes a single digit within a number', () => {
+    const session = edit().type('1.23').move('left');
+
+    expect(session.run('backspace', {}).display).toBe('1.|3');
+    expect(session.formula).toBe('1.3');
+    expect(session.run('backspace', {}).display).toBe('1|3');
+    expect(session.formula).toBe('13');
+  });
+
+  it('joins two numbers into one, when the operator between them is deleted', () => {
+    const session = edit().type('12+34').move('left', 2);
+
+    expect(session.run('backspace', {}).display).toBe('12|34');
+    expect(session.formula).toBe('1234');
   });
 
   it('removes single tokens, leaving the caret in their place', () => {
@@ -822,6 +878,45 @@ describe('Editing', () => {
     expect(session.formula).toBe('(multiply 3 (pow 2 2))');
   });
 
+  // Typing within a number used to start a number of its own, which was drawn as one number but
+  // multiplied with its neighbors, e.g. `2*43` sometimes worked out as `(2*4)*3`
+  it('compiles a digit typed within a number as part of that number', () => {
+    const session = edit().type('2*3').move('left').type('4');
+
+    expect(session.display).toBe('2*4|3');
+    expect(session.formula).toBe('(multiply 2 43)');
+  });
+
+  it('compiles a number next to a constant, a group or a fraction as a product', () => {
+    const session = edit().type('12(3)45');
+    session.run('typeInput', { input: ConstantSymbol.Pi }).type('67');
+
+    expect(session.formula).toBe('(multiply (multiply (multiply (multiply 12 3) 45) pi) 67)');
+  });
+
+  it('compiles a decimal number', () => {
+    expect(edit().type('12.5').formula).toBe('12.5');
+    expect(edit().type('3.').formula).toBe('3.');
+  });
+
+  it('reports a number with more than one decimal point', () => {
+    const session = edit().type('1.2+3.4').move('left', 3).run('backspace', {}); // the operator goes
+
+    expect(session.display).toBe('1.2|3.4');
+    expect(session.formula).toBe('issue:invalidNumber');
+
+    const compiled = compileToFormula(session.tree);
+    const secondPoint = session.tree.items[4];
+    expect(compiled.ok ? null : compiled.issue.tokenId).toBe(secondPoint.id); // the point which is one too many
+  });
+
+  it('reports a number made of nothing but the decimal point', () => {
+    const session = edit().type('.').move('left').run('backspace', {}); // the leading zero goes
+
+    expect(session.display).toBe('|.');
+    expect(session.formula).toBe('issue:invalidNumber');
+  });
+
   it('reports an issue for incomplete input instead of looping', () => {
     expect(edit().type('1+').formula).toBe('issue:unexpectedEnd');
     expect(edit().type('(1+2').formula).toBe('issue:unexpectedEnd');
@@ -956,6 +1051,7 @@ describe('Editing', () => {
   it('reads the other product signs', reads('2\\times3', '2*3'));
   it('reads a square root without braces', reads('\\sqrt2', '[R2]'));
   it('reads a comma as the decimal point', reads('1{,}5+2,5', '1.5+2.5'));
+  it('reads a power of the last digit only, as LaTeX draws it', reads('12^{3}', '1[2^3]'));
   it('reads the constant e', reads('\\mathrm{e}^{2}', '[e^2]'));
 
   it('drops what the model cannot hold', () => {
@@ -985,14 +1081,10 @@ describe('Editing', () => {
     }
   });
 
-  it('reads two numbers written next to each other as one', () => {
-    const session = edit().type('1');
-    session.focusOn(session.tree.id).type('2'); // a second literal token in front of the first
-
-    expect(session.display).toBe('2|1');
-    expect(formatToLatex(session.tree)).toBe('21');
-    expect(renderToken(parseFromLatex('21'))).toBe('21'); // one token now, which is what the display showed
-  });
+  it(
+    'stores a decimal point typed within a number',
+    storesAs((s) => s.type('1234').move('left', 2).type('.'), '12.34'),
+  );
 
   //#endregion
   //#region Round trip through the formula AST

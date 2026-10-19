@@ -29,7 +29,7 @@ export interface CompileToFormulaIssue {
   readonly detail: null | string;
 }
 
-export type CompileToFormulaIssueCode = 'empty' | 'incomplete' | 'unexpectedEnd' | 'unexpectedToken';
+export type CompileToFormulaIssueCode = 'empty' | 'incomplete' | 'unexpectedEnd' | 'unexpectedToken' | 'invalidNumber';
 
 //#region Internal
 
@@ -137,7 +137,7 @@ class EditSequenceCompiler {
     switch (token.kind) {
       case 'fence':
         return token.fence === '('; // a closing fence ends the enclosing atom instead
-      case 'literal':
+      case 'digit':
       case 'constant':
       case 'fraction':
       case 'composite':
@@ -162,10 +162,8 @@ class EditSequenceCompiler {
           this.consume((t) => t.kind === 'fence' && t.fence === ')');
           return expression;
         }
-        case 'literal': {
-          this.consume();
-          return decimal(token.literal);
-        }
+        case 'digit':
+          return this.number();
         case 'constant': {
           this.consume();
           return constant(token.symbol);
@@ -204,6 +202,25 @@ class EditSequenceCompiler {
           throw new Error(`Unknown token: ${JSON.stringify(token)}`);
       }
     });
+  }
+
+  // A number is a run of consecutive digits, holding at most one decimal point
+  private number(): FormulaNode {
+    let literal = '';
+    let hasDigit = false;
+    let hasPoint = false;
+    while (this.matches((t) => t.kind === 'digit')) {
+      const token = this.consume() as EditToken.Digit;
+      if (token.digit === EditToken.DECIMAL_POINT) {
+        if (hasPoint) this.raiseIssue('invalidNumber', token, 'Mehr als ein Dezimalkomma');
+        hasPoint = true;
+      } else {
+        hasDigit = true;
+      }
+      literal += token.digit;
+    }
+    if (!hasDigit) this.raiseIssue('invalidNumber', this.peek(-1), 'Zahl ohne Ziffern');
+    return decimal(literal);
   }
 
   //#endregion

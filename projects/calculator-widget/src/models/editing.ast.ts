@@ -8,7 +8,7 @@ export type EditTokenId = Nominal<string, 'EditTokenId'>;
 export type EditToken =
   | EditToken.Sequence
   | EditToken.Fence
-  | EditToken.Literal
+  | EditToken.Digit
   | EditToken.Constant
   | EditToken.Operator
   | EditToken.Fraction
@@ -33,9 +33,15 @@ export namespace EditToken {
     readonly fence: '(' | ')';
   }
 
-  export interface Literal extends Base<'literal'> {
-    readonly literal: string;
+  // A single character of a number:
+  // Consecutive digits form one number, e.g. `1`, `.` and `5` make `1.5`
+  export interface Digit extends Base<'digit'> {
+    readonly digit: DigitSymbol;
   }
+
+  export const DECIMAL_POINT = '.'; // externally displayed as a comma
+  export type DecimalPoint = typeof DECIMAL_POINT;
+  export type DigitSymbol = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | DecimalPoint;
 
   export interface Constant extends Base<'constant'> {
     readonly symbol: ConstantSymbol;
@@ -75,8 +81,8 @@ export namespace EditToken {
         return `[${token.items.map((item) => asLispString(item)).join(' ')}]`;
       case 'fence':
         return `"${token.fence}"`;
-      case 'literal':
-        return token.literal;
+      case 'digit':
+        return token.digit;
       case 'constant':
         return token.symbol;
       case 'operator':
@@ -111,7 +117,7 @@ type EditTokenSlotsDictionary = { readonly [K in EditToken.Kind]: EditTokenKeys<
 const SLOTS = {
   sequence: [],
   fence: [],
-  literal: [],
+  digit: [],
   constant: [],
   operator: [],
   fraction: ['dividend', 'divisor'],
@@ -160,7 +166,7 @@ type EditTokenColumnsDictionary = { readonly [K in EditToken.Kind]: EditTokenCol
 const COLUMNS = {
   sequence: [],
   fence: [],
-  literal: [],
+  digit: [],
   constant: [],
   operator: [],
   fraction: ['dividend', 'divisor'],

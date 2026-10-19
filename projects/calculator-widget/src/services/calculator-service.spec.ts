@@ -56,8 +56,8 @@ describe('CalculatorService', () => {
         const content = node.items.map(render).join('');
         return content.length === 0 ? '□' : content;
       }
-      case 'literal':
-        return node.literal;
+      case 'digit':
+        return node.digit;
       case 'constant':
         return node.symbol;
       case 'operator':
@@ -136,7 +136,7 @@ describe('CalculatorService', () => {
 
     expect(input()).toBe('12+3');
     expect(caretIsInPlace()).toBeTrue();
-    expect(service.isCaretOn(service.editSequence().items[2])).toBeTrue(); // behind the last literal
+    expect(service.isCaretOn(service.editSequence().items[3])).toBeTrue(); // behind the last digit
   });
 
   it('takes input from the keyboard, and leaves keys with a modifier alone', () => {

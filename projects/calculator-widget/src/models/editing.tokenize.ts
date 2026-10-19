@@ -11,7 +11,7 @@ export function tokenizeFormula(node: FormulaNode): EditSequence {
 function tokenizeNode(node: FormulaNode): EditToken {
   switch (node.kind) {
     case 'literal':
-      return token('literal', { literal: node.literal });
+      return digitSequence(node.literal);
     case 'constant':
       return token('constant', { symbol: node.symbol });
     case 'unary':
@@ -47,6 +47,12 @@ function tokenizeNode(node: FormulaNode): EditToken {
     default:
       return invalidNode(node);
   }
+}
+
+// A number is written digit by digit, with the decimal point as a digit of its own
+function digitSequence(literal: string): EditSequence {
+  const digits = Array.from(literal, (char) => token('digit', { digit: char as EditToken.DigitSymbol }));
+  return sequence(...digits);
 }
 
 function isSquareDegree(degree: FormulaNode): boolean {

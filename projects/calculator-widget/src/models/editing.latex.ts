@@ -29,8 +29,8 @@ function formatToken(item: EditToken): string {
   switch (item.kind) {
     case 'sequence':
       return formatToLatex(item); // a sequence is no token of its own, but stays readable
-    case 'literal':
-      return item.literal;
+    case 'digit':
+      return item.digit;
     case 'constant':
       return CONSTANTS[item.symbol].latex;
     case 'operator':
@@ -132,8 +132,8 @@ class LatexParser {
           items.push(token('fence', { fence: char }));
           break;
         default:
-          this.index--; // hand the character back to the literal reader
-          if (!this.literal(items)) this.index++; // or drop it, if it starts no literal
+          this.index--; // hand the character back to the number reader
+          if (!this.number(items)) this.index++; // or drop it, if it starts no number
           break;
       }
     }
@@ -207,28 +207,27 @@ class LatexParser {
   }
 
   // Read a number, which is digits with at most one decimal point
-  private literal(items: EditToken[]): boolean {
-    let literal = '';
+  private number(items: EditToken[]): boolean {
+    const digits: EditToken[] = [];
     let hasPoint = false;
 
     while (this.index < this.source.length) {
       const char = this.source[this.index];
-      if (char >= '0' && char <= '9') {
-        literal += char;
+      if (isDigit(char)) {
+        digits.push(token('digit', { digit: char as EditToken.DigitSymbol }));
         this.index++;
         continue;
       }
-      if (!hasPoint && this.readsAsDecimalPoint(literal.length > 0)) {
-        literal += '.';
+      if (!hasPoint && this.readsAsDecimalPoint(digits.length > 0)) {
+        digits.push(token('digit', { digit: EditToken.DECIMAL_POINT }));
         hasPoint = true;
         continue;
       }
       break;
     }
 
-    if (literal.length === 0) return false;
-    items.push(token('literal', { literal }));
-    return true;
+    items.push(...digits);
+    return digits.length > 0;
   }
 
   // A decimal point is written as `.` or, in German formulas, as `,` - where `{,}` is the
@@ -267,7 +266,7 @@ class LatexParser {
       this.index++;
       this.command(single);
     } else if (isDigit(char) || char === '.') {
-      this.literal1(single);
+      this.digit(single);
     } else {
       this.index++; // a single character the model cannot hold
     }
@@ -275,10 +274,10 @@ class LatexParser {
   }
 
   // A single digit binds as an argument on its own, e.g. `2^12` is `2^1` followed by `2`
-  private literal1(items: EditToken[]): void {
+  private digit(items: EditToken[]): void {
     const char = this.source[this.index];
     this.index++;
-    items.push(token('literal', { literal: char }));
+    items.push(token('digit', { digit: char as EditToken.DigitSymbol }));
   }
 
   private optionalArgument(): EditSequence {

@@ -4,7 +4,7 @@ import { provideDummyVeronaWidgetService, VeronaModuleMetadata, VeronaWidgetConf
 import { DisplayEditSequence } from './display-edit-sequence';
 import { CalculatorService } from '../../services/calculator-service';
 import { CalculatorImageRenderer } from '../../services/calculator-image-renderer.service';
-import { EditSequence, EditTokenId, sequence, token } from '../../models';
+import { EditSequence, EditToken, EditTokenId, sequence, token } from '../../models';
 
 @Component({
   selector: 'app-edit-sequence-host',
@@ -115,7 +115,7 @@ describe('DisplayEditSequence', () => {
     fixture.detectChanges();
   }
 
-  const literal = (value: string) => token('literal', { literal: value });
+  const digit = (value: EditToken.DigitSymbol) => token('digit', { digit: value });
   const operator = (value: '+' | '-' | '*' | '/') => token('operator', { operator: value });
 
   //#endregion
@@ -133,7 +133,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('draws the caret behind the token it is placed on', () => {
-    const tree = sequence(literal('1'), operator('+'), literal('2'));
+    const tree = sequence(digit('1'), operator('+'), digit('2'));
     host.tree.set(tree);
 
     caret.placeBehind(tree.items[1]);
@@ -144,7 +144,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('draws the caret at the start of a sequence', () => {
-    const tree = sequence(literal('1'), operator('+'), literal('2'));
+    const tree = sequence(digit('1'), operator('+'), digit('2'));
     host.tree.set(tree);
     caret.placeInside(tree);
 
@@ -152,8 +152,8 @@ describe('DisplayEditSequence', () => {
   });
 
   it('draws exactly one caret, in the sub-sequence being edited', () => {
-    const dividend = sequence(literal('1'));
-    const divisor = sequence(literal('2'));
+    const dividend = sequence(digit('1'));
+    const divisor = sequence(digit('2'));
     host.tree.set(sequence(token('fraction', { dividend, divisor })));
 
     caret.placeBehind(dividend.items[0]);
@@ -165,7 +165,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('leaves the caret out while the sequence is not interactive', () => {
-    const tree = sequence(literal('1'));
+    const tree = sequence(digit('1'));
     host.tree.set(tree);
     host.interactive.set(false);
     caret.placeBehind(tree.items[0]);
@@ -175,7 +175,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('draws the caret as a box which is actually visible', () => {
-    const tree = sequence(literal('1'));
+    const tree = sequence(digit('1'));
     host.tree.set(tree);
     caret.placeBehind(tree.items[0]);
     fixture.detectChanges();
@@ -188,7 +188,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('removes the caret again', () => {
-    const tree = sequence(literal('1'));
+    const tree = sequence(digit('1'));
     host.tree.set(tree);
     caret.placeBehind(tree.items[0]);
     expect(display()).toBe('1|');
@@ -201,14 +201,14 @@ describe('DisplayEditSequence', () => {
   //#region Writing a root
 
   it('writes a root without a degree as a square root', () => {
-    host.tree.set(sequence(token('root', { degree: sequence(), radicand: sequence(literal('9')) })));
+    host.tree.set(sequence(token('root', { degree: sequence(), radicand: sequence(digit('9')) })));
 
     expect(display()).toBe('[R9]');
   });
 
   it('shows the empty index of a root while it is being edited', () => {
     const degree = sequence();
-    host.tree.set(sequence(token('root', { degree, radicand: sequence(literal('9')) })));
+    host.tree.set(sequence(token('root', { degree, radicand: sequence(digit('9')) })));
 
     caret.placeInside(degree);
     expect(display()).toBe('[|_R9]');
@@ -218,7 +218,7 @@ describe('DisplayEditSequence', () => {
   //#region Placing the caret by click
 
   it('puts the caret behind a token clicked on its right half', () => {
-    host.tree.set(sequence(literal('1'), operator('+'), literal('2')));
+    host.tree.set(sequence(digit('1'), operator('+'), digit('2')));
 
     clickOn('mn', 'right', 0);
 
@@ -226,7 +226,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('puts the caret in front of a token clicked on its left half', () => {
-    host.tree.set(sequence(literal('1'), operator('+'), literal('2')));
+    host.tree.set(sequence(digit('1'), operator('+'), digit('2')));
 
     clickOn('mn', 'left', 1); // the left half of the second literal
 
@@ -234,7 +234,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('reaches the start of a sequence through the first token', () => {
-    host.tree.set(sequence(literal('1'), operator('+'), literal('2')));
+    host.tree.set(sequence(digit('1'), operator('+'), digit('2')));
 
     clickOn('mn', 'left', 0);
 
@@ -243,7 +243,7 @@ describe('DisplayEditSequence', () => {
 
   it('puts the caret into an empty sub-sequence clicked on', () => {
     const divisor = sequence();
-    host.tree.set(sequence(token('fraction', { dividend: sequence(literal('1')), divisor })));
+    host.tree.set(sequence(token('fraction', { dividend: sequence(digit('1')), divisor })));
 
     clickOn('.placeholder', 'right');
 
@@ -252,7 +252,7 @@ describe('DisplayEditSequence', () => {
   });
 
   it('ignores clicks while the sequence is not interactive', () => {
-    host.tree.set(sequence(literal('1')));
+    host.tree.set(sequence(digit('1')));
     host.interactive.set(false);
     fixture.detectChanges();
 
@@ -265,7 +265,7 @@ describe('DisplayEditSequence', () => {
   //#region The caret context
 
   it('addresses a caret position by token ID', () => {
-    const item = literal('1');
+    const item = digit('1');
     const tree = sequence(item);
     const service = TestBed.inject(CalculatorService);
 

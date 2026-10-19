@@ -159,9 +159,9 @@ export class CalculatorImageRenderer {
           return []; // illegal nested sequence
         case 'fence':
           return [this.mathNode('mo', (mo) => (mo.textContent = token.fence))];
-        case 'literal': {
-          const literal = token.literal.replace('.', ',');
-          return [this.mathNode('mn', (mn) => (mn.textContent = literal))];
+        case 'digit': {
+          const digit = token.digit.replace('.', ',');
+          return [this.mathNode('mn', (mn) => (mn.textContent = digit))];
         }
         case 'constant': {
           const constant = CONSTANTS[token.symbol].unicode;
