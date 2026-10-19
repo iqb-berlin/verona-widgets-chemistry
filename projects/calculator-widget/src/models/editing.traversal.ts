@@ -7,8 +7,8 @@ export type EditTokenMapper = (token: EditToken, slot: null | EditSlot) => EditT
 export type EditSequenceVisitor = (token: EditToken, context: EditTraversal.VisitContext) => void | boolean;
 export type EditSequenceSeeker<R> = (token: EditToken, context: EditTraversal.VisitContext) => null | R;
 
-// Direction of a caret movement through an edit tree
-export type EditDirection = 'left' | 'right' | 'up' | 'down';
+// Direction of a caret movement through an edit tree; `start` and `end` jump to the edge of a sequence
+export type EditDirection = 'left' | 'right' | 'up' | 'down' | 'start' | 'end';
 
 /**
  * One level of the descent from the root sequence down to a (possibly nested) sequence.
@@ -298,7 +298,21 @@ export namespace EditTraversal {
         return moveCaretVertically(caret, -1);
       case 'down':
         return moveCaretVertically(caret, +1);
+      case 'start':
+        return moveCaretToEdge(caret, false);
+      case 'end':
+        return moveCaretToEdge(caret, true);
     }
+  }
+
+  // Jump to the start or end of the caret's sequence; from there, on to that of the enclosing one
+  function moveCaretToEdge(caret: EditCaret, atEnd: boolean): EditCaret {
+    const edgeOf = (sequence: EditSequence) => (atEnd ? sequence.items.length : 0);
+    if (caret.index !== edgeOf(caretSequence(caret))) return { ...caret, index: edgeOf(caretSequence(caret)) };
+    if (caret.frames.length === 1) return caret; // already at the edge of the whole tree
+
+    const frames = caret.frames.slice(0, -1);
+    return { frames, index: edgeOf(frames[frames.length - 1].sequence) };
   }
 
   // Step into a slot of a token, placing the caret at the start or the end of that sub-sequence

@@ -8,6 +8,7 @@ import { CalculatorImageRenderer } from './calculator-image-renderer.service';
 
 export interface HistoryEntry {
   readonly id: number;
+  readonly mode: EvaluationMode;
   readonly input: M.EditSequence;
   readonly output: M.EditSequence;
   readonly isApproximation: boolean;
@@ -23,7 +24,6 @@ export type EvaluationMode = 'decimal' | 'fraction';
 
 export interface EvaluationOutput {
   readonly mode: EvaluationMode;
-  readonly numericValue: M.NumericValue;
   readonly isApproximation: boolean;
   readonly inputSequence: M.EditSequence;
   readonly outputSequence: M.EditSequence;
@@ -35,6 +35,12 @@ export interface EvaluationIssue {
 }
 
 export type EvaluationResult = M.Result<EvaluationOutput, EvaluationIssue>;
+
+// An edit command, along with the input it applies to
+interface EditInvocation {
+  readonly input: M.EditSequence;
+  readonly command: M.EditCommand;
+}
 
 export type EditCommandDetails<N extends M.EditCommand.Name> = Omit<M.EditCommand.OfName<N>, 'name' | 'targetId'>;
 
@@ -69,6 +75,11 @@ const LATEX_INPUT_SEPARATOR_OUTPUT = /^(.*?)(=|\\equiv|\\approx)(.*)$/s;
 // Keyboard events from these elements are left to them, e.g. Enter on a focused button
 const KEYBOARD_EXEMPT_SELECTOR = '.cdk-overlay-container, input, textarea, select, [contenteditable]';
 const KEYBOARD_PRESSABLE_SELECTOR = 'button, a[href]';
+
+// A result worked out as a fraction is written as one; as a decimal it never is
+function evaluationModeOf(output: M.EditSequence): EvaluationMode {
+  return output.items.some((item) => item.kind === 'fraction' || item.kind === 'composite') ? 'fraction' : 'decimal';
+}
 
 function lastTokenIdOf(sequence: M.EditSequence): M.EditTokenId {
   const lastToken = sequence.items.at(-1) ?? sequence;
@@ -137,8 +148,8 @@ export class CalculatorService implements OnDestroy {
   }
 
   handleButton<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): void {
-    const command = this.editCommand(name, details);
-    this.executeCommand(command);
+    const invocation = this.editCommand(name, details);
+    this.executeCommand(invocation);
   }
 
   async handleClose(): Promise<void> {
@@ -201,10 +212,12 @@ export class CalculatorService implements OnDestroy {
     this.recoverCaret();
   }
 
+  // Show an entry of the history again the way it was worked out: its input along with its result
   restoreFromHistory(entry: HistoryEntry) {
-    this.editSequence.set(entry.input);
-    this.caretTokenId.set(lastTokenIdOf(entry.input));
-    this.evaluationResult.set(null);
+    const { mode, input: inputSequence, output: outputSequence, isApproximation } = entry;
+    this.editSequence.set(inputSequence);
+    this.evaluationResult.set(M.Result.ok({ mode, isApproximation, inputSequence, outputSequence }));
+    this.caretTokenId.set(null);
     this.caretMoved.emit();
   }
 
@@ -250,28 +263,49 @@ export class CalculatorService implements OnDestroy {
       event.stopPropagation();
     }
 
-    if (event.ctrlKey || event.altKey || event.metaKey) {
-      return; // ignore keys with modifiers
-    }
     if (this.isKeyboardExempt(event)) {
       return; // leave keys to open menus and focused form controls
     }
-    if (event.key === 'Enter') {
+    if (event.ctrlKey || event.metaKey) {
+      const shortcut = this.shortcutOfKeypress(event);
+      if (shortcut !== null) {
+        consumeEvent();
+        shortcut();
+      }
+      return; // leave every other key with a modifier to the browser
+    }
+    if (event.altKey) {
+      return; // ignore keys with modifiers
+    }
+    if (event.key === 'Enter' || event.key === '=') {
       consumeEvent();
       this.handleEvaluation('decimal');
     } else if (event.key === '#') {
       consumeEvent();
       this.handleEvaluation('fraction');
     } else {
-      const command = this.commandOfKeypress(event);
-      if (command !== null) {
+      const invocation = this.commandOfKeypress(event);
+      if (invocation !== null) {
         consumeEvent();
-        this.executeCommand(command);
+        this.executeCommand(invocation);
       }
     }
   }
 
-  private commandOfKeypress(event: KeyboardEvent): null | M.EditCommand {
+  // Undo and redo, with the Ctrl key or, on a Mac, the Command key
+  private shortcutOfKeypress(event: KeyboardEvent): null | (() => void) {
+    if (event.altKey) return null;
+    switch (event.key.toLowerCase()) {
+      case 'z':
+        return event.shiftKey ? () => this.redo() : () => this.undo();
+      case 'y':
+        return event.shiftKey ? null : () => this.redo();
+      default:
+        return null;
+    }
+  }
+
+  private commandOfKeypress(event: KeyboardEvent): null | EditInvocation {
     const input = event.key;
     switch (input) {
       case '0':
@@ -312,6 +346,10 @@ export class CalculatorService implements OnDestroy {
         return this.editCommand('move', { direction: 'left' });
       case 'ArrowRight':
         return this.editCommand('move', { direction: 'right' });
+      case 'Home':
+        return this.editCommand('move', { direction: 'start' });
+      case 'End':
+        return this.editCommand('move', { direction: 'end' });
       case 'Backspace':
         return this.editCommand('backspace', {});
       case 'Escape':
@@ -336,25 +374,41 @@ export class CalculatorService implements OnDestroy {
     return (event.code === 'Backquote' && !event.shiftKey) || (event.code === 'Digit6' && event.shiftKey);
   }
 
-  private editCommand<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): M.EditCommand.OfName<N> {
+  private editCommand<N extends M.EditCommand.Name>(name: N, details: EditCommandDetails<N>): EditInvocation {
+    const input = this.editSequence();
+
     // Edit input if caret is placed
     const caretTokenId = this.caretTokenId();
     if (caretTokenId !== null) {
-      return { targetId: caretTokenId, name, ...details } as M.EditCommand.OfName<N>;
+      return { input, command: { targetId: caretTokenId, name, ...details } as M.EditCommand.OfName<N> };
     }
 
-    // Check if an evaluation result exists, and continue editing with result as input unless a navigation-command is issued
+    // Check if an evaluation result exists, and continue editing with result as input unless a navigation-command is issued;
+    // what starts an operand of its own, e.g. a digit, starts a new input instead, as on a pocket calculator
     const evaluationResult = this.evaluationResult();
     if (evaluationResult !== null && evaluationResult.ok && !this.isNavigationCommand(name)) {
-      const { outputSequence } = evaluationResult.value;
-      this.editSequence.set(outputSequence, true);
-      const targetId = lastTokenIdOf(outputSequence);
-      return { targetId, name, ...details } as M.EditCommand.OfName<N>;
+      const nextInput = this.startsNewInput(name, details) ? M.sequence() : evaluationResult.value.outputSequence;
+      const targetId = lastTokenIdOf(nextInput);
+      return { input: nextInput, command: { targetId, name, ...details } as M.EditCommand.OfName<N> };
     }
 
     // Continue editing at end of input
-    const targetId = lastTokenIdOf(this.editSequence());
-    return { targetId, name, ...details } as M.EditCommand.OfName<N>;
+    const targetId = lastTokenIdOf(input);
+    return { input, command: { targetId, name, ...details } as M.EditCommand.OfName<N> };
+  }
+
+  private startsNewInput(name: M.EditCommand.Name, details: object): boolean {
+    if (name !== 'typeInput' || !('input' in details)) return false;
+    switch (details.input) {
+      case '+':
+      case '-':
+      case '*':
+      case '/':
+      case ')':
+        return false; // these go on from the result
+      default:
+        return true; // a digit, the decimal point, a constant or an opening fence
+    }
   }
 
   private isNavigationCommand(name: M.EditCommand.Name): boolean {
@@ -368,10 +422,10 @@ export class CalculatorService implements OnDestroy {
     }
   }
 
-  private executeCommand(command: M.EditCommand) {
-    const input = this.editSequence();
+  // Apply a command to its input; taking up another input, e.g. the result, is one step to undo along with the command
+  private executeCommand({ input, command }: EditInvocation) {
     const { tree, focusId, changed } = M.dispatchEditCommand(input, command);
-    if (changed) this.editSequence.set(tree, true);
+    if (changed || input !== this.editSequence()) this.editSequence.set(tree, true);
     this.caretTokenId.set(focusId);
     this.evaluationResult.set(null);
     this.caretMoved.emit();
@@ -395,12 +449,11 @@ export class CalculatorService implements OnDestroy {
     }
 
     const requireFraction = mode === 'fraction';
-    const { value, formula, isApproximation } = M.formatNumericToFormula(evaluationResult.value, { requireFraction });
+    const { formula, isApproximation } = M.formatNumericToFormula(evaluationResult.value, { requireFraction });
     const outputSequence = M.tokenizeFormula(formula);
 
     return M.Result.ok({
       mode,
-      numericValue: value,
       isApproximation,
       inputSequence,
       outputSequence,
@@ -408,11 +461,12 @@ export class CalculatorService implements OnDestroy {
   }
 
   private amendHistory(
-    { inputSequence, outputSequence, isApproximation }: EvaluationOutput,
+    { mode, inputSequence, outputSequence, isApproximation }: EvaluationOutput,
     journalEntryPromise: Promise<JournalEntry>,
   ): void {
     const historyEntry: HistoryEntry = {
       id: this.nextHistoryEntryId(),
+      mode,
       input: inputSequence,
       output: outputSequence,
       isApproximation,
@@ -489,7 +543,8 @@ export class CalculatorService implements OnDestroy {
         const output = M.parseFromLatex(outputLatex);
         const isApproximation = separatorLatex === '\\approx';
         const journalEntryPromise = Promise.resolve(journalEntry);
-        return [{ id: this.nextHistoryEntryId(), input, output, isApproximation, journalEntryPromise }];
+        const mode = evaluationModeOf(output);
+        return [{ id: this.nextHistoryEntryId(), mode, input, output, isApproximation, journalEntryPromise }];
       } catch (error: unknown) {
         console.warn('Restoring journal-entry failed:', error);
         return [];

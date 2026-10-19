@@ -397,6 +397,23 @@ describe('Editing', () => {
     expect(session.move('up').display).toBe('[|R81]'); // the empty degree, ready to be typed into
   });
 
+  it('jumps to the start and the end of a sequence, and on to those of the enclosing one', () => {
+    const session = edit().type('12+3').run('applyFraction', { composite: false }).type('45').move('left');
+
+    expect(session.display).toBe('12+[3/4|5]');
+    expect(session.move('start').display).toBe('12+[3/|45]');
+    expect(session.move('start').display).toBe('|12+[3/45]'); // on to the start of the enclosing sequence
+    expect(session.move('start').display).toBe('|12+[3/45]'); // nowhere further to go
+    expect(session.move('end').display).toBe('12+[3/45]|');
+  });
+
+  it('jumps to the end of a sequence, and on to that of the enclosing one', () => {
+    const session = edit().type('2').run('applyExponent', { square: false }).type('34').move('left');
+
+    expect(session.move('end').display).toBe('[2^34|]');
+    expect(session.move('end').display).toBe('[2^34]|');
+  });
+
   //#endregion
   //#region Typing
 
@@ -471,6 +488,33 @@ describe('Editing', () => {
       'fence',
       'constant',
     ]);
+  });
+
+  it('replaces an operator by the one typed right behind it', () => {
+    const session = edit().type('2+');
+
+    expect(session.type('*').display).toBe('2*|');
+    expect(session.type('/').display).toBe('2/|');
+    expect(session.type('3').formula).toBe('(divide 2 3)');
+  });
+
+  it('takes a minus behind an operator as a sign, which is replaced along with the operator', () => {
+    const session = edit().type('2*-');
+
+    expect(session.display).toBe('2*-|');
+    expect(session.type('+').display).toBe('2+|'); // the operator and its sign
+  });
+
+  it('replaces no operator which follows no operand', () => {
+    expect(edit().type('-*').display).toBe('-*|'); // nothing in front of the sign
+    expect(edit().type('(-+').display).toBe('(-+|'); // only an open fence in front of it
+  });
+
+  it('replaces an operator within the input as well', () => {
+    const session = edit().type('1+2').move('left');
+
+    expect(session.type('*').display).toBe('1*|2');
+    expect(session.formula).toBe('(multiply 1 2)');
   });
 
   it('types into the sub-sequence the caret sits in', () => {

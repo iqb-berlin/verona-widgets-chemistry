@@ -153,6 +153,33 @@ describe('CalculatorService', () => {
     expect(input()).toBe('12');
   });
 
+  it('moves the caret to the start and the end with Home and End', () => {
+    calculator();
+    type('12+3');
+
+    press('Home');
+    expect(service.isCaretOn(service.editSequence())).toBeTrue(); // in front of the whole input
+
+    press('End');
+    expect(service.isCaretOn(service.editSequence().items[3])).toBeTrue();
+  });
+
+  it('undoes and redoes with Ctrl+Z and Ctrl+Y, or with the command key on a Mac', () => {
+    calculator();
+    type('12');
+
+    press('z', { ctrlKey: true });
+    expect(input()).toBe('1');
+    press('z', { metaKey: true });
+    expect(input()).toBe('□');
+
+    press('y', { ctrlKey: true });
+    expect(input()).toBe('1');
+    press('Z', { metaKey: true, shiftKey: true });
+    expect(input()).toBe('12');
+    expect(caretIsInPlace()).toBeTrue();
+  });
+
   //#endregion
   //#region Evaluating
 
@@ -255,6 +282,39 @@ describe('CalculatorService', () => {
     expect(input()).toBe('3+4');
     expect(output()).toBe('none'); // editing puts the result aside
     expect(caretIsInPlace()).toBeTrue();
+
+    service.undo();
+    service.undo();
+    expect(input()).toBe('1+2'); // taking up the result is undone along with the first input
+  });
+
+  it('starts a new input with a digit typed after evaluation', () => {
+    calculator();
+    type('1+2');
+    service.handleEvaluation('decimal');
+
+    type('5');
+    expect(input()).toBe('5');
+    expect(caretIsInPlace()).toBeTrue();
+
+    service.undo();
+    expect(input()).toBe('1+2'); // the input is not lost
+  });
+
+  it('starts a new input with a constant or a fence typed after evaluation, but goes on from the result with an operator', () => {
+    const typedAfterEvaluation = (text: string) => {
+      service.handleButton('clearAll', {});
+      type('1+2');
+      service.handleEvaluation('decimal');
+      type(text);
+      return input();
+    };
+    calculator();
+
+    expect(typedAfterEvaluation('(4')).toBe('(4');
+    expect(typedAfterEvaluation('.5')).toBe('0.5');
+    expect(typedAfterEvaluation('*2')).toBe('3*2');
+    expect(typedAfterEvaluation('-2')).toBe('3-2');
   });
 
   it('goes on editing the input, not the result, when backspace is pressed after evaluation', () => {
@@ -341,8 +401,38 @@ describe('CalculatorService', () => {
     service.restoreFromHistory(first);
 
     expect(input()).toBe('1+2');
+    expect(output()).toBe('3'); // shown along with its result, as after working it out
+    expect(service.caretTokenId()).toBeNull();
+  });
+
+  it('works out an input taken out of the history only in the other form again', () => {
+    calculator();
+    type('1');
+    service.handleButton('applyFraction', { composite: false });
+    type('4');
+    service.handleEvaluation('fraction');
+    service.handleButton('clearAll', {});
+    type('2');
+    service.handleEvaluation('decimal');
+
+    service.restoreFromHistory(service.historyEntries()[0]);
+    service.handleEvaluation('fraction');
+    expect(service.historyEntries().length).toBe(2); // nothing new was worked out
+
+    service.handleEvaluation('decimal');
+    expect(output()).toBe('0.25');
+    expect(service.historyEntries().length).toBe(3);
+  });
+
+  it('goes on editing an input taken out of the history once the caret moves', () => {
+    calculator();
+    type('1+2');
+    service.handleEvaluation('decimal');
+    service.restoreFromHistory(service.historyEntries()[0]);
+
+    press('Backspace');
+    expect(input()).toBe('1+');
     expect(output()).toBe('none');
-    expect(caretIsInPlace()).toBeTrue();
   });
 
   it('keeps no more history than the journal shows', () => {
@@ -371,6 +461,9 @@ describe('CalculatorService', () => {
 
     press('#');
     expect(output()).toBe('[1/4]');
+
+    press('=');
+    expect(output()).toBe('0.25');
   });
 
   it('takes the circumflex dead key as exponent, but no other dead key', () => {
@@ -459,6 +552,18 @@ describe('CalculatorService', () => {
     expect(input()).toBe('[1/3]');
     expect(render(service.historyEntries()[0].output)).toBe('0.333');
     expect(service.historyEntries()[0].isApproximation).toBeTrue();
+  });
+
+  it('tells from a result in the state data which form it was worked out in', () => {
+    const entries = [
+      { asLatex: '1\\div4=0.25' },
+      { asLatex: '1\\div4=\\frac{1}{4}' },
+      { asLatex: '9\\div4={2}\\frac{1}{4}' },
+    ];
+    widgetService.stateData.set(JSON.stringify(entries));
+    calculator();
+
+    expect(service.historyEntries().map((entry) => entry.mode)).toEqual(['decimal', 'fraction', 'fraction']);
   });
 
   it('skips an entry of the state data it does not understand, and keeps the others', () => {

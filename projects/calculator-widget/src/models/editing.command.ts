@@ -120,7 +120,7 @@ function typeInput(tree: EditSequence, { targetId, input }: EditCommand.TypeInpu
     case '-':
     case '*':
     case '/':
-      return appendToken(tree, targetId, token('operator', { operator: input }));
+      return appendOperator(tree, targetId, input);
     case ConstantSymbol.Pi:
     case ConstantSymbol.E:
     case ConstantSymbol.Tau:
@@ -216,6 +216,25 @@ function appendToken(tree: EditSequence, targetId: EditTokenId, newToken: EditTo
   const host = EditTraversal.caretSequence(caret);
   const inserted = EditTraversal.spliceSequence(tree, host.id, caret.index, 0, [newToken]);
   return edited(inserted, focusInside(newToken));
+}
+
+/**
+ * An operator typed right behind other operators replaces them, e.g. `2+` turns into `2*`,
+ * rather than leaving `2+*`, which cannot be worked out. A `-` is the exception, as it is
+ * taken as a sign there, e.g. `2*-3`. Operators which follow no operand are left alone.
+ */
+function appendOperator(tree: EditSequence, targetId: EditTokenId, operator: EditCommand.Operator): EditResult {
+  const newToken = token('operator', { operator });
+  if (operator === '-') return appendToken(tree, targetId, newToken);
+
+  const caret = EditTraversal.caretAt(tree, targetId);
+  const host = EditTraversal.caretSequence(caret);
+  let start = caret.index;
+  while (start > 0 && host.items[start - 1].kind === 'operator') start--;
+
+  const replaces = start < caret.index && EditTraversal.operandBefore(host, start) !== null;
+  if (!replaces) return appendToken(tree, targetId, newToken);
+  return edited(EditTraversal.spliceSequence(tree, host.id, start, caret.index - start, [newToken]), newToken.id);
 }
 
 // Insert a digit at the caret, which may sit anywhere within a number. A number holds only one
