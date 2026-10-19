@@ -14,7 +14,7 @@ import {
 import { FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { ItemId } from './molecule-editor.model';
 import * as C from './molecule-editor.constants';
-import { copySvgIconToSymbol } from '../util/svg-icon-symbol';
+import { copySvgIconToSymbol } from 'verona-widget';
 
 const formulaSymbolIcons = {
   [FormulaSymbol.ReactionPlus]: 'reaction_plus',

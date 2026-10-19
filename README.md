@@ -166,7 +166,7 @@ Das `periodic-system-select-widget` ist ein Verona-Widget Modul, welches die int
 
 ### Modul `molecule-editor-widget`
 
-Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktive Erstellung und Bearbeitung von Molekülen mitteln Elementen aus dem Periodensystem ermöglicht.
+Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktive Erstellung und Bearbeitung von Molekülen mittels Elementen aus dem Periodensystem ermöglicht.
 
 - Angular Application-Projekt
 - Index `index.html` enthält ein `<script type="application/ld+json">`, welches Metadaten über das Verona-Modul bereitstellt
@@ -179,6 +179,19 @@ Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktiv
   - Provides `MoleculeEditorImageService`
   - Provides `MoleculeEditorPickerService` als `PsSelect` Implementation
   - Rendert den Molekül-Editor mit MatDrawer, PsTable, EditorControls, und EditorCanvas
+
+### Modul `calculator-widget`
+
+Das `calculator-widget` ist ein Verona-Widget Modul, welches einen Taschenrechner zur Verfügung stellt und einfache Berechnungen erlaubt.
+
+- Angular Application-Projekt
+- Index `index.html` enthält ein `<script type="application/ld+json">`, welches Metadaten über das Verona-Modul bereitstellt
+- Bootstrap `calculatorAppConfig` konfiguriert die Application
+  - Provides `VeronaWidgetIFrame` per `provideVeronaWidgetIFrame`
+  - Bootstraps `CalculatorApp`, welche ein `VeronaWidget` mit `Calculator` als Content rendert
+- Komponente `Calculator`
+  - Provides `CalculatorService`
+  - Rendert Taschenrechner, welcher State mit LaTeX als Protokoll kommuniziert
 
 ### Modul `showcase-widgets`
 
@@ -211,17 +224,21 @@ Dieses Modul kann mit `ng serve` zum Test, Evaluation, und Entwicklung der Widge
 
 ## Architekturdiagramme
 
-`VeronaWidgetService` Implementierungen für unterschiedliche Umgebungen
+### `VeronaWidgetService` Implementierungen für unterschiedliche Umgebungen
 
 ![IQB Chemie-Widgets Verona-Interfaces](./img/iqb-widgets-verona.png)
 
-`PsService` Implementierungen für unterschiedliche Interaktionen
+### `PsService` Implementierungen für unterschiedliche Interaktionen
 
 ![IQB Chemie-Widgets PsService](./img/iqb-widgets-ps.png)
 
-Gesamtübersicht der Architektur und Abhängigkeiten
+### Gesamtübersicht der Chemie-Widgets Architektur und Abhängigkeiten
 
 ![IQB Chemie-Widgets Architektur](./img/iqb-widgets-complete.png)
+
+### Taschenrechner Bearbeitungs-, Formeln- und Zahlen-Modell
+
+![IQB Calculator-Widgets Model](./img/iqb-calculator-model.png)
 
 ---
 

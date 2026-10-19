@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { PsLocale } from 'periodic-system-common';
@@ -15,7 +16,6 @@ import {
   MoleculeEditorSharedParam,
 } from '../../../molecule-editor-widget/src/services/molecule-editor.service';
 import { typeCastParam } from '../widget-page-common/param-converters';
-import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-molecule-editor-page',

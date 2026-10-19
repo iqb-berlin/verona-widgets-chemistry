@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, Provider, signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, Provider, signal, untracked, WritableSignal } from '@angular/core';
 import { VeronaModuleMetadata, VeronaWidgetConfiguration, VeronaWidgetService, VeronaWidgetState } from 'verona-widget';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -59,14 +59,14 @@ export class ShowcaseVeronaWidgetConfig {
 }
 
 @Injectable()
-export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
+export class ShowcaseVeronaWidgetService extends EventTarget implements VeronaWidgetService {
   readonly showcase = inject(ShowcaseVeronaWidgetConfig);
   readonly snackbar = inject(MatSnackBar);
 
   readonly configuration = this.showcase.configuration;
 
-  readonly internalState = signal<VeronaWidgetState['state']>('initializing');
-  readonly internalMetadata = signal<undefined | VeronaModuleMetadata>(undefined);
+  private readonly internalState = signal<VeronaWidgetState['state']>('initializing');
+  private readonly internalMetadata = signal<undefined | VeronaModuleMetadata>(undefined);
 
   readonly stateData = signal<string>('');
   readonly state = computed<VeronaWidgetState>(() => {
@@ -86,16 +86,18 @@ export class ShowcaseVeronaWidgetService implements VeronaWidgetService {
     this.snackbar.open(`Widget ready: ${metadata.type}`, 'OK', { duration: 2_000 });
     this.internalMetadata.set(metadata);
     this.internalState.set('running'); // skips "ready" state, immediately go to "running"
+    this.dispatchEvent(new CustomEvent('ready', { detail: metadata }));
   }
 
-  sendReturn(saveState?: boolean): void {
-    const stateData = this.stateData();
+  sendReturn(result: VeronaWidgetService.ReturnResult): void {
+    const stateData = result.finalState ?? untracked(this.stateData);
     const message =
-      (saveState ?? true)
-        ? `Widget return requested, state = "${stateData}"`
+      (result.saveState ?? true)
+        ? `Widget return requested, final state = "${stateData}"`
         : `Widget return requested, state not saved"`;
 
     this.snackbar.open(message, 'OK', { duration: 5_000 });
+    this.dispatchEvent(new CustomEvent('return', { detail: result }));
   }
 }
 

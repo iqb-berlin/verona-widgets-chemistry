@@ -258,3 +258,59 @@ frame "showcase-widgets" {
     ShowcaseApp --> MoleculeEditorPage : router
 }
 @enduml
+
+@startuml iqb-calculator-model
+hide empty members
+skinparam nodesep 75
+
+title Taschenrechner Modell
+
+interface LaTeX <<protocol>> {
+}
+
+interface EditToken <<struct>> {
+  + id: EditTokenId
+  + kind: EditTokenKind
+}
+
+interface EditSequence <<struct>> {
+  + items: Array<EditToken>
+}
+
+interface FormulaNode <<struct>> {
+  + kind: FormulaNodeKind
+}
+
+abstract class NumericValue {
+  + isRational(): this is Irrational
+  + isIrrational(): this is Rational
+}
+
+class Rational {
+  + numerator
+  + denominator
+}
+
+class Irrational {
+  + mantissa
+  + exponent
+}
+
+LaTeX --> EditSequence : formatToLatex
+LaTeX <-- EditSequence : parseFromLatex
+
+EditToken <|- EditSequence
+EditToken ..> EditSequence
+
+EditSequence --> FormulaNode : compileToFormula
+EditSequence <-- FormulaNode : tokenizeFormula
+
+FormulaNode --> NumericValue : evaluateFormula
+FormulaNode <-- NumericValue : numericToFormula
+
+NumericValue <|-- Rational
+NumericValue ..> Rational : asRational
+NumericValue <|-- Irrational
+NumericValue ..> Irrational : asIrrational
+
+@enduml

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Try out icons here -->
+
+  <use href="#composite_fraction" x="0" y="0" color="black" />
+
+  <!-- Define icons here -->
+
+  <symbol id="true_fraction" viewBox="-1 -1 12 12" fill="currentColor" stroke="currentColor">
+    <!--<rect x="3" y="0.0" width="4" height="3.5" stroke-width="0.5"></rect>-->
+    <rect x="3" y="0.0" width="4" height="3.5" fill="none" stroke-width="0.5"></rect>
+    <rect x="3" y="6.5" width="4" height="3.5" fill="none" stroke-width="0.5"></rect>
+    <line x1="2.75" y1="5" x2="7.25" y2="5" stroke-width="0.5"></line>
+  </symbol>
+
+  <symbol id="composite_fraction" viewBox="-1 -1 12 12" fill="currentColor" stroke="currentColor">
+    <!--<rect x="0" y="3.0" width="4" height="4"></rect>-->
+    <rect x="0" y="3.0" width="4" height="4" fill="none" stroke-width="0.5"></rect>
+    <rect x="6" y="0.5" width="4" height="3" fill="none" stroke-width="0.5"></rect>
+    <rect x="6" y="6.5" width="4" height="3" fill="none" stroke-width="0.5"></rect>
+    <line x1="5.75" y1="5" x2="10.25" y2="5" stroke-width="0.5"></line>
+  </symbol>
+</svg>

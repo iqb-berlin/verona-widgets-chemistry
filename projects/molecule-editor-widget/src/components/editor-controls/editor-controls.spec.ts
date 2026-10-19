@@ -1,9 +1,8 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideDummyVeronaWidgetService } from 'verona-widget';
+import { CustomIconsService, provideDummyVeronaWidgetService, registerCustomIcons } from 'verona-widget';
 import { MoleculeEditorService } from '../../services/molecule-editor.service';
 import { EditorControls } from './editor-controls';
-import { CustomIconsService, registerCustomIcons } from '../../services/custom-icons.service';
 import IqbIcons from '../../assets/iqb-icons.svg';
 
 describe('EditorControls', () => {
