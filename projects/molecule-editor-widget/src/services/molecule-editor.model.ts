@@ -196,6 +196,13 @@ export namespace MoleculeEditorModel {
     },
   );
 
+  export function hasBond(model: MoleculeEditorModel, atomId1: AtomId, atomId2: AtomId): boolean {
+    return Object.values(model.bonds).some(
+      ({ leftAtomId, rightAtomId }) =>
+        (leftAtomId === atomId1 && rightAtomId === atomId2) || (leftAtomId === atomId2 && rightAtomId === atomId1),
+    );
+  }
+
   export const addBond = produce<MoleculeEditorModel, [BondId, AtomId, AtomId, BondMultiplicity]>(
     (model, bondId, leftAtomId, rightAtomId, multiplicity) => {
       // Remove existing bonds, if any already exists for the given atoms
