@@ -205,7 +205,7 @@ function appendFence(tree: EditSequence, targetId: EditTokenId, fence: EditComma
   if (fence === ')') {
     const caret = EditTraversal.caretAt(tree, targetId);
     const host = EditTraversal.caretSequence(caret);
-    if (EditTraversal.openFenceCount(host) === 0) return unchanged(tree, targetId);
+    if (EditTraversal.openFenceCount(host, caret.index) === 0) return unchanged(tree, targetId);
   }
   return appendToken(tree, targetId, token('fence', { fence }));
 }

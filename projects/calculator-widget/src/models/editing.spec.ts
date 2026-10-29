@@ -532,6 +532,15 @@ describe('Editing', () => {
     expect(session.type(')').display).toBe('1+2(3)|'); // and it closed the only open one
   });
 
+  it('takes a closing fence only for an open one in front of the caret', () => {
+    const session = edit().type('1+(2').move('left', 3);
+
+    expect(session.display).toBe('1|+(2');
+    expect(session.type(')').display).toBe('1|+(2'); // the open fence sits behind the caret
+    expect(session.lastChanged).toBeFalse();
+    expect(session.move('right', 3).type(')').display).toBe('1+(2)|'); // in front of it, it is taken
+  });
+
   /**
    * A fence cannot reach into a slot or out of one, as every slot holds a formula of its own.
    * Taking a closing fence into a slot would draw `4π²` as `(4π)²` while the opening fence

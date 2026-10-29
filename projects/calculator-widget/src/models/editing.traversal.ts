@@ -179,14 +179,15 @@ export namespace EditTraversal {
    * Open fences of a sequence which are still waiting to be closed. Fences never reach out
    * of the sequence they are in: every slot of a token holds a formula of its own, so a
    * fence in one of them can only ever match a fence in the same one.
+   * Only the fences in front of `end` count, i.e. those a fence inserted there could close.
    */
-  export function openFenceCount(sequence: EditSequence): number {
+  export function openFenceCount(sequence: EditSequence, end: number = sequence.items.length): number {
     let open = 0;
-    for (const item of sequence.items) {
+    for (const item of sequence.items.slice(0, end)) {
       if (item.kind !== 'fence') continue;
-      open += item.fence === '(' ? 1 : -1;
+      open = item.fence === '(' ? open + 1 : Math.max(0, open - 1); // a surplus closing fence closes nothing
     }
-    return Math.max(0, open);
+    return open;
   }
 
   // Index of the open fence matching the close fence at `closeIndex`
