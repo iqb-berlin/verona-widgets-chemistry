@@ -1,10 +1,16 @@
 import { bigDigits, bigDivideRounded, bigGcd, bigPow10, compareSign, decimalText, exactNthRoot } from './utils';
-import { DECIMAL_PATTERN, FRACTION_PATTERN, NumericError, NumericValue, Sign } from './numeric.model';
+import {
+  DECIMAL_PATTERN,
+  FRACTION_PATTERN,
+  MAX_RESULT_DIGITS,
+  NumericError,
+  NumericValue,
+  Sign,
+} from './numeric.model';
 import { Irrational } from './irrational.model';
 
-/** Largest whole exponent a power is worked out for, and the digits its result may have */
+/** Largest whole exponent a power is worked out for */
 const MAX_INTEGER_POWER = 10_000n;
-const MAX_RESULT_DIGITS = 20_000;
 
 type Numeric = number | bigint;
 type Coercible = Numeric | string;
@@ -207,13 +213,16 @@ export class Rational extends NumericValue {
     if (degree > BigInt(Number.MAX_SAFE_INTEGER)) return null;
 
     const numerator = exactNthRoot(this.numerator, Number(degree));
+    if (numerator === null) return null;
     const denominator = exactNthRoot(this.denominator, Number(degree));
-    if (numerator === null || denominator === null) return null;
+    if (denominator === null) return null;
     return Rational.create(numerator, denominator);
   }
 
   private integerPower(power: bigint): Rational {
     if (power === 0n) return Rational.ONE;
+    if (this.isOne) return this; // whatever the size of the power
+    if (this.equalTo(Rational.MINUS_ONE)) return power % 2n === 0n ? Rational.ONE : this;
     if (power < 0n) return this.inverse().integerPower(-power);
     if (power > MAX_INTEGER_POWER) throw NumericError.unsupported(`Exponent ist zu groß: ${power}`);
 

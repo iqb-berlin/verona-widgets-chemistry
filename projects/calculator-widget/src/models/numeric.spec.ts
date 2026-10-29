@@ -113,6 +113,20 @@ describe('Numeric', () => {
     expect(shows(Irrational.fromConstant(ConstantSymbol.Pi).nthRoot(2))).toBe(`irrational: ${SQRT_PI}`);
   });
 
+  // A root of a high degree must not cost digits by the degree, e.g. for a power of 0.0001
+  it('takes roots of a high degree', () => {
+    expect(shows(rational(2).power(Rational.parse('0.0001')))).toBe('irrational: 1.0000693171203765691924399126');
+    expect(shows(irrational('0.5').nthRoot(1_234_567))).toBe('irrational: 0.999999438550531501029071081482');
+    expect(shows(irrational('7').nthRoot(Number.MAX_SAFE_INTEGER))).toBe('irrational: 1.0000000000000002160394251333');
+  });
+
+  it('bounds the magnitude of an irrational number', () => {
+    const large = irrational('2').nthRoot(2).integerPower(10_000n);
+
+    expect(issueOf(() => large.integerPower(10_000n))).toBe('error:unsupported');
+    expect(shows(large.inverse().integerPower(10_000n))).toBe('irrational: 0'); // too small to show up
+  });
+
   it('drops what is too small to show up at its precision', () => {
     expect(shows(irrational('1').add(Irrational.of(1n, -40)))).toBe('irrational: 1');
     expect(shows(Irrational.of(1n, -40).add(irrational('1')))).toBe('irrational: 1');
@@ -181,6 +195,7 @@ describe('Numeric', () => {
     expect(issueOf(() => Rational.ZERO.power(rational(-1)))).toBe('error:divisionByZero');
     expect(issueOf(() => rational(2).power(Irrational.fromConstant(ConstantSymbol.Pi)))).toBe('error:unsupported');
     expect(issueOf(() => rational(2).power(rational(100_000)))).toBe('error:unsupported');
+    expect(shows(rational(-1).power(rational(100_001)))).toBe('rational: -1'); // though not for a power of one
     expect(issueOf(() => Rational.parse('zwei'))).toBe('error:syntaxError');
   });
 

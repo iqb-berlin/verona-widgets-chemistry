@@ -1,6 +1,6 @@
-import { DECIMAL_PATTERN, NumericError, NumericValue, Sign } from './numeric.model';
+import { DECIMAL_PATTERN, MAX_RESULT_DIGITS, NumericError, NumericValue, Sign } from './numeric.model';
 import type { Rational } from './rational.model';
-import { bigDigits, bigDivideRounded, bigPow10, compareSign, decimalText, floorNthRoot } from './utils';
+import { bigDigits, bigDivideRounded, bigPow10, compareSign, decimalText } from './utils';
 import { CONSTANTS, ConstantSymbol } from './constants.model';
 
 /** Significant digits an irrational number is kept at */
@@ -11,6 +11,9 @@ const GUARD_DIGITS = 5;
 
 /** Largest whole exponent a power is worked out for */
 const MAX_INTEGER_POWER = 10_000n;
+
+/** Steps of Newton's method a root may take; it needs a handful, as it starts out close by */
+const MAX_ROOT_STEPS = 50;
 
 /**
  * An irrational number, held as a decimal number of limited precision: a whole `mantissa`
@@ -46,18 +49,19 @@ export class Irrational extends NumericValue {
   static of(mantissa: bigint, exponent: number): Irrational {
     if (mantissa === 0n) return Irrational.ZERO;
 
-    let digits = mantissa;
-    let scale = exponent;
+    // rounding first, so that only a few digits are left to strip
+    let [digits, scale] = roundDecimal([mantissa, exponent], IRRATIONAL_PRECISION);
     while (digits % 10n === 0n) {
       digits /= 10n; // trailing zeros belong in the exponent, so that the form is unique
       scale++;
     }
 
-    const excess = bigDigits(digits) - IRRATIONAL_PRECISION;
-    if (excess <= 0) return new Irrational(digits, scale);
+    // the exponent is bounded, as each digit it stands for costs memory once the value is written out
+    const magnitude = bigDigits(digits) + scale;
+    if (magnitude > MAX_RESULT_DIGITS) throw NumericError.unsupported('Ergebnis ist zu groß');
+    if (magnitude < -MAX_RESULT_DIGITS) return Irrational.ZERO; // too small to ever show up
 
-    const rounded = bigDivideRounded(digits, bigPow10(excess));
-    return Irrational.of(rounded, scale + excess); // rounding can free further trailing zeros
+    return new Irrational(digits, scale);
   }
 
   /** The decimal the fraction `numerator / denominator` rounds to */
@@ -178,7 +182,13 @@ export class Irrational extends NumericValue {
     return rooted.integerPower(power.numerator);
   }
 
-  /** The n-th root, which a negative number only has for an odd degree */
+  /**
+   * The n-th root, which a negative number only has for an odd degree.
+   *
+   * Newton's method on decimals of a few more digits than kept, rather than on whole numbers:
+   * a whole root with all digits wanted would need a radicand of that many digits times the
+   * degree, which a root like the 10000th, i.e. a power of 0.0001, cannot afford.
+   */
   nthRoot(degree: number): Irrational {
     if (degree < 1 || !Number.isSafeInteger(degree)) {
       throw NumericError.unsupported(`Wurzelgrad wird nicht unterstützt: ${degree}`);
@@ -189,28 +199,33 @@ export class Irrational extends NumericValue {
       return this.negate().nthRoot(degree).negate();
     }
 
-    // scale up so that the whole root comes out with digits to spare, keeping the
-    // exponent divisible by the degree, as the exponent is divided by it as well
-    const wanted = (IRRATIONAL_PRECISION + GUARD_DIGITS) * degree - this.digits;
-    let shift = Math.max(0, wanted);
-    shift += modulo(this.exponent - shift, degree);
+    // the power within each step multiplies rounding errors by up to the degree
+    const precision = IRRATIONAL_PRECISION + GUARD_DIGITS + String(degree).length;
+    const n = BigInt(degree);
+    const radicand: Decimal = [this.mantissa, this.exponent];
 
-    const radicand = this.mantissa * bigPow10(shift);
-    return Irrational.of(floorNthRoot(radicand, degree), (this.exponent - shift) / degree);
+    let root = estimateRoot(radicand, degree);
+    for (let step = 0; step < MAX_ROOT_STEPS; step++) {
+      // x' = x + (a / x^(n-1) - x) / n
+      const quotient = divideDecimal(radicand, powerDecimal(root, n - 1n, precision), precision);
+      const correction = divideDecimal(addDecimal(quotient, negateDecimal(root)), [n, 0], precision);
+      root = roundDecimal(addDecimal(root, correction), precision);
+      if (isNegligible(correction, root)) break;
+    }
+    return Irrational.of(...root);
   }
 
   integerPower(power: bigint): Irrational {
     if (power === 0n) return Irrational.ONE;
-    if (power < 0n) return Irrational.ONE.divide(this.integerPower(-power));
-    if (power > MAX_INTEGER_POWER) throw NumericError.unsupported(`Exponent ist zu groß: ${power}`);
-
-    let result = Irrational.ONE;
-    let factor: Irrational = this;
-    for (let remaining = power; remaining > 0n; remaining >>= 1n) {
-      if (remaining % 2n === 1n) result = result.multiply(factor);
-      factor = factor.multiply(factor);
+    if (power > MAX_INTEGER_POWER || -power > MAX_INTEGER_POWER) {
+      throw NumericError.unsupported(`Exponent ist zu groß: ${power}`);
     }
-    return result;
+
+    // each multiplication adds its rounding error, so a few more digits are kept along the way
+    const magnitude = power < 0n ? -power : power;
+    const precision = IRRATIONAL_PRECISION + GUARD_DIGITS + String(magnitude).length;
+    const result = powerDecimal([this.mantissa, this.exponent], magnitude, precision);
+    return Irrational.of(...(power < 0n ? divideDecimal([1n, 0], result, precision) : result));
   }
 
   isRational(): this is Rational {
@@ -263,13 +278,86 @@ export class Irrational extends NumericValue {
 //#region Internal
 
 // Digits a quotient has to be scaled by to come out with the precision kept
-function quotientShift(numerator: bigint, denominator: bigint): number {
+function quotientShift(
+  numerator: bigint,
+  denominator: bigint,
+  precision = IRRATIONAL_PRECISION + GUARD_DIGITS,
+): number {
   const missing = bigDigits(denominator) - bigDigits(numerator);
-  return IRRATIONAL_PRECISION + GUARD_DIGITS + Math.max(0, missing);
+  return precision + Math.max(0, missing);
 }
 
-function modulo(value: number, divisor: number): number {
-  return ((value % divisor) + divisor) % divisor;
+/**
+ * A decimal `mantissa * 10^exponent` of any precision, without the unique form of an
+ * {@link Irrational}, for working out a result with more digits than it is kept at.
+ */
+type Decimal = readonly [mantissa: bigint, exponent: number];
+
+function roundDecimal([mantissa, exponent]: Decimal, precision: number): Decimal {
+  const excess = bigDigits(mantissa) - precision;
+  if (excess <= 0) return [mantissa, exponent];
+  return [bigDivideRounded(mantissa, bigPow10(excess)), exponent + excess];
+}
+
+function negateDecimal([mantissa, exponent]: Decimal): Decimal {
+  return [-mantissa, exponent];
+}
+
+// Exact, which is affordable as long as both are of a similar magnitude
+function addDecimal(left: Decimal, right: Decimal): Decimal {
+  if (left[0] === 0n) return right;
+  if (right[0] === 0n) return left;
+
+  const exponent = Math.min(left[1], right[1]);
+  const mantissa = left[0] * bigPow10(left[1] - exponent) + right[0] * bigPow10(right[1] - exponent);
+  return [mantissa, exponent];
+}
+
+function multiplyDecimal(left: Decimal, right: Decimal, precision: number): Decimal {
+  return roundDecimal([left[0] * right[0], left[1] + right[1]], precision);
+}
+
+function divideDecimal(dividend: Decimal, divisor: Decimal, precision: number): Decimal {
+  if (dividend[0] === 0n) return dividend;
+  const shift = quotientShift(dividend[0], divisor[0], precision);
+  const mantissa = bigDivideRounded(dividend[0] * bigPow10(shift), divisor[0]);
+  return roundDecimal([mantissa, dividend[1] - divisor[1] - shift], precision);
+}
+
+// By squaring, rounding each product, so it takes about two multiplications per bit of the power
+function powerDecimal(base: Decimal, power: bigint, precision: number): Decimal {
+  let result: Decimal = [1n, 0];
+  let factor = base;
+  for (let remaining = power; remaining > 0n; remaining >>= 1n) {
+    if (remaining % 2n === 1n) result = multiplyDecimal(result, factor, precision);
+    if (remaining > 1n) factor = multiplyDecimal(factor, factor, precision);
+  }
+  return result;
+}
+
+// Whether a change to the value is below the digits kept
+function isNegligible(change: Decimal, value: Decimal): boolean {
+  if (change[0] === 0n) return true;
+  const magnitude = ([mantissa, exponent]: Decimal) => bigDigits(mantissa) + exponent;
+  return magnitude(change) < magnitude(value) - IRRATIONAL_PRECISION - GUARD_DIGITS;
+}
+
+/**
+ * The n-th root of a positive decimal to the precision of floating point, as a start for
+ * Newton's method. A root of a high degree lies close to one, so the distance from one is
+ * what has to be precise, as each step of the method multiplies its error by the degree.
+ */
+function estimateRoot([mantissa, exponent]: Decimal, degree: number): Decimal {
+  const dropped = Math.max(0, bigDigits(mantissa) - 17);
+  const log10 = (Math.log10(Number(mantissa / bigPow10(dropped))) + dropped + exponent) / degree;
+  const whole = Math.round(log10);
+
+  const offset = Math.expm1((log10 - whole) * Math.LN10); // from one, within (-0.7, 2.2)
+  if (offset === 0) return [1n, whole];
+
+  const scale = 16 - Math.floor(Math.log10(Math.abs(offset))); // to 17 significant digits
+  const [sum, sumExponent] = addDecimal([1n, 0], [BigInt(Math.round(offset * 10 ** scale)), -scale]);
+  return [sum, sumExponent + whole];
 }
 
 //#endregion

@@ -3,6 +3,9 @@ import type { Irrational } from './irrational.model';
 
 export type Sign = -1 | 0 | 1;
 
+/** Decimal digits a result may have in front of the decimal point, beyond which it counts as too large */
+export const MAX_RESULT_DIGITS = 20_000;
+
 export const DECIMAL_PATTERN = /^(?<sign>[+-]?)(?<integral>\d*)(?:[.,](?<fraction>\d*))?$/;
 export const FRACTION_PATTERN = /^(?<numerator>[^/]+)\/(?<denominator>[^/]+)$/;
 

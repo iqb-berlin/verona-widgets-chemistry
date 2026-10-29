@@ -13,11 +13,8 @@ export function bigIsPow10(value: bigint): boolean {
   if (value < 10n) return value === 1n;
   if (value % 10n !== 0n) return false;
 
-  // Conversion to base 2^n (like 16) is significantly cheaper than to base 10
-  const hex = value.toString(16);
-  const bits = 4 * (hex.length - 1) + (32 - Math.clz32(parseInt(hex[0], 16)));
-
   // 10^k has floor(k * log2(10)) + 1 bits, so only one k can match
+  const bits = bigBitLength(value);
   const k = Math.round((bits - 0.5) / LOG2_10);
   return value === 10n ** BigInt(k);
 }
@@ -39,31 +36,49 @@ export function bigPow(value: bigint, exponent: bigint): bigint {
   return value ** exponent;
 }
 
-// cache powers of 10
-const POW10: bigint[] = [1n];
-bigPow10(15); // warmup
-
 export function bigPow10(exponent: number): bigint {
   if (exponent < 0) throw new RangeError(`Negative pow10 exponent: ${exponent}`);
-  while (POW10.length <= exponent) POW10.push(POW10[POW10.length - 1] * 10n);
-  return POW10[exponent];
+  return 10n ** BigInt(exponent);
+}
+
+// Number of binary digits of a whole number, ignoring its sign
+export function bigBitLength(value: bigint): number {
+  if (value === 0n) return 0;
+  // Conversion to base 2^n (like 16) is significantly cheaper than to base 10
+  const hex = bigAbs(value).toString(16);
+  return 4 * (hex.length - 1) + (32 - Math.clz32(parseInt(hex[0], 16)));
 }
 
 export function floorNthRoot(value: bigint, degree: number): bigint {
   if (value < 0n) throw new RangeError(`Negative floorNthRoot radicand: ${value}`);
   if (degree < 1) throw new RangeError(`Non-positive floorNthRoot degree: ${degree}`);
-  if (degree === 1 || value === 1n) return value;
+  if (degree === 1 || value < 2n) return value;
 
+  const bits = bigBitLength(value);
+  if (bits <= degree) return 1n; // the value is below 2^degree, so its root is below 2
+
+  // Newton's method, which lands on or above the root from any start and then decreases
+  // towards it. Starting close by matters: from far above, it takes about `degree` steps
+  // to get anywhere, each of them raising to the power of `degree`.
   const nth = BigInt(degree);
-  const bitCount = value.toString(2).length;
+  const step = (x: bigint) => ((nth - 1n) * x + value / x ** (nth - 1n)) / nth;
 
-  let x = 1n << BigInt(Math.ceil(bitCount / degree) + 1);
+  let x = step(estimateNthRoot(value, bits, degree));
   while (true) {
-    const r = ((nth - 1n) * x + value / bigPow(x, nth - 1n)) / nth;
-    if (r >= x) break;
+    const r = step(x);
+    if (r >= x) return x;
     x = r;
   }
-  return x;
+}
+
+// The root to the precision of floating point, from the value's leading bits
+function estimateNthRoot(value: bigint, bits: number, degree: number): bigint {
+  const dropped = Math.max(0, bits - 53);
+  const log2 = (Math.log2(Number(value >> BigInt(dropped))) + dropped) / degree;
+  if (log2 < 52) return BigInt(Math.max(1, Math.round(2 ** log2)));
+
+  const shift = Math.floor(log2) - 52;
+  return BigInt(Math.round(2 ** (log2 - shift))) << BigInt(shift);
 }
 
 export function exactNthRoot(value: bigint, degree: number): bigint | null {
@@ -73,6 +88,7 @@ export function exactNthRoot(value: bigint, degree: number): bigint | null {
     return positive === null ? null : -positive;
   } else {
     const root = floorNthRoot(value, degree);
+    if (root === 1n) return value === 1n ? root : null; // spares raising to a power of a huge degree
     return bigPow(root, BigInt(degree)) === value ? root : null;
   }
 }
