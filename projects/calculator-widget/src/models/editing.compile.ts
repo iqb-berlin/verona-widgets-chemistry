@@ -2,6 +2,7 @@ import { EditSequence, EditToken, EditTokenId } from './editing.ast';
 import { FormulaNode } from './formula.ast';
 import {
   add,
+  compositeFraction,
   constant,
   decimal,
   divide,
@@ -179,7 +180,7 @@ class EditSequenceCompiler {
           const integerPart = this.childSequence(token.integerPart);
           const numerator = this.childSequence(token.numerator);
           const denominator = this.childSequence(token.denominator);
-          return add(integerPart, divide(numerator, denominator));
+          return compositeFraction(integerPart, numerator, denominator);
         }
         case 'exponent': {
           this.consume();

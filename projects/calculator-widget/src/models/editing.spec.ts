@@ -613,7 +613,7 @@ describe('Editing', () => {
 
     expect(session.display).toBe('[3&|/_]');
     expect(session.type('1').move('down').type('2').display).toBe('[3&1/2|]');
-    expect(session.formula).toBe('(add 3 (divide 1 2))');
+    expect(session.formula).toBe('(composite 3 1 2)');
   });
 
   //#endregion
@@ -1152,7 +1152,18 @@ describe('Editing', () => {
   const two: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '2' };
   const three: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '3' };
 
-  it('keeps a negation', roundTrips({ sourceTokenId: null, kind: 'unary', operator: 'negate', operand: two }, '-2'));
+  it(
+    'keeps a negation',
+    roundTrips(
+      {
+        sourceTokenId: null,
+        kind: 'unary',
+        operator: 'negate',
+        operand: two,
+      },
+      '-2',
+    ),
+  );
   it(
     'keeps a negated group',
     roundTrips(
@@ -1220,7 +1231,7 @@ describe('Editing', () => {
     roundTrips(
       { sourceTokenId: null, kind: 'composite', integerPart: two, numerator: one, denominator: three },
       '[2&1/3]',
-      '(add 2 (divide 1 3))',
+      '(composite 2 1 3)',
     ),
   );
 
