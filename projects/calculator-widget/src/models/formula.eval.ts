@@ -36,7 +36,7 @@ export function evaluateFormula(node: FormulaNode): FormulaEvalResult {
   }
 }
 
-function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, message?: unknown): never {
+function fail(code: FormulaEvalIssueCode, sourceTokenId: null | undefined | EditTokenId, message?: unknown): never {
   const detail =
     message === undefined
       ? ''
@@ -46,7 +46,7 @@ function fail(code: FormulaEvalIssueCode, sourceTokenId: null | EditTokenId, mes
           ? message.message
           : JSON.stringify(message);
 
-  throw new FormulaEvalError({ code, detail, sourceTokenId });
+  throw new FormulaEvalError({ code, detail, sourceTokenId: sourceTokenId ?? null });
 }
 
 function numericErrorIssue(error: NumericError): FormulaEvalIssue {

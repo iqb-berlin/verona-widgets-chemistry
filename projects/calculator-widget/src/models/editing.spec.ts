@@ -111,7 +111,6 @@ describe('Editing', () => {
     const caret = EditTraversal.caretAt(tree, focusId);
     const host = EditTraversal.caretSequence(caret);
     const caretMarkerToken = {
-      sourceTokenId: null,
       kind: 'digit',
       id: 'caret' as EditTokenId,
       digit: CARET as EditToken.DigitSymbol,
@@ -1157,15 +1156,14 @@ describe('Editing', () => {
     };
   }
 
-  const one: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '1' };
-  const two: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '2' };
-  const three: FormulaNode = { sourceTokenId: null, kind: 'literal', literal: '3' };
+  const one: FormulaNode = { kind: 'literal', literal: '1' };
+  const two: FormulaNode = { kind: 'literal', literal: '2' };
+  const three: FormulaNode = { kind: 'literal', literal: '3' };
 
   it(
     'keeps a negation',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'unary',
         operator: 'negate',
         operand: two,
@@ -1177,10 +1175,9 @@ describe('Editing', () => {
     'keeps a negated group',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'unary',
         operator: 'negate',
-        operand: { sourceTokenId: null, kind: 'binary', operator: 'add', left: one, right: two },
+        operand: { kind: 'binary', operator: 'add', left: one, right: two },
       },
       '-(1+2)',
     ),
@@ -1189,11 +1186,10 @@ describe('Editing', () => {
     'keeps a negated factor',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'binary',
         operator: 'multiply',
         left: three,
-        right: { sourceTokenId: null, kind: 'unary', operator: 'negate', operand: two },
+        right: { kind: 'unary', operator: 'negate', operand: two },
       },
       '3*(-2)',
     ),
@@ -1202,9 +1198,8 @@ describe('Editing', () => {
     'writes a square root without an index',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'root',
-        radicand: { sourceTokenId: null, kind: 'literal', literal: '16' },
+        radicand: { kind: 'literal', literal: '16' },
         degree: two,
       },
       '[R16]',
@@ -1214,9 +1209,8 @@ describe('Editing', () => {
     'keeps the index of an nth root',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'root',
-        radicand: { sourceTokenId: null, kind: 'literal', literal: '27' },
+        radicand: { kind: 'literal', literal: '27' },
         degree: three,
       },
       '[3R27]',
@@ -1226,10 +1220,9 @@ describe('Editing', () => {
     'parenthesizes a sum inside a product',
     roundTrips(
       {
-        sourceTokenId: null,
         kind: 'binary',
         operator: 'multiply',
-        left: { sourceTokenId: null, kind: 'binary', operator: 'add', left: one, right: two },
+        left: { kind: 'binary', operator: 'add', left: one, right: two },
         right: three,
       },
       '(1+2)*3',
@@ -1238,7 +1231,7 @@ describe('Editing', () => {
   it(
     'keeps a composite fraction',
     roundTrips(
-      { sourceTokenId: null, kind: 'composite', integerPart: two, numerator: one, denominator: three },
+      { kind: 'composite', integerPart: two, numerator: one, denominator: three },
       '[2&1/3]',
       '(composite 2 1 3)',
     ),
