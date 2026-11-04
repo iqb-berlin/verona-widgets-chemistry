@@ -906,20 +906,91 @@ describe('Editing', () => {
     compiles((s) => s.type('2').run('toggleNegate', {}), '(negate 2)'),
   );
 
-  it('compiles a fraction in front of a literal as a product', () => {
+  it('reports a fraction in front of a literal instead of a product', () => {
     const session = edit().type('1').run('applyFraction', { composite: false }).type('2');
     session.move('right').type('3');
 
     expect(session.display).toBe('[1/2]3|');
+    // implicit multiplication with fraction is disallowed
+    expect(session.formula).toBe('issue:unexpectedToken');
+
+    session.move('left').type('*'); // an explicit operator resolves it
+    expect(session.display).toBe('[1/2]*|3');
     expect(session.formula).toBe('(multiply (divide 1 2) 3)');
   });
 
-  it('compiles a literal in front of a fraction as a product', () => {
+  it('reports a literal in front of a fraction instead of a product', () => {
     const session = edit().type('1').run('applyFraction', { composite: false }).type('2');
     session.focusOn(session.tree.id).type('3'); // in front of the fraction
 
     expect(session.display).toBe('3|[1/2]');
-    expect(session.formula).toBe('(multiply 3 (divide 1 2))');
+    // implicit multiplication with fraction is disallowed
+    expect(session.formula).toBe('issue:unexpectedToken');
+    expect(session.type('*').formula).toBe('(multiply 3 (divide 1 2))');
+  });
+
+  // A number written in front of a fraction reads like a mixed number, so implicit multiplication
+  // with a fraction or a mixed number is reported instead of compiled, on either side of it
+  describe('with implicit multiplication of a fraction', () => {
+    function compiledLatex(latex: string): string {
+      const compiled = compileToFormula(parseFromLatex(latex));
+      return compiled.ok ? FormulaNode.asLispString(compiled.value) : `issue:${compiled.issue.code}`;
+    }
+
+    it('reports any atom in front of a fraction', () => {
+      expect(compiledLatex('3\\frac{1}{2}')).withContext('number').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\pi\\frac{1}{2}')).withContext('constant').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\left(3\\right)\\frac{1}{2}')).withContext('group').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\sqrt{2}\\frac{1}{2}')).withContext('root').toBe('issue:unexpectedToken');
+      expect(compiledLatex('{2}^{3}\\frac{1}{2}')).withContext('exponent').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{1}{3}\\frac{1}{2}')).withContext('fraction').toBe('issue:unexpectedToken');
+    });
+
+    it('reports any atom behind a fraction', () => {
+      expect(compiledLatex('\\frac{1}{2}3')).withContext('number').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{1}{2}\\pi')).withContext('constant').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{1}{2}\\left(3\\right)')).withContext('group').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{1}{2}\\sqrt{2}')).withContext('root').toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{1}{2}{2}^{3}')).withContext('exponent').toBe('issue:unexpectedToken');
+    });
+
+    it('reports any atom next to a mixed number', () => {
+      expect(compiledLatex('2{3}\\frac{1}{2}')).withContext('in front').toBe('issue:unexpectedToken');
+      expect(compiledLatex('{3}\\frac{1}{2}2')).withContext('behind').toBe('issue:unexpectedToken');
+    });
+
+    it('points the issue at the fraction', () => {
+      const tree = parseFromLatex('1+3\\frac{1}{2}');
+      const compiled = compileToFormula(tree);
+
+      expect(compiled.ok ? null : compiled.issue.tokenId).toBe(tree.items[3].id);
+      expect(compiled.ok ? null : compiled.issue.sequenceId).toBe(tree.id);
+    });
+
+    it('reports it within a slot as well', () => {
+      expect(compiledLatex('\\sqrt{3\\frac{1}{2}}')).toBe('issue:unexpectedToken');
+      expect(compiledLatex('\\frac{\\frac{1}{2}3}{4}')).toBe('issue:unexpectedToken');
+    });
+
+    it('still compiles a fraction multiplied explicitly or in parentheses', () => {
+      expect(compiledLatex('3\\cdot\\frac{1}{2}')).toBe('(multiply 3 (divide 1 2))');
+      expect(compiledLatex('\\frac{1}{2}\\cdot3')).toBe('(multiply (divide 1 2) 3)');
+      expect(compiledLatex('3\\left(\\frac{1}{2}\\right)')).toBe('(multiply 3 (divide 1 2))');
+      expect(compiledLatex('\\left(\\frac{1}{2}\\right)3')).toBe('(multiply (divide 1 2) 3)');
+      expect(compiledLatex('2\\left(1+\\frac{1}{2}\\right)')).toBe('(multiply 2 (add 1 (divide 1 2)))');
+    });
+
+    it('still compiles a mixed number, and a fraction next to other operators', () => {
+      expect(compiledLatex('{3}\\frac{1}{2}')).toBe('(composite 3 1 2)');
+      expect(compiledLatex('1+\\frac{1}{2}-\\frac{1}{3}')).toBe('(subtract (add 1 (divide 1 2)) (divide 1 3))');
+      expect(compiledLatex('-\\frac{1}{2}')).toBe('(negate (divide 1 2))');
+    });
+
+    it('still compiles implicit multiplication without fractions', () => {
+      expect(compiledLatex('2\\pi')).toBe('(multiply 2 pi)');
+      expect(compiledLatex('2\\sqrt{2}')).toBe('(multiply 2 (root 2 2))');
+      expect(compiledLatex('\\left(1\\right)2')).toBe('(multiply 1 2)');
+    });
   });
 
   it('compiles a literal in front of an exponent as a product', () => {

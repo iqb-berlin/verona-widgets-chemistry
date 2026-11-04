@@ -17,7 +17,12 @@ import {
 import { Result } from './types';
 
 export function compileToFormula(sequence: EditSequence): CompileToFormulaResult {
-  const compiler = new EditSequenceCompiler(sequence);
+  /**
+   * Disabled upon explicit request (2026-11-03),
+   * to disambiguate multiplication from composite fractions.
+   */
+  const disallowFractionImplicitMultiplication = true;
+  const compiler = new EditSequenceCompiler(sequence, { disallowFractionImplicitMultiplication });
   return compiler.compile();
 }
 
@@ -43,10 +48,21 @@ class CompileToFormulaError extends Error {
 
 type EditTokenPredicate = (token: EditToken) => boolean;
 
+interface EditSequenceCompilerOptions {
+  /**
+   * If `true`, implicit multiplication with a fraction will raise an issue,
+   * as the notation may be ambiguous with composite fractions
+   */
+  readonly disallowFractionImplicitMultiplication?: boolean;
+}
+
 class EditSequenceCompiler {
   private index: number = 0;
 
-  constructor(private readonly sequence: EditSequence) {}
+  constructor(
+    private readonly sequence: EditSequence,
+    private readonly options: EditSequenceCompilerOptions,
+  ) {}
 
   compile(): CompileToFormulaResult {
     try {
@@ -111,6 +127,20 @@ class EditSequenceCompiler {
           result = divide(result, next);
         });
       } else if (this.startsAtom()) {
+        const { disallowFractionImplicitMultiplication = false } = this.options;
+        if (disallowFractionImplicitMultiplication) {
+          // Check both partners before the right one is consumed:
+          // The last token of the left one, and the first token of the right one
+          const leftToken = this.peek(-1);
+          const rightToken = this.peek(0);
+          const offender = [leftToken, rightToken].find((t) => {
+            return t !== undefined && (t.kind === 'fraction' || t.kind === 'composite');
+          });
+          if (offender !== undefined) {
+            this.raiseIssue('unexpectedToken', offender, 'Implizites Multiplizieren nicht erlaubt');
+          }
+        }
+
         const next = this.atom();
         result = multiply(result, next); // implicit multiplication, e.g. 2(3+4)
       } else {
@@ -228,7 +258,7 @@ class EditSequenceCompiler {
   //#region Slot child sequences
 
   private childSequence(child: EditToken.Sequence): FormulaNode {
-    const childCompiler = new EditSequenceCompiler(child);
+    const childCompiler = new EditSequenceCompiler(child, this.options);
     return childCompiler.entrypoint();
   }
 

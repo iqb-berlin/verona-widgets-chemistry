@@ -59,7 +59,7 @@ describe('Numeric', () => {
     expect(shows(rational(2).root(rational(2)))).toBe(`irrational: ${SQRT_2}`);
   });
 
-  it('writes a decimal of as many places as asked for', () => {
+  it('writes a rational decimal of as many places as asked for', () => {
     expect(rational(1, 3).toDecimalString(12)).toBe('0.333333333333');
     expect(rational(1, 2).toDecimalString(12)).toBe('0.5'); // trailing zeros are dropped
     expect(rational(1, 2).toDecimalString(3, false)).toBe('0.500');
@@ -133,7 +133,7 @@ describe('Numeric', () => {
     expect(shows(Irrational.of(1n, 40))).toBe(`irrational: 1${'0'.repeat(40)}`);
   });
 
-  it('writes a decimal of as many places as asked for', () => {
+  it('writes an irrational decimal of as many places as asked for', () => {
     expect(Irrational.fromFraction(1n, 7n).toDecimalString(6)).toBe('0.142857');
     expect(irrational('2').nthRoot(2).toDecimalString(12)).toBe('1.414213562373');
     expect(Irrational.of(1n, 40).toDecimalString(0)).toBe(`1${'0'.repeat(40)}`);
