@@ -1,11 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatInput, MatSuffix } from '@angular/material/input';
+import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatIconButton } from '@angular/material/button';
-import { MatIcon } from '@angular/material/icon';
 import { PsLocale } from 'periodic-system-common';
 import {
   provideShowcaseVeronaWidgetService,
@@ -14,10 +12,7 @@ import {
 } from '../service/showcase-verona-widget.service';
 import { ShowcaseVeronaWidgetDirective } from '../service/showcase-verona-widget.directive';
 import { PsSelect } from '../../../periodic-system-select-widget/src/ps-select/ps-select';
-import {
-  PeriodicSystemSelectParam,
-  PeriodicSystemSharedParam,
-} from '../../../periodic-system-select-widget/src/ps-select/ps-select.service';
+import { PeriodicSystemSelectParam } from '../../../periodic-system-select-widget/src/ps-select/ps-select.service';
 import { boolParam, intParam, typeCastParam } from '../widget-page-common/param-converters';
 
 @Component({
@@ -32,9 +27,6 @@ import { boolParam, intParam, typeCastParam } from '../widget-page-common/param-
     MatSelect,
     MatOption,
     ShowcaseVeronaWidgetDirective,
-    MatSuffix,
-    MatIconButton,
-    MatIcon,
   ],
   templateUrl: './ps-select-page.html',
   styleUrls: ['./ps-select-page.scss', '../widget-page-common/widget-page.scss'],
@@ -52,10 +44,7 @@ import { boolParam, intParam, typeCastParam } from '../widget-page-common/param-
         [PeriodicSystemSelectParam.maxNumberOfSelections]: '1',
         [PeriodicSystemSelectParam.closeOnSelection]: '0',
       },
-      initSharedParameters: {
-        [PeriodicSystemSharedParam.textColor]: undefined,
-        [PeriodicSystemSharedParam.backgroundColor]: undefined,
-      },
+      initSharedParameters: {},
     }),
   ],
 })
@@ -72,9 +61,6 @@ export class PsSelectPage {
   readonly highlightBlocks = this.config.parameterSignal(PeriodicSystemSelectParam.highlightBlocks, boolParam);
   readonly maxNrOfSelections = this.config.parameterSignal(PeriodicSystemSelectParam.maxNumberOfSelections, intParam);
   readonly closeOnSelection = this.config.parameterSignal(PeriodicSystemSelectParam.closeOnSelection, boolParam);
-
-  readonly textColor = this.config.sharedParameterSignal(PeriodicSystemSharedParam.textColor);
-  readonly backgroundColor = this.config.sharedParameterSignal(PeriodicSystemSharedParam.backgroundColor);
 
   readonly stateData = this.service.stateData;
 

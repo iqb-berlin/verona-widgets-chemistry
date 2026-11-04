@@ -9,7 +9,7 @@ describe('MoleculeBuilder', () => {
   let component: MoleculeEditor;
   let fixture: ComponentFixture<MoleculeEditor>;
 
-  beforeEach(async () => {
+  async function setup(parameters: Record<string, string>, sharedParameters: Record<string, string> = {}) {
     await TestBed.configureTestingModule({
       imports: [MoleculeEditor],
       providers: [
@@ -25,8 +25,8 @@ describe('MoleculeBuilder', () => {
           },
           testConfig: {
             sessionId: 'test-session',
-            parameters: {},
-            sharedParameters: {},
+            parameters,
+            sharedParameters,
           },
         }),
         registerCustomIcons([{ namespace: 'iqb', svg: IqbIcons }]),
@@ -36,9 +36,27 @@ describe('MoleculeBuilder', () => {
     fixture = TestBed.createComponent(MoleculeEditor);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  }
+
+  it('should create', async () => {
+    await setup({});
+    expect(component).toBeTruthy();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  describe('BONDING_TYPE', () => {
+    it('defaults to ELECTRONS', async () => {
+      await setup({});
+      expect(component.service.appearance().bondingType).toBe('ELECTRONS');
+    });
+
+    it('is read from the call parameters', async () => {
+      await setup({ BONDING_TYPE: 'VALENCE' });
+      expect(component.service.appearance().bondingType).toBe('VALENCE');
+    });
+
+    it('is not read from the shared parameters', async () => {
+      await setup({}, { BONDING_TYPE: 'VALENCE' });
+      expect(component.service.appearance().bondingType).toBe('ELECTRONS');
+    });
   });
 });
