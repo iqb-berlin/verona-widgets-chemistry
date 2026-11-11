@@ -88,6 +88,25 @@ $ docker compose up
 2. Konfiguriere Widget Parameters und initialen State
 3. Klick "Create Widget"
 
+## Widget Host für externe Geräte
+
+Um Widgets auf externen Geräten (Smartphones, Tablets) in einer IFrame-Umgebung zu testen, kann eine `index_packed.html`
+in eine eigenständige Host-Seite gebündelt werden (Ausgabe in `dist/widget-host/<project>/index.html`):
+
+```
+$ npm run build:project:calculator-widget
+$ npm run inline:project:calculator-widget
+$ npm run host:project:calculator-widget   # oder: npm run host:all
+$ docker compose up widget-host-webserver
+```
+
+Übersicht aller gebündelten Widgets auf http://<host-ip>:4401/
+
+- Widget-Parameter werden per URL-Query übergeben, z.B. `/calculator-widget/?foo=1&bar=2`
+- Der reservierte Query-Parameter `_state` setzt den initialen State
+- "Restart" startet das Widget mit dem zuletzt gemeldeten State neu, "Reset" mit dem initialen State
+- "Log" zeigt die ausgetauschten `postMessage` Events (hilfreich ohne Devtools)
+
 ## Tests
 
 [Karma Tests](https://karma-runner.github.io/latest/index.html), welche prüfen, ob die Komponenten fehlerfrei rendern können.
