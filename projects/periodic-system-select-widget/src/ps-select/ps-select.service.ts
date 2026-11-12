@@ -96,7 +96,7 @@ class PsSelectInteraction implements PsInteraction {
       const { closeOnSelection } = untracked(this.interactionConfig);
       const elementAdded = selectedElementList.some((element) => !previousElementList.includes(element));
       if (closeOnSelection && elementAdded) {
-        this.widgetService.sendReturn(true);
+        this.widgetService.sendReturn({ saveState: true });
       }
     });
   }

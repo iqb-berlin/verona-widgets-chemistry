@@ -15,12 +15,7 @@ export interface VeronaModuleMetadata {
 }
 
 export type VeronaModuleType =
-  | 'EDITOR'
-  | 'PLAYER'
-  | 'SCHEMER'
-  | 'WIDGET_CALC'
-  | 'WIDGET_PERIODIC_TABLE'
-  | 'WIDGET_MOLECULE_EDITOR';
+  'EDITOR' | 'PLAYER' | 'SCHEMER' | 'WIDGET_CALC' | 'WIDGET_PERIODIC_TABLE' | 'WIDGET_MOLECULE_EDITOR';
 
 /**
  * The id will be used as reference by any application using this module

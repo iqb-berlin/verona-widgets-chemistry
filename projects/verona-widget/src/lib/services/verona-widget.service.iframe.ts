@@ -91,7 +91,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
     });
   }
 
-  sendReturn(saveState: boolean = true) {
+  sendReturn({ finalState, saveState = true }: VeronaWidgetService.ReturnResult) {
     // Requires widget to be in "running" state
     const state = untracked(this.state);
     if (state.state !== 'running') {
@@ -107,6 +107,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
         type: 'vowReturnRequested',
         sessionId: state.config.sessionId,
         timeStamp: currentTimestamp(),
+        state: finalState,
         saveState: saveState,
       });
     }, 100);

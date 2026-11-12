@@ -7,7 +7,15 @@ services:
     image: "nginx:latest"
     ports: [ "4302:80" ]
     volumes: [ "./dist/molecule-editor-widget/browser:/usr/share/nginx/html" ]
+  calculator-webserver:
+    image: "nginx:latest"
+    ports: [ "4303:80" ]
+    volumes: [ "./dist/calculator-widget/browser:/usr/share/nginx/html" ]
   widget-dummy-host-webserver:
     image: "nginx:latest"
     ports: [ "4400:80" ]
     volumes: [ "./docker/widget-dummy-host:/usr/share/nginx/html" ]
+  widget-embedded-host-webserver:
+    image: "nginx:latest"
+    ports: [ "4401:80" ]
+    volumes: [ "./dist/widget-host:/usr/share/nginx/html" ]

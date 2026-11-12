@@ -88,6 +88,25 @@ $ docker compose up
 2. Konfiguriere Widget Parameters und initialen State
 3. Klick "Create Widget"
 
+## Widget Host für externe Geräte
+
+Um Widgets auf externen Geräten (Smartphones, Tablets) in einer IFrame-Umgebung zu testen, kann eine `index_packed.html`
+in eine eigenständige Host-Seite gebündelt werden (Ausgabe in `dist/widget-host/<project>/index.html`):
+
+```
+$ npm run build:project:calculator-widget
+$ npm run inline:project:calculator-widget
+$ npm run host:project:calculator-widget   # oder: npm run host:all
+$ docker compose up widget-host-webserver
+```
+
+Übersicht aller gebündelten Widgets auf http://<host-ip>:4401/
+
+- Widget-Parameter werden per URL-Query übergeben, z.B. `/calculator-widget/?foo=1&bar=2`
+- Der reservierte Query-Parameter `_state` setzt den initialen State
+- "Restart" startet das Widget mit dem zuletzt gemeldeten State neu, "Reset" mit dem initialen State
+- "Log" zeigt die ausgetauschten `postMessage` Events (hilfreich ohne Devtools)
+
 ## Tests
 
 [Karma Tests](https://karma-runner.github.io/latest/index.html), welche prüfen, ob die Komponenten fehlerfrei rendern können.
@@ -166,7 +185,7 @@ Das `periodic-system-select-widget` ist ein Verona-Widget Modul, welches die int
 
 ### Modul `molecule-editor-widget`
 
-Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktive Erstellung und Bearbeitung von Molekülen mitteln Elementen aus dem Periodensystem ermöglicht.
+Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktive Erstellung und Bearbeitung von Molekülen mittels Elementen aus dem Periodensystem ermöglicht.
 
 - Angular Application-Projekt
 - Index `index.html` enthält ein `<script type="application/ld+json">`, welches Metadaten über das Verona-Modul bereitstellt
@@ -179,6 +198,19 @@ Das `molecule-editor-widget` ist ein Verona-Widget Modul, welches die interaktiv
   - Provides `MoleculeEditorImageService`
   - Provides `MoleculeEditorPickerService` als `PsSelect` Implementation
   - Rendert den Molekül-Editor mit MatDrawer, PsTable, EditorControls, und EditorCanvas
+
+### Modul `calculator-widget`
+
+Das `calculator-widget` ist ein Verona-Widget Modul, welches einen Taschenrechner zur Verfügung stellt und einfache Berechnungen erlaubt.
+
+- Angular Application-Projekt
+- Index `index.html` enthält ein `<script type="application/ld+json">`, welches Metadaten über das Verona-Modul bereitstellt
+- Bootstrap `calculatorAppConfig` konfiguriert die Application
+  - Provides `VeronaWidgetIFrame` per `provideVeronaWidgetIFrame`
+  - Bootstraps `CalculatorApp`, welche ein `VeronaWidget` mit `Calculator` als Content rendert
+- Komponente `Calculator`
+  - Provides `CalculatorService`
+  - Rendert Taschenrechner, welcher State mit LaTeX als Protokoll kommuniziert
 
 ### Modul `showcase-widgets`
 
@@ -211,17 +243,21 @@ Dieses Modul kann mit `ng serve` zum Test, Evaluation, und Entwicklung der Widge
 
 ## Architekturdiagramme
 
-`VeronaWidgetService` Implementierungen für unterschiedliche Umgebungen
+### `VeronaWidgetService` Implementierungen für unterschiedliche Umgebungen
 
 ![IQB Chemie-Widgets Verona-Interfaces](./img/iqb-widgets-verona.png)
 
-`PsService` Implementierungen für unterschiedliche Interaktionen
+### `PsService` Implementierungen für unterschiedliche Interaktionen
 
 ![IQB Chemie-Widgets PsService](./img/iqb-widgets-ps.png)
 
-Gesamtübersicht der Architektur und Abhängigkeiten
+### Gesamtübersicht der Chemie-Widgets Architektur und Abhängigkeiten
 
 ![IQB Chemie-Widgets Architektur](./img/iqb-widgets-complete.png)
+
+### Taschenrechner Bearbeitungs-, Formeln- und Zahlen-Modell
+
+![IQB Calculator-Widgets Model](./img/iqb-calculator-model.png)
 
 ---
 
