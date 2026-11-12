@@ -1,20 +1,39 @@
-:host {
-  --total-width: var(--calculator-width, 550px);
-  --form-height: var(--calculator-form-height, 14rem);
-  --header-height: var(--calculator-header-height, 6rem);
-  --control-height: var(--calculator-control-height, 5rem);
-  --mat-card-elevated-container-elevation: var(--mat-sys-level2);
+// Designed at this size (px), scaled to the actual size
+$design-width: 582;
+$design-height: 836;
+
+@function scaled($design-pixels) {
+  @return calc(#{$design-pixels} * var(--design-pixel));
 }
 
-.calculator {
-  width: var(--total-width);
+:host {
+  display: block;
+  width: var(--calculator-width, #{$design-width}px);
+  height: var(--calculator-height, #{$design-height}px);
+  container-type: size;
+
+  // Sass only evaluates custom property values inside #{}
+  --design-pixel: min(100cqw / #{$design-width}, 100cqh / #{$design-height});
+  --mat-card-elevated-container-elevation: var(--mat-sys-level2);
+  --mat-fab-container-shape: #{scaled(40)};
+}
+
+mat-card {
+  height: 100%;
+}
+
+// Element selector needed to override Material's padding
+mat-card-content.calculator {
+  flex: 1;
+  min-height: 0;
+  padding: scaled(16);
 
   display: grid;
-  align-content: center;
-  justify-content: center;
-  gap: 0.7rem;
+  gap: scaled(11);
 
+  // Formula area takes the remaining height
   grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) scaled(56) repeat(5, scaled(80));
   grid-template-areas:
     'hist undo redo .... .... exit'
     'form form form form form form'
@@ -30,11 +49,10 @@
   grid-area: form;
   border: 1px solid var(--mat-sys-on-surface);
   border-radius: var(--mat-sys-corner-small);
-  height: var(--form-height);
-  font-size: 2rem;
+  font-size: scaled(32);
 
   math-style: normal;
-  overflow: scroll;
+  overflow: auto;
 
   &::-webkit-scrollbar {
     width: 9px;
@@ -52,7 +70,7 @@
   }
 
   math {
-    padding: 0.25rem;
+    padding: scaled(4);
   }
 
   .error-message {
@@ -67,27 +85,30 @@
   text-align: -webkit-right;
 }
 
-@mixin resize-icon-button($size) {
-  --mat-icon-button-icon-size: $size;
-  --mat-icon-button-state-layer-size: $size;
+// $button-size only applies to icon buttons
+@mixin resize-icon($icon-size, $button-size: null) {
+  --mat-icon-button-icon-size: #{$icon-size};
+  @if $button-size {
+    --mat-icon-button-state-layer-size: #{$button-size};
+  }
   ::ng-deep .mat-icon {
-    line-height: $size;
-    font-size: $size;
-    width: $size;
-    height: $size;
+    line-height: $icon-size;
+    font-size: $icon-size;
+    width: $icon-size;
+    height: $icon-size;
   }
 }
 
-.close {
-  --mat-icon-color: var(--mat-sys-error);
+.header {
+  @include resize-icon(scaled(24), $button-size: scaled(40));
 }
 
-.history,
 .close {
   display: flex;
   align-items: center;
   justify-content: center;
-  @include resize-icon-button($size: 2.5rem);
+  --mat-icon-color: var(--mat-sys-error);
+  @include resize-icon(scaled(40), $button-size: scaled(40));
 }
 
 .nav {
@@ -96,41 +117,36 @@
   justify-content: center;
 
   --mat-fab-container-color: var(--mat-sys-surface);
-
-  ::ng-deep .mat-icon {
-    line-height: 2.5rem;
-    font-size: 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-  }
+  @include resize-icon(scaled(40));
 
   .mdc-fab {
     width: 100%;
-    --mat-fab-container-shape: 32px;
+    height: 100%;
   }
 
   &.expand {
-    @include resize-icon-button($size: 3rem);
+    @include resize-icon(scaled(48), $button-size: scaled(48));
   }
 }
 
 .control {
   aspect-ratio: 1 / 1;
-  height: var(--control-height);
+  height: 100%;
+  justify-self: center;
 
   --mat-fab-container-color: var(--mat-sys-surface);
   --mat-fab-foreground-color: var(--mat-sys-on-surface);
-  --mat-fab-container-shape: var(--control-height);
 
   .mdc-fab {
     width: 100%;
     height: 100%;
-    font-size: 36px;
+    font-size: scaled(36);
     font-weight: bold;
   }
 
   &.clear {
     aspect-ratio: unset;
+    justify-self: stretch;
     --mat-fab-container-color: var(--mat-sys-error);
     --mat-fab-foreground-color: var(--mat-sys-on-error);
   }
@@ -141,7 +157,7 @@
   }
 
   &.svg-icon {
-    @include resize-icon-button($size: 3rem);
+    @include resize-icon(scaled(48));
   }
 
   &.operation {

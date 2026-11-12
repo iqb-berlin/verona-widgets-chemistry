@@ -434,7 +434,6 @@ export class CalculatorService implements OnDestroy {
   private executeEvaluation(inputSequence: M.EditSequence, mode: EvaluationMode): EvaluationResult {
     const compileResult = M.compileToFormula(inputSequence);
     if (!compileResult.ok) {
-      console.warn('Compile to formula issue:', compileResult.issue);
       const { code, tokenId, sequenceId } = compileResult.issue;
       const message = ISSUE_MESSAGES[code] || 'Unbekannter Eingabefehler?';
       return M.Result.issue({ message, tokenId: tokenId ?? sequenceId });
@@ -442,7 +441,6 @@ export class CalculatorService implements OnDestroy {
 
     const evaluationResult = M.evaluateFormula(compileResult.value);
     if (!evaluationResult.ok) {
-      console.warn('Evaluate formula issue:', evaluationResult.issue);
       const { code, sourceTokenId } = evaluationResult.issue;
       const message = ISSUE_MESSAGES[code] || 'Unbekannter Mathefehler?';
       return M.Result.issue({ message, tokenId: sourceTokenId });
