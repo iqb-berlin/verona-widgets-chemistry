@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Widget Host: {{WIDGET_NAME}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      font: 14px/1.4 system-ui, sans-serif;
+      background: #eee;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      padding: 4px 8px;
+      background: #333;
+      color: #fff;
+    }
+
+    header strong {
+      white-space: nowrap;
+    }
+
+    #status {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0.8;
+    }
+
+    button {
+      padding: 4px 10px;
+      font: inherit;
+    }
+
+    #widget-container {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    #widget-container iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+
+    #log {
+      display: none;
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #cfc;
+      font: 12px/1.3 ui-monospace, monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    #log.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <strong>{{WIDGET_NAME}}</strong>
+  <span id="status">Initializing ...</span>
+  <button type="button" id="restart">Restart</button>
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="toggle-log">Log</button>
+</header>
+<div id="widget-container">
+  <div id="log"></div>
+</div>
+
+<script id="widget-html" type="application/json">{{WIDGET_HTML_JSON}}</script>
+<script>
+  (function () {
+    'use strict';
+
+    const widgetHtml = JSON.parse(document.getElementById('widget-html').textContent);
+    const containerElement = document.getElementById('widget-container');
+    const statusElement = document.getElementById('status');
+    const logElement = document.getElementById('log');
+
+    // Widget parameters are taken from URL query, e.g. "?foo=1&bar=2"; the reserved key "_state" sets the initial state
+    const query = new URLSearchParams(window.location.search);
+    const initialState = query.get('_state') ?? '';
+    const parameters = [...query.entries()]
+      .filter(([key]) => key !== '_state')
+      .map(([key, value]) => ({ key, value }));
+
+    let widgetState = initialState;
+    let iframe = null;
+
+    function setStatus(text) {
+      statusElement.textContent = text;
+      log(text);
+    }
+
+    function log(text) {
+      const time = new Date().toISOString().substring(11, 23);
+      logElement.textContent += `[${time}] ${text}\n`;
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    function createWidget() {
+      if (iframe) iframe.remove();
+      iframe = document.createElement('iframe');
+      iframe.title = 'Widget';
+      iframe.srcdoc = widgetHtml;
+      containerElement.insertBefore(iframe, logElement);
+      setStatus('Loading widget ...');
+    }
+
+    function sendWidgetMessage(event) {
+      log(`Host -> Widget: ${JSON.stringify(event)}`);
+      iframe.contentWindow.postMessage(event, '*');
+    }
+
+    window.addEventListener('message', (message) => {
+      if (!iframe || message.source !== iframe.contentWindow) return;
+
+      const event = message.data;
+      log(`Widget -> Host: ${JSON.stringify(event)}`);
+
+      switch (event.type) {
+        case 'vowReadyNotification':
+          setStatus('Widget ready, starting ...');
+          sendWidgetMessage({
+            type: 'vowStartCommand',
+            sessionId: 'dummy-session',
+            parameters,
+            state: widgetState,
+          });
+          setStatus('Widget running');
+          break;
+        case 'vowStateChangedNotification':
+          widgetState = event.state ?? '';
+          setStatus(`State: ${widgetState}`);
+          break;
+        case 'vowReturnRequested':
+          if (event.saveState) widgetState = event.state ?? widgetState;
+          if (iframe) iframe.remove();
+          iframe = null;
+          setStatus(event.saveState ? `Returned, saved state: ${widgetState}` : 'Returned, state not saved');
+          break;
+        default:
+          log(`Unknown widget event type: ${event.type}`);
+          break;
+      }
+    });
+
+    document.getElementById('restart').addEventListener('click', () => {
+      createWidget();
+    });
+    document.getElementById('reset').addEventListener('click', () => {
+      widgetState = initialState;
+      createWidget();
+    });
+    document.getElementById('toggle-log').addEventListener('click', () => {
+      logElement.classList.toggle('visible');
+    });
+    window.addEventListener('error', (e) => {
+      log(`Error: ${ e.message }`);
+    });
+
+    log(`Parameters: ${JSON.stringify(parameters)}`);
+    createWidget();
+  })();
+</script>
+</body>
+</html>

@@ -60,20 +60,10 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
       }
     });
 
-    // Listen to incoming message events
+    // Listen to incoming message events; other messages (e.g. from browser extensions) are ignored
     this.messageSource.addEventListener('message', (message: MessageEvent<VeronaWidgetReceiveEvent>) => {
       const event = message.data;
-      console.log('Verona-Widget received message:', event);
-      switch (event.type) {
-        case 'vowStartCommand':
-          this.handleStartCommand(event);
-          break;
-        default:
-          // explicitly assign to "never" to provoke a compiler error on unhandled case
-          const unknownEventType: never = event.type;
-          console.error('Received unknown message event:', unknownEventType, '=>', event);
-          break;
-      }
+      if (event?.type === 'vowStartCommand') this.handleStartCommand(event);
     });
   }
 
@@ -91,7 +81,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
     });
   }
 
-  sendReturn(saveState: boolean = true) {
+  sendReturn({ finalState, saveState = true }: VeronaWidgetService.ReturnResult) {
     // Requires widget to be in "running" state
     const state = untracked(this.state);
     if (state.state !== 'running') {
@@ -107,6 +97,7 @@ export class IFrameVeronaWidgetService implements VeronaWidgetService {
         type: 'vowReturnRequested',
         sessionId: state.config.sessionId,
         timeStamp: currentTimestamp(),
+        state: finalState,
         saveState: saveState,
       });
     }, 100);

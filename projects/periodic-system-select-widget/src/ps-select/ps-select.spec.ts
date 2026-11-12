@@ -185,7 +185,7 @@ describe('PsSelect', () => {
       click('Na');
       expect(sendReturn).not.toHaveBeenCalled();
       click('Na');
-      expect(sendReturn).toHaveBeenCalledWith(true);
+      expect(sendReturn).toHaveBeenCalledWith({ saveState: true });
     });
   });
 });

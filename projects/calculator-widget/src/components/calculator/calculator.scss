@@ -1,0 +1,176 @@
+// Designed at this size (px), scaled to the actual size
+$design-width: 582;
+$design-height: 836;
+
+@function scaled($design-pixels) {
+  @return calc(#{$design-pixels} * var(--design-pixel));
+}
+
+:host {
+  display: block;
+  width: var(--calculator-width, #{$design-width}px);
+  height: var(--calculator-height, #{$design-height}px);
+  container-type: size;
+
+  // Sass only evaluates custom property values inside #{}
+  --design-pixel: min(100cqw / #{$design-width}, 100cqh / #{$design-height});
+  --mat-card-elevated-container-elevation: var(--mat-sys-level2);
+  --mat-fab-container-shape: #{scaled(40)};
+}
+
+mat-card {
+  height: 100%;
+}
+
+// Element selector needed to override Material's padding
+mat-card-content.calculator {
+  flex: 1;
+  min-height: 0;
+  padding: scaled(16);
+
+  display: grid;
+  gap: scaled(11);
+
+  // Formula area takes the remaining height
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) scaled(56) repeat(5, scaled(80));
+  grid-template-areas:
+    'hist undo redo .... .... exit'
+    'form form form form form form'
+    'nav0 nav1 nav2 nav3 nav4 nav5'
+    'lpar rpar C    C    back div '
+    'pow  root num7 num8 num9 mul '
+    'pow2 sqrt num4 num5 num6 sub '
+    'comp frac num1 num2 num3 add '
+    'pi   dec  neg  num0 dot  eval';
+}
+
+.formula-area {
+  grid-area: form;
+  border: 1px solid var(--mat-sys-on-surface);
+  border-radius: var(--mat-sys-corner-small);
+  font-size: scaled(32);
+
+  math-style: normal;
+  overflow: auto;
+
+  &::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(155, 155, 155, 0.5);
+    border-radius: 20px;
+    border: transparent;
+  }
+
+  math {
+    padding: scaled(4);
+  }
+
+  .error-message {
+    display: block;
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
+}
+
+.formula-right {
+  text-align: right;
+  text-align: -webkit-right;
+}
+
+// $button-size only applies to icon buttons
+@mixin resize-icon($icon-size, $button-size: null) {
+  --mat-icon-button-icon-size: #{$icon-size};
+  @if $button-size {
+    --mat-icon-button-state-layer-size: #{$button-size};
+  }
+  ::ng-deep .mat-icon {
+    line-height: $icon-size;
+    font-size: $icon-size;
+    width: $icon-size;
+    height: $icon-size;
+  }
+}
+
+.header {
+  @include resize-icon(scaled(24), $button-size: scaled(40));
+}
+
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --mat-icon-color: var(--mat-sys-error);
+  @include resize-icon(scaled(40), $button-size: scaled(40));
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+  @include resize-icon(scaled(40));
+
+  .mdc-fab {
+    width: 100%;
+    height: 100%;
+  }
+
+  &.expand {
+    @include resize-icon(scaled(48), $button-size: scaled(48));
+  }
+}
+
+.control {
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  justify-self: center;
+
+  --mat-fab-container-color: var(--mat-sys-surface);
+  --mat-fab-foreground-color: var(--mat-sys-on-surface);
+
+  .mdc-fab {
+    width: 100%;
+    height: 100%;
+    font-family: inherit;
+    font-size: scaled(36);
+    font-weight: bold;
+  }
+
+  &.clear {
+    aspect-ratio: unset;
+    justify-self: stretch;
+    --mat-fab-container-color: var(--mat-sys-error);
+    --mat-fab-foreground-color: var(--mat-sys-on-error);
+  }
+
+  &.numpad {
+    --mat-fab-container-color: var(--mat-sys-surface-variant);
+    --mat-fab-foreground-color: var(--mat-sys-on-surface-variant);
+  }
+
+  &.svg-icon {
+    @include resize-icon(scaled(48));
+  }
+
+  &.operation {
+    --mat-fab-container-color: var(--mat-sys-on-surface);
+    --mat-fab-foreground-color: var(--mat-sys-surface);
+  }
+
+  &.operator {
+    --mat-fab-container-color: var(--mat-sys-surface);
+
+    .mdc-fab {
+      border: 1px solid var(--mat-sys-inverse-on-surface);
+    }
+  }
+}

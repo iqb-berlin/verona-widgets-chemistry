@@ -32,7 +32,8 @@ export interface VowReturnRequested {
   readonly type: 'vowReturnRequested';
   readonly sessionId: string;
   readonly timeStamp: string;
-  readonly saveState?: boolean;
+  readonly state?: string; // serialized final state of the widget, send to host in return response
+  readonly saveState?: boolean; // flag to save the final state; false indicated the widget was canceled, and the changed state should be discarded
 }
 
 export type VowParameterCollection = ReadonlyArray<VowParameter> | Readonly<Record<string, undefined | string>>;

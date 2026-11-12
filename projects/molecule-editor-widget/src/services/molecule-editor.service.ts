@@ -1,5 +1,5 @@
 import { computed, effect, inject, Injectable, Signal, signal, untracked } from '@angular/core';
-import { VeronaWidgetService } from 'verona-widget';
+import { deferPromise, DeferredPromise, historySignal, VeronaWidgetService } from 'verona-widget';
 import { PsElement, PsElementNumber } from 'periodic-system-common';
 import { MoleculeCanvasTransform } from './molecule-editor.event';
 import {
@@ -14,8 +14,6 @@ import { defaultBondingType, editorHistoryCapacity, partialChargeMaxAtomDistance
 import { EditorState } from './molecule-editor.state';
 import { BondMultiplicity, FormulaSymbol, PartialCharge, Vector2 } from './molecule-editor.shared';
 import { MoleculeEditorGraph } from './molecule-editor.graph';
-import { deferPromise, DeferredPromise } from '../util/defer-promise';
-import { historySignal } from '../util/history-signal';
 
 export const enum MoleculeEditorParam {
   language = 'LANGUAGE',
@@ -850,7 +848,6 @@ function parseSerializedEditorModel(initialStateData: string): MoleculeEditorMod
     if (data === null || typeof data !== 'object') {
       return MoleculeEditorModel.empty;
     }
-    console.log('Parsing JSON editor-model state data:', data);
     const atoms = data.atoms ?? {};
     const bonds = data.bonds ?? {};
     const partials = data.partials ?? {};

@@ -33,6 +33,6 @@ export class PsSelect {
   private readonly selectionCount = computed(() => this.psService.interaction.selectedElementList().length);
 
   doSubmit() {
-    this.widgetService.sendReturn(true);
+    this.widgetService.sendReturn({ saveState: true });
   }
 }
