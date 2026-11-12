@@ -848,7 +848,6 @@ function parseSerializedEditorModel(initialStateData: string): MoleculeEditorMod
     if (data === null || typeof data !== 'object') {
       return MoleculeEditorModel.empty;
     }
-    console.log('Parsing JSON editor-model state data:', data);
     const atoms = data.atoms ?? {};
     const bonds = data.bonds ?? {};
     const partials = data.partials ?? {};
