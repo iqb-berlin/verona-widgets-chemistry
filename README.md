@@ -16,6 +16,7 @@ Build-Dateien:
 
 - Periodensystem Auswahl Widget in `dist/periodic-system-select-widget/browser/index_packed.html`
 - Molekül Editor Widget in `dist/molecule-editor-widget/browser/index_packed.html`
+- Taschenrechner Widget in `dist/calculator-widget/browser/index_packed.html`
 
 ## Serve Showcase
 
@@ -97,7 +98,7 @@ in eine eigenständige Host-Seite gebündelt werden (Ausgabe in `dist/widget-hos
 $ npm run build:project:calculator-widget
 $ npm run inline:project:calculator-widget
 $ npm run host:project:calculator-widget   # oder: npm run host:all
-$ docker compose up widget-host-webserver
+$ docker compose up widget-embedded-host-webserver
 ```
 
 Übersicht aller gebündelten Widgets auf http://<host-ip>:4401/
@@ -126,6 +127,7 @@ Die IQB-Widgets sind modular aufgebaut. Es gibt folgende Kategorien von Modulen:
 - Widget Modul: Widget-Applikationen, welche in IFrame-Elementen eingebunden werden können
   - `periodic-system-select-widget`: Widget zur Auswahl von Elementen im Periodensystem
   - `molecule-editor-widget`: Widget zum Bauen und Bearbeiten von Molekülen
+  - `calculator-widget`: Widget mit einem Taschenrechner
 - Showcase Modul: Alleinstehende Applikation, welche Widget-PsSelectApp Komponenten demonstrieren
   - `showcase-widgets`: Demo für Widget-PsSelectApp Komponenten
 
@@ -211,6 +213,7 @@ Das `calculator-widget` ist ein Verona-Widget Modul, welches einen Taschenrechne
 - Komponente `Calculator`
   - Provides `CalculatorService`
   - Rendert Taschenrechner, welcher State mit LaTeX als Protokoll kommuniziert
+  - Skaliert auf die verfügbare Größe; Standardgröße 582 × 836 px, überschreibbar mit `--calculator-width` und `--calculator-height`
 
 ### Modul `showcase-widgets`
 
@@ -240,6 +243,9 @@ Dieses Modul kann mit `ng serve` zum Test, Evaluation, und Entwicklung der Widge
 - Komponente `MoleculeEditorPage`, verfügbar unter Route `/molecule-editor`
   - Provides `ShowcaseVeronaWidgetConfig`/`ShowcaseVeronaWidgetService` mit `provideShowcaseVeronaWidgetService`
   - Stellt eine `MoleculeEditor` Komponente dar
+- Komponente `CalculatorPage`, verfügbar unter Route `/calculator`
+  - Provides `ShowcaseVeronaWidgetConfig`/`ShowcaseVeronaWidgetService` mit `provideShowcaseVeronaWidgetService`
+  - Stellt eine `Calculator` Komponente dar
 
 ## Architekturdiagramme
 
