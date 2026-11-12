@@ -37,7 +37,7 @@
       </math>
     </div>
 
-    <div style="grid-area: hist">
+    <div class="header" style="grid-area: hist">
       <button
         matIconButton
         [matMenuTriggerFor]="historyMenu"
@@ -47,12 +47,12 @@
         <mat-icon>history</mat-icon>
       </button>
     </div>
-    <div style="grid-area: undo">
+    <div class="header" style="grid-area: undo">
       <button matIconButton (click)="service.undo()" [disabled]="!service.editSequence.undoAvailable()" title="Zurück">
         <mat-icon>undo</mat-icon>
       </button>
     </div>
-    <div style="grid-area: redo">
+    <div class="header" style="grid-area: redo">
       <button
         matIconButton
         (click)="service.redo()"

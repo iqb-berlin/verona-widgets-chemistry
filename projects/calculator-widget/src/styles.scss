@@ -22,7 +22,7 @@ body {
   // Default the application to a light color theme. This can be changed to
   // `dark` to enable the dark color theme, or to `light dark` to defer to the
   // user's system settings.
-  color-scheme: dark;
+  color-scheme: light;
 
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
@@ -45,10 +45,14 @@ body {
 body {
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
+  // The calculator scales to fit, so never scroll
+  overflow: hidden;
 }
 
-app-calculator,
+// Fill the window
 app-calculator-root {
   display: block;
   height: 100%;
+  --calculator-width: 100%;
+  --calculator-height: 100%;
 }

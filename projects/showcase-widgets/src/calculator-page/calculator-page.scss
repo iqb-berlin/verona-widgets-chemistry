@@ -4,3 +4,9 @@
   flex-wrap: wrap;
   gap: 1rem;
 }
+
+// Drag the corner to try other sizes
+app-calculator {
+  resize: both;
+  overflow: hidden;
+}
