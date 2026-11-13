@@ -3,9 +3,14 @@ import htmlParser from 'node-html-parser';
 import cssParser from '@node-projects/css-parser';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 
 const fontsCacheDir = join(import.meta.dirname, '.font-cache');
+
+// Google Fonts splits a font into one file per script (Latin, Cyrillic, Greek, ...).
+// Only the files containing one of these characters are embedded, the others are left out.
+const EMBEDDED_SCRIPTS = { latin: 'a', maths: '√', symbols: '□' };
 await mkdir(fontsCacheDir, { recursive: true });
 
 //#region Main script
@@ -46,10 +51,15 @@ console.log('Done.');
 
 async function inlineFontFaces(htmlContent) {
   const html = htmlParser.parse(htmlContent);
+
+  // The fonts are embedded, so nothing has to connect to the font servers any more
+  html.querySelectorAll('link[rel="preconnect"]').forEach((link) => link.remove());
+
   const styleElements = html.querySelectorAll('style');
   for (const styleElement of styleElements) {
     const cssContent = styleElement.rawText;
     const css = cssParser.parse(cssContent);
+    css.stylesheet.rules = css.stylesheet.rules.filter((rule) => rule.type !== 'font-face' || isEmbeddedFontFace(rule));
 
     for (const rule of css.stylesheet.rules) {
       if (rule.type === 'font-face') {
@@ -69,6 +79,25 @@ async function inlineFontFaces(htmlContent) {
   }
 
   return html.outerHTML;
+}
+
+/**
+ * Whether a font-face covers one of the embedded scripts. One without a unicode-range covers all characters.
+ * @param fontFaceRule {{ declarations: { property: string, value: string }[] }}
+ * @returns {boolean}
+ */
+function isEmbeddedFontFace(fontFaceRule) {
+  const unicodeRange = fontFaceRule.declarations.find((decl) => decl.property === 'unicode-range')?.value;
+  if (unicodeRange === undefined) return true;
+
+  const ranges = unicodeRange.split(',').map((range) => {
+    const [start, end = start] = range.trim().replace(/^U\+/i, '').split('-');
+    return [parseInt(start.replaceAll('?', '0'), 16), parseInt(end.replaceAll('?', 'F'), 16)];
+  });
+  return Object.values(EMBEDDED_SCRIPTS).some((character) => {
+    const codePoint = character.codePointAt(0);
+    return ranges.some(([start, end]) => start <= codePoint && codePoint <= end);
+  });
 }
 
 /**
@@ -97,7 +126,8 @@ async function createInlineFontFaceSrc(fontSrc) {
  * @returns {Promise<Buffer>}
  */
 async function loadFontData(fontUrl) {
-  const fontFilename = basename(fontUrl.pathname);
+  // Reduced icon fonts all share one path and differ in the query only, so the whole URL names the cached file
+  const fontFilename = createHash('sha256').update(fontUrl.href).digest('hex');
   const cachedFontPath = join(fontsCacheDir, fontFilename);
   if (existsSync(cachedFontPath)) {
     return readFile(cachedFontPath);
