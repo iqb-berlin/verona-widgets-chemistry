@@ -16,6 +16,10 @@ $design-height: 836;
   --design-pixel: min(100cqw / #{$design-width}, 100cqh / #{$design-height});
   --mat-card-elevated-container-elevation: var(--mat-sys-level2);
   --mat-fab-container-shape: #{scaled(40)};
+
+  // Material's touch areas have a fixed size and would reach into neighbouring keys in a small calculator
+  --mat-fab-touch-target-size: 100%;
+  --mat-icon-button-touch-target-size: #{scaled(62)};
 }
 
 mat-card {
@@ -91,7 +95,7 @@ mat-card-content.calculator {
   @if $button-size {
     --mat-icon-button-state-layer-size: #{$button-size};
   }
-  ::ng-deep .mat-icon {
+  .mat-icon {
     line-height: $icon-size;
     font-size: $icon-size;
     width: $icon-size;
@@ -119,7 +123,7 @@ mat-card-content.calculator {
   --mat-fab-container-color: var(--mat-sys-surface);
   @include resize-icon(scaled(40));
 
-  .mdc-fab {
+  [matFab] {
     width: 100%;
     height: 100%;
   }
@@ -137,7 +141,7 @@ mat-card-content.calculator {
   --mat-fab-container-color: var(--mat-sys-surface);
   --mat-fab-foreground-color: var(--mat-sys-on-surface);
 
-  .mdc-fab {
+  [matFab] {
     width: 100%;
     height: 100%;
     font-family: inherit;
@@ -169,7 +173,7 @@ mat-card-content.calculator {
   &.operator {
     --mat-fab-container-color: var(--mat-sys-surface);
 
-    .mdc-fab {
+    [matFab] {
       border: 1px solid var(--mat-sys-inverse-on-surface);
     }
   }
