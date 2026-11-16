@@ -18,7 +18,7 @@ export interface VeronaWidgetIFrame {
 
 export function provideVeronaWidgetIFrame(iFrameWindow?: Window, parentWindow?: Window): Provider[] {
   const messageSource = iFrameWindow ?? window;
-  const messageTarget = parentWindow ?? messageSource.top ?? messageSource.parent;
+  const messageTarget = parentWindow ?? messageSource.parent;
   return [
     {
       provide: VeronaWidgetIFrame,
