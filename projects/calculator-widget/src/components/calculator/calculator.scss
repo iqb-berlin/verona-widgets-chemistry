@@ -86,7 +86,16 @@ mat-card-content.calculator {
 
 .formula-right {
   text-align: right;
+}
+
+// Chrome only right-aligns table cells with -webkit-right. Safari would pass that on to every
+// digit and tear the formula apart, so the contents of the cells are set back.
+mtd.formula-right {
   text-align: -webkit-right;
+
+  > * {
+    text-align: start;
+  }
 }
 
 // $button-size only applies to icon buttons
