@@ -28,7 +28,9 @@
                   }
                   <mrow style="font-size: 150%" [appEditSequence]="result.value.outputSequence" data-result></mrow>
                 } @else {
-                  <merror class="error-message">{{ result.issue.message }}</merror>
+                  <merror class="error-message">
+                    <mtext>{{ result.issue.message }}</mtext>
+                  </merror>
                 }
               </mtd>
             </mtr>
